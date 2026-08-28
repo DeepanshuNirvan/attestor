@@ -1,0 +1,176 @@
+---
+import BaseLayout from '../layouts/base-layout.astro';
+import CommandPalette from '../components/command-palette.astro';
+import { site } from '../data/site';
+---
+
+<BaseLayout
+  title="About"
+  description="Who Attestor Security is, what we hold, what we do not hold, and how we handle the client data and credentials an assessment requires."
+  path="/about"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">About</p>
+      <h1>A small firm that does one thing</h1>
+      <p class="lede">
+        {site.brandName} assesses the security of software and the infrastructure it runs on, and
+        writes it down so that somebody who was not there can act on it. That is the whole business.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">The people</p>
+        <h2>Who does the work</h2>
+      </div>
+      <div class="stack">
+        {
+          site.founder.awaitingOwner ? (
+            <div class="draft-notice">
+              <p>
+                Founder biography, credentials and published work will appear here. We are not going
+                to fill this section with stock phrases in the meantime — ask on the scoping call and
+                you will get a straight answer about who will be on your engagement.
+              </p>
+            </div>
+          ) : (
+            <>
+              <p>
+                <strong>{site.founder.name}</strong>
+              </p>
+              {site.founder.credentials.length > 0 && (
+                <ul class="rule-list">
+                  {site.founder.credentials.map((credential) => (
+                    <li>{credential}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )
+        }
+        <p>
+          The person who scopes your engagement is the person who tests it and the person who writes
+          the report. There is no handoff to a delivery team you have not met, and if that ever
+          changes you will be told who is doing the work before it starts.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Standing</p>
+        <h2>What we hold, and what we do not</h2>
+      </div>
+      <div>
+        <ul class="rule-list">
+          <li>
+            <strong>Independence.</strong> We do not design, build, operate or maintain any system we
+            assess, and we hold no interest in any client beyond the engagement fee. This is what
+            makes the report usable as third-party evidence.
+          </li>
+          <li>
+            <strong>Professional indemnity insurance.</strong>{' '}
+            {site.professionalIndemnity.awaitingOwner
+              ? 'Cover is being arranged. The cover amount will be published here and named in the engagement documents once the policy is in force. Until then, ask and we will tell you exactly where that stands.'
+              : `${site.professionalIndemnity.coverAmount} of cover, named in the engagement documents.`}
+          </li>
+          <li>
+            <strong>Not CERT-In empanelled.</strong> Stated plainly because it matters and because it
+            takes thirty seconds to verify. Empanelment is required for statutory audits at banks,
+            NBFCs, payment aggregators, SEBI-regulated entities, insurers, government bodies and
+            critical infrastructure. It is not required for SaaS, product companies, ecommerce, ISO
+            27001 or SOC 2 work, enterprise questionnaires, or any client outside India.
+          </li>
+          <li>
+            <strong>No certification claims of any kind.</strong> We do not hold accreditations we
+            have not earned and we do not imply them. If a page on this site ever says otherwise, it
+            is a mistake and we want to hear about it.
+          </li>
+          <li>
+            <strong>No client logos on this site.</strong> Not until a client has told us in writing
+            that we may. A "trusted by" strip full of companies who never agreed to appear on it is
+            a lie, and it is the most common one in this industry.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Practice</p>
+        <h2>How we hold your data</h2>
+      </div>
+      <div>
+        <p>
+          An assessment means we hold your credentials and a written record of your unfixed
+          vulnerabilities. That makes us a target, and treating it as an afterthought would be
+          disqualifying.
+        </p>
+        <ul class="rule-list">
+          <li>Credentials arrive through a one-time link into an encrypted vault, never by email.</li>
+          <li>Personal data is masked before evidence is written to disk, not before it is printed.</li>
+          <li>Every log passes through a redaction filter, so a credential cannot reach a log file.</li>
+          <li>
+            The internal platform is not reachable from the internet. The client portal is the only
+            public surface and it runs as a separate deployment with its own least-privilege database
+            role, which cannot read the credential vault at all.
+          </li>
+          <li>Evidence is deleted after {site.evidenceRetentionDays} days, with written confirmation.</li>
+          <li>
+            We assess our own platform against OWASP ASVS 5.0 and treat any finding in the client
+            portal as a release blocker.
+          </li>
+        </ul>
+        <p><a href="/how-we-work#data">The full data handling procedure</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Reach</p>
+        <h2>Where we work</h2>
+      </div>
+      <div>
+        <p>
+          Clients in India and internationally. Overlap with US Eastern is{' '}
+          {site.overlapHours.usEastern}; with the UK it is {site.overlapHours.unitedKingdom}. Calls
+          are booked in your timezone and there is a person on the other end during those hours.
+        </p>
+        <p>
+          We will work under your master services agreement or ours. For clients outside India,
+          governing law and dispute resolution are negotiable, and we would rather have that
+          conversation at the start than during a disagreement.
+        </p>
+        <p class="cta">
+          <a class="button" href="/contact">Book a scoping call</a>
+          <a class="button button-quiet" href="/sample-report">Read the sample report first</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 18ch;
+  }
+
+  .cta {
+    display: flex;
+    gap: var(--space-s);
+    flex-wrap: wrap;
+    margin-top: var(--space-m);
+    max-width: none;
+  }
+</style>

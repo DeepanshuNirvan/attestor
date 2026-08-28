@@ -1,0 +1,64 @@
+---
+title: Mobile application assessment
+navLabel: Mobile
+order: 3
+audience: For teams shipping to the Play Store or the App Store with a backend nobody has tested.
+summary: >-
+  Android and iOS, static and runtime, plus the API the app actually talks to. Includes a check that
+  your store data-safety declaration matches what the binary really does, which is a compliance
+  problem waiting to happen.
+packageIds:
+  - mobile
+coverageCategories:
+  - mobileSpecific
+  - authentication
+  - cryptography
+  - inputValidation
+standards:
+  - OWASP MASVS 2.1
+  - OWASP MASTG
+  - OWASP API Top 10:2023
+seoDescription: >-
+  Android and iOS mobile application security assessment mapped to OWASP MASVS 2.1, including
+  runtime analysis, backend API testing and a store data-safety declaration consistency check.
+---
+
+A mobile assessment that stops at the binary is half an assessment. The binary tells you about
+hardcoded keys, insecure storage and missing pinning. The traffic tells you about the backend, and
+the backend is where the data is.
+
+So we do both. Static analysis of the shipped package on both platforms, then the application running
+on an instrumented device with its traffic intercepted, and the endpoints we capture go straight into
+the API testing. Mobile-only endpoints are consistently the least protected part of a product,
+because they were written first, are called by fewer people, and never got the rate limiting and
+device checks the web login received.
+
+## What the static pass finds
+
+Keys in resource strings and native libraries. Session tokens written to shared preferences in plain
+text and then swept up into the device backup. Exported components that will start when another
+installed application asks them to. Deep links that will open an arbitrary URL inside the
+authenticated WebView with the session attached. Certificate pinning present on the main API host and
+absent on the payment host.
+
+## What the runtime pass finds
+
+Whether the pinning holds, how much effort a bypass takes, what stays in memory after the payment
+screen closes, and whether the biometric prompt actually gates anything or just sets a variable that
+one hook can flip.
+
+## Data safety declarations
+
+Both stores require you to declare what data your app collects and shares. Almost nobody checks
+whether the declaration matches the binary, and it frequently does not — usually because a third-party
+SDK is collecting an advertising identifier and coarse location that nobody on the team knew about.
+We compare the declaration against observed behaviour and report the difference, because an
+inaccurate declaration is a store enforcement problem and a regulatory one, not a security one, and
+it is cheaper to find here.
+
+## What we need
+
+The release build for both platforms, ideally the exact artefact you ship. Two test accounts per role
+for the backend testing. A device or emulator profile if you have platform restrictions. If your app
+has root or jailbreak detection, tell us — we are going to bypass it for the runtime work and we
+would rather do that with your knowledge.

@@ -1,0 +1,580 @@
+---
+import {
+  sampleFindings,
+  sampleEngagement,
+  sampleAttackNarrative,
+  samplePositiveObservations,
+} from '@attestor/report/fixtures';
+import { countBySeverity } from '@attestor/findings';
+import { site } from '../data/site';
+
+/**
+ * The sample report, rendered inline. A visitor must be able to judge report quality without
+ * downloading anything, so the whole document is here as HTML with deep-linkable headings; the PDF
+ * is an option, not a gate.
+ *
+ * The content comes from the same fixture the report renderer and its golden-file tests use, so the
+ * sample on the website and the document a client receives cannot drift apart.
+ */
+
+const counts = countBySeverity(sampleFindings);
+const ordered = ['critical', 'high', 'medium', 'low', 'info'] as const;
+const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const findings = [...sampleFindings].sort(
+  (a, b) => severityOrder[a.severity] - severityOrder[b.severity],
+);
+
+const sections = [
+  { id: 'report-summary', label: 'Executive summary' },
+  { id: 'report-risk', label: 'Risk overview' },
+  { id: 'report-scope', label: 'Scope' },
+  { id: 'report-methodology', label: 'Methodology' },
+  { id: 'report-narrative', label: 'Attack narrative' },
+  { id: 'report-findings', label: 'Detailed findings' },
+  { id: 'report-positives', label: 'Positive observations' },
+  { id: 'report-roadmap', label: 'Recommendations' },
+  { id: 'report-limitations', label: 'Limitations' },
+];
+
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+---
+
+<div class="report-shell">
+  <nav class="report-nav" aria-label="Report sections">
+    <p class="report-nav-label">Sections</p>
+    <ul>
+      {sections.map((section) => <li><a href={`#${section.id}`}>{section.label}</a></li>)}
+    </ul>
+    <p class="report-nav-download">
+      <a class="button button-quiet" href="/sample-report.pdf" download>Download the PDF</a>
+    </p>
+  </nav>
+
+  <article class="report" aria-label="Sample assessment report">
+    <header class="report-cover">
+      <p class="report-classification">Confidential — contains unresolved security findings</p>
+      <h2>{sampleEngagement.title}</h2>
+      <p class="report-client">Prepared for {sampleEngagement.clientLegalName}</p>
+      <dl class="report-meta">
+        <div><dt>Report reference</dt><dd>{sampleEngagement.reference}</dd></div>
+        <div><dt>Version</dt><dd>{sampleEngagement.reportVersion}</dd></div>
+        <div><dt>Assessment period</dt><dd>{dateFormat.format(sampleEngagement.startsAt)} to {dateFormat.format(sampleEngagement.endsAt)}</dd></div>
+        <div><dt>Issued</dt><dd>{dateFormat.format(sampleEngagement.reportDate)}</dd></div>
+        <div><dt>Severity model</dt><dd>CVSS {sampleEngagement.cvssVersion}</dd></div>
+        <div><dt>Assessment type</dt><dd>Grey box</dd></div>
+      </dl>
+      <p class="report-sample-note">
+        This is a published sample produced against OWASP Juice Shop, a deliberately vulnerable
+        application. No client data appears in it, and every finding can be reproduced by anyone who
+        runs the same application.
+      </p>
+    </header>
+
+    <section id="report-summary">
+      <h3>1. Executive summary</h3>
+      <p>
+        {sampleEngagement.clientDisplayName} asked us to assess the customer web application and the
+        API behind it before the July release. We tested for five working days across three user
+        roles against the staging environment running the release candidate.
+      </p>
+      <p>
+        The application is not ready to ship. Three findings, taken together, give an unauthenticated
+        attacker the whole customer database in under an hour, and they do it through ordinary
+        application features rather than through anything exotic. Separately, the checkout accepts
+        the order total from the browser, which means an order can be placed for any amount the
+        customer chooses.
+      </p>
+      <p>
+        Not everything is bad. Password storage is correct, TLS is correctly configured, and card
+        details never reach the application because the payment integration uses hosted fields.
+        That last decision removed an entire class of finding from this assessment and is worth
+        keeping in mind when the same team designs the next feature.
+      </p>
+      <h4>The three things to do first</h4>
+      <ol>
+        <li>
+          Parameterise the login query (ATT-2026-000-001). It is a single change to one handler and
+          it removes the most direct route to administrator.
+        </li>
+        <li>
+          Pin the accepted signature algorithm on token verification and rotate the signing key
+          (ATT-2026-000-003). Until this is done, every other authentication control is advisory.
+        </li>
+        <li>
+          Recompute the order total on the server (ATT-2026-000-006). This one is losing money now,
+          not hypothetically.
+        </li>
+      </ol>
+    </section>
+
+    <section id="report-risk">
+      <h3>2. Risk overview</h3>
+      <table class="severity-table">
+        <caption class="visually-hidden">Findings by severity</caption>
+        <thead>
+          <tr><th scope="col">Severity</th><th scope="col">Count</th><th scope="col">Share</th></tr>
+        </thead>
+        <tbody>
+          {
+            ordered.map((severity) => (
+              <tr>
+                <th scope="row">
+                  <span class={`severity severity-${severity}`}>
+                    {severity[0]!.toUpperCase() + severity.slice(1)}
+                  </span>
+                </th>
+                <td class="numeric">{counts[severity]}</td>
+                <td>
+                  <span
+                    class={`bar bar-${severity}`}
+                    style={`--share:${sampleFindings.length === 0 ? 0 : (counts[severity] / sampleFindings.length) * 100}%`}
+                  />
+                </td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="report-note">
+        Remediation order in section 11 is not the same as severity order. Two of the low and medium
+        findings are steps in the chain described in section 8, and fixing them is cheap.
+      </p>
+    </section>
+
+    <section id="report-scope">
+      <h3>3. Scope</h3>
+      <h4>In scope</h4>
+      <ul>{sampleEngagement.scopeIncluded.map((item) => <li>{item}</li>)}</ul>
+      <h4>Explicitly out of scope</h4>
+      <ul>{sampleEngagement.scopeExcluded.map((item) => <li>{item}</li>)}</ul>
+      <h4>Roles and accounts used</h4>
+      <ul>{sampleEngagement.rolesTested.map((item) => <li>{item}</li>)}</ul>
+      <h4>Constraints imposed by the client</h4>
+      <ul>{sampleEngagement.constraints.map((item) => <li>{item}</li>)}</ul>
+    </section>
+
+    <section id="report-methodology">
+      <h3>4. Methodology</h3>
+      <p>
+        Testing followed {site.methodology.map((entry) => `${entry.name}${entry.version ? ` ${entry.version}` : ''}`).join(', ')}.
+        Automated tooling was used for coverage. Every finding in this report was reproduced by hand
+        before it was included; findings that came only from a tool and could not be reproduced are
+        not here.
+      </p>
+      <table>
+        <caption class="visually-hidden">Tools used</caption>
+        <thead><tr><th scope="col">Tool</th><th scope="col">Version</th><th scope="col">Used for</th></tr></thead>
+        <tbody>
+          {
+            sampleEngagement.toolsUsed.map((tool) => (
+              <tr>
+                <td>{tool.name}</td>
+                <td class="numeric">{tool.version}</td>
+                <td>{tool.purpose}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="report-note">
+        The full report includes a coverage matrix listing every methodology category as tested,
+        partially tested or not tested, with a reason in each case. It is generated from what
+        actually ran.
+      </p>
+    </section>
+
+    <section id="report-narrative">
+      <h3>5. Attack narrative</h3>
+      <h4>{sampleAttackNarrative.title}</h4>
+      <ol class="narrative">
+        {
+          sampleAttackNarrative.steps.map((step) => (
+            <li>
+              <h5>{step.heading}</h5>
+              <p>{step.body}</p>
+            </li>
+          ))
+        }
+      </ol>
+      <p class="narrative-conclusion">{sampleAttackNarrative.conclusion}</p>
+    </section>
+
+    <section id="report-findings">
+      <h3>6. Detailed findings</h3>
+      {
+        findings.map((item) => (
+          <article class="finding" id={item.reference}>
+            <header>
+              <p class="finding-reference">
+                <a href={`#${item.reference}`}>{item.reference}</a>
+              </p>
+              <h4>{item.title}</h4>
+              <p class="finding-badges">
+                <span class={`severity severity-${item.severity}`}>
+                  {item.severity[0]!.toUpperCase() + item.severity.slice(1)}
+                </span>
+                <span class="tag numeric">{item.cvssScore?.toFixed(1)}</span>
+                <span class="tag">{item.cvssVector}</span>
+                {item.cweId && <span class="tag">CWE-{item.cweId}</span>}
+                {item.owaspCategory && <span class="tag">{item.owaspCategory}</span>}
+                {item.wstgId && <span class="tag">{item.wstgId}</span>}
+                {item.asvsRequirement && <span class="tag">ASVS {item.asvsRequirement.replace('v5.0.0-', '')}</span>}
+              </p>
+            </header>
+
+            <h5>Affected</h5>
+            <ul class="finding-assets">
+              {item.affectedAssets.map((asset) => (
+                <li>
+                  <code>
+                    {asset.method ? `${asset.method} ` : ''}
+                    {asset.value}
+                    {asset.location ?? ''}
+                    {asset.parameter ? ` (${asset.parameter})` : ''}
+                  </code>
+                </li>
+              ))}
+            </ul>
+
+            <h5>Business impact</h5>
+            <p>{item.businessImpact}</p>
+
+            <h5>Likelihood and prerequisites</h5>
+            <p>{item.likelihood} {item.attackerPrerequisites}</p>
+
+            <h5>Technical description</h5>
+            <p>{item.description}</p>
+
+            <h5>Reproduction</h5>
+            <ol class="repro">{item.reproductionSteps.map((step) => <li>{step}</li>)}</ol>
+
+            <h5>Remediation</h5>
+            <p>{item.remediation}</p>
+
+            <h5>References</h5>
+            <ul class="finding-references">
+              {item.references.map((reference) => (
+                <li><a href={reference.url} rel="noopener nofollow">{reference.title}</a></li>
+              ))}
+            </ul>
+          </article>
+        ))
+      }
+    </section>
+
+    <section id="report-positives">
+      <h3>7. Positive observations</h3>
+      <ul>{samplePositiveObservations.map((item) => <li>{item}</li>)}</ul>
+    </section>
+
+    <section id="report-roadmap">
+      <h3>8. Strategic recommendations</h3>
+      <h4>First 30 days</h4>
+      <ul>
+        <li>Parameterise every raw query in the codebase, not only the login handler. Static analysis will find the rest in an afternoon.</li>
+        <li>Pin token verification to one algorithm, rotate the signing key, invalidate live sessions.</li>
+        <li>Recompute order totals server-side and add a reconciliation check against the payment provider.</li>
+        <li>Remove the client-supplied filename from the download path.</li>
+      </ul>
+      <h4>Days 30 to 60</h4>
+      <ul>
+        <li>Introduce an authorisation layer that resolves the object and checks ownership, and apply it to every handler that takes an identifier. The basket finding is one instance of a pattern.</li>
+        <li>Move the session token out of browser storage into a Secure, HttpOnly, SameSite cookie.</li>
+        <li>Deploy the security headers in report-only mode, then enforce.</li>
+      </ul>
+      <h4>Days 60 to 90</h4>
+      <ul>
+        <li>Add rate limiting and a breached-password check on the authentication paths.</li>
+        <li>Put dependency scanning into the pipeline and fail the build on a reachable high-severity match.</li>
+        <li>Book the retest. One is included within 30 days of this report.</li>
+      </ul>
+    </section>
+
+    <section id="report-limitations">
+      <h3>9. Limitations and disclaimer</h3>
+      <p>
+        This is a point-in-time assessment of the assets listed in section 3, carried out between the
+        dates on the cover. Systems change, and a result that was accurate during the test window may
+        stop being accurate immediately afterwards.
+      </p>
+      <p>
+        Security assessment is a sampling exercise under time and scope constraints. The absence of a
+        finding is not evidence that a vulnerability does not exist. This report is not a
+        certification and not a compliance opinion, and {site.brandName} is not empanelled by
+        CERT-In.
+      </p>
+      <p class="report-note">
+        The full disclaimer, the reliance and distribution terms and the liability position appear in
+        every issued report and cannot be removed from it.
+      </p>
+    </section>
+  </article>
+</div>
+
+<style>
+  .report-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+    gap: var(--space-xl);
+    align-items: start;
+  }
+
+  @media (max-width: 64rem) {
+    .report-shell {
+      grid-template-columns: 1fr;
+      gap: var(--space-l);
+    }
+  }
+
+  .report-nav {
+    position: sticky;
+    top: 5.5rem;
+    font-size: var(--step--1);
+  }
+
+  @media (max-width: 64rem) {
+    .report-nav {
+      position: static;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: var(--space-s);
+    }
+  }
+
+  .report-nav-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 var(--space-2xs);
+  }
+
+  .report-nav ul {
+    list-style: none;
+    margin: 0 0 var(--space-m);
+    padding: 0;
+    border-left: 1px solid var(--rule);
+  }
+
+  .report-nav li {
+    max-width: none;
+  }
+
+  .report-nav a {
+    display: block;
+    padding: 0.3rem 0 0.3rem var(--space-s);
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  .report-nav a:hover {
+    color: var(--accent);
+  }
+
+  .report {
+    border: 1px solid var(--rule);
+    background: var(--ground-raised);
+    padding: var(--space-l);
+    min-width: 0;
+  }
+
+  .report-cover {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: var(--space-m);
+    margin-bottom: var(--space-l);
+  }
+
+  .report-classification {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--severity-critical);
+    margin: 0 0 var(--space-s);
+  }
+
+  .report-cover h2 {
+    font-size: var(--step-3);
+    margin-bottom: 0.2rem;
+  }
+
+  .report-client {
+    color: var(--ink-muted);
+    margin-bottom: var(--space-m);
+  }
+
+  .report-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--space-s);
+    margin: 0 0 var(--space-m);
+  }
+
+  .report-meta dt {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .report-meta dd {
+    margin: 0.1rem 0 0;
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .report-sample-note {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+    border-left: 2px solid var(--accent);
+    padding-left: var(--space-s);
+    margin: 0;
+  }
+
+  .report section {
+    padding-block: var(--space-l);
+    border-top: 1px solid var(--rule);
+    scroll-margin-top: 5.5rem;
+  }
+
+  .report h3 {
+    font-size: var(--step-2);
+  }
+
+  .report h4 {
+    font-size: var(--step-0);
+    font-family: var(--font-body);
+    letter-spacing: 0.01em;
+    margin-top: var(--space-m);
+  }
+
+  .report h5 {
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: var(--space-s) 0 0.25rem;
+  }
+
+  .severity-table td:last-child {
+    width: 45%;
+  }
+
+  .bar {
+    display: block;
+    height: 0.6rem;
+    width: var(--share);
+    min-width: 1px;
+    background: currentColor;
+  }
+
+  .bar-critical {
+    color: var(--severity-critical);
+  }
+  .bar-high {
+    color: var(--severity-high);
+  }
+  .bar-medium {
+    color: var(--severity-medium);
+  }
+  .bar-low {
+    color: var(--severity-low);
+  }
+  .bar-info {
+    color: var(--severity-info);
+  }
+
+  .report-note {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+  }
+
+  .narrative {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: narrative;
+  }
+
+  .narrative li {
+    border-left: 2px solid var(--rule-strong);
+    padding: 0 0 var(--space-s) var(--space-m);
+    max-width: none;
+  }
+
+  .narrative h5 {
+    color: var(--ink);
+    font-size: var(--step-0);
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    margin-top: 0;
+  }
+
+  .narrative-conclusion {
+    border-top: 1px solid var(--rule);
+    padding-top: var(--space-s);
+    font-weight: 500;
+  }
+
+  .finding {
+    border-top: 1px solid var(--rule);
+    padding-block: var(--space-l);
+    scroll-margin-top: 5.5rem;
+  }
+
+  .finding:first-of-type {
+    border-top: 0;
+  }
+
+  .finding-reference {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  .finding-reference a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .finding-reference a:hover {
+    color: var(--accent);
+  }
+
+  .finding h4 {
+    margin-top: 0.2rem;
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+  }
+
+  .finding-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .finding-assets,
+  .finding-references,
+  .repro {
+    font-size: var(--step--1);
+  }
+
+  .finding-assets {
+    list-style: none;
+    padding: 0;
+  }
+
+  .finding-assets code {
+    word-break: break-word;
+  }
+</style>

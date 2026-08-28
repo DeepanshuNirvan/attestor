@@ -1,0 +1,61 @@
+---
+title: Responsible disclosure policy
+updatedAt: 2026-08-23
+lawyerReviewed: false
+summary: >-
+  How to report a security issue in Attestor Security's own systems, what is in scope, and what we
+  undertake in return.
+---
+
+import { site } from '../../data/site';
+
+We sell security assessment. It would be absurd to have no way to receive a report about our own
+systems, so here is one.
+
+## In scope
+
+- `attestorsecurity.com` and everything served from it
+- `portal.attestorsecurity.com`, the client portal
+- Our published email infrastructure and its authentication records
+
+## Out of scope
+
+- **Any system belonging to a client of ours.** If you have found something in a client's system,
+  report it to that client. We cannot authorise testing of assets we do not own, and neither can you.
+- Third-party services we use, which have their own disclosure programmes
+- Findings requiring physical access, social engineering of our staff, or a compromised end-user
+  device
+- Volumetric or denial-of-service testing of any kind
+- Automated scanner output submitted without validation
+
+## How to report
+
+Email <a href={`mailto:${site.securityContactEmail}`}>{site.securityContactEmail}</a> with a
+description, the steps to reproduce, and any supporting evidence. Encrypt anything sensitive with the
+key published at [PGP KEY URL].
+
+We will acknowledge within [N] business days and keep you informed until the issue is resolved.
+
+## What we ask
+
+Test only against accounts you control. Use the minimum access needed to demonstrate the issue. Do
+not access, modify or retain anyone else's data — if you reach data that is not yours, stop and tell
+us what you reached rather than collecting it. Do not degrade availability, and do not run automated
+scans at a rate that affects service. Give us reasonable time to fix the issue before publishing.
+
+## What we offer
+
+We do not currently operate a paid bug bounty and we are not going to pretend otherwise.
+
+We will acknowledge your contribution publicly with your consent, we will tell you what we changed
+and when, and we will not pursue legal action in respect of good-faith research conducted in
+accordance with this policy.
+
+If you find something in the client portal, say so prominently in your report. That system holds
+records of other companies' unfixed vulnerabilities and we treat any finding in it as a release
+blocker.
+
+## Machine-readable
+
+The same contact details are published at
+<a href="/.well-known/security.txt">/.well-known/security.txt</a>.

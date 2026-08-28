@@ -1,0 +1,380 @@
+---
+import BaseLayout from '../layouts/base-layout.astro';
+import ScopeEstimator from '../components/scope-estimator.astro';
+import EngagementTimeline from '../components/engagement-timeline.astro';
+import CommandPalette from '../components/command-palette.astro';
+import OrganizationJsonLd from '../components/organization-json-ld.astro';
+import { packages, formatMoney } from '../data/pricing';
+import { site } from '../data/site';
+import { checkCatalogue } from '@attestor/findings/catalogue';
+
+const headline = packages.filter((item) =>
+  ['web-standard', 'cloud-review', 'mobile', 'llm-standalone'].includes(item.id),
+);
+
+const notDoing = [
+  'Guarantee that a system is secure. Nobody can, and a report that says so is worthless to your auditor.',
+  'Certify anything. We are not an accreditation body and we do not hold CERT-In empanelment.',
+  'Test an asset you do not own without written permission from whoever does.',
+  'Start work without a signed authorisation naming the exact assets and the exact window.',
+  'Run denial-of-service, load or volumetric tests. There is no setting in our platform that permits it.',
+  'Fix the code we audited. Fixing what we assessed would compromise the independence the report depends on.',
+];
+---
+
+<BaseLayout
+  title="Independent security assessment"
+  description={site.description}
+  path="/"
+>
+  <OrganizationJsonLd slot="head" />
+
+  <section class="hero">
+    <div class="page">
+      <p class="eyebrow">Security assessment · India and international</p>
+      <h1>
+        Somebody asked for a penetration test report.<br />
+        This is where you get one that holds up.
+      </h1>
+      <p class="hero-lede">
+        Web, API, cloud, mobile and LLM assessments with a fixed price, a fixed date and evidence
+        your buyer's security team can actually read. Published prices. One free retest. A one-page
+        attestation letter you can forward without sending anyone your vulnerability list.
+      </p>
+      <p class="hero-actions">
+        <a class="button" href="/contact">Book a scoping call</a>
+        <a class="button button-quiet" href="/sample-report">Read the sample report</a>
+        <a class="button button-quiet" href="#estimator">Estimate the price</a>
+      </p>
+      <dl class="hero-facts">
+        <div>
+          <dt>Web application audit</dt>
+          <dd class="numeric">{formatMoney(packages.find((item) => item.id === 'web-standard')!.price.INR, 'INR')}</dd>
+          <dd class="hero-fact-note">5 working days</dd>
+        </div>
+        <div>
+          <dt>Retest</dt>
+          <dd>Included</dd>
+          <dd class="hero-fact-note">Within {site.freeRetestWindowDays} days, in writing</dd>
+        </div>
+        <div>
+          <dt>Checks in the catalogue</dt>
+          <dd class="numeric">{checkCatalogue.length}</dd>
+          <dd class="hero-fact-note"><a href="/what-we-test">Every one of them, listed</a></dd>
+        </div>
+        <div>
+          <dt>Evidence deleted after</dt>
+          <dd class="numeric">{site.evidenceRetentionDays} days</dd>
+          <dd class="hero-fact-note">With written confirmation</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="why-heading">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Why this is different</p>
+        <h2 id="why-heading">Automation is our margin, not your product</h2>
+      </div>
+      <div class="stack">
+        <p>
+          Scanners are cheap and you can buy one yourself for ninety dollars a month. What you cannot
+          buy is somebody deciding whether a finding is real, working out what three small findings
+          become when chained, and testing whether your support role can read your enterprise
+          customer's data.
+        </p>
+        <p>
+          We automate discovery, scanning, evidence capture and report assembly, which is why a web
+          application audit takes five days instead of three weeks. We do not automate the part you
+          are paying for. Every finding in your report was reproduced by a person before it was
+          written down, and anything a tool reported that could not be reproduced is not in there at
+          all.
+        </p>
+        <ul class="rule-list">
+          <li>
+            <strong>Findings are validated, not exported.</strong> Traditional scanning produces
+            40–70% false positives. We do not pass that on to you.
+          </li>
+          <li>
+            <strong>One cause is one finding.</strong> A missing header on forty endpoints is one
+            finding with forty affected assets, not forty tickets for your team.
+          </li>
+          <li>
+            <strong>Remediation is specific to your stack.</strong> Not "sanitise all input" — the
+            actual change, in the actual file, with the reason it is the right fix.
+          </li>
+          <li>
+            <strong>The attack narrative is written by hand.</strong> How a low-severity disclosure
+            plus a weak access control became a critical outcome. No tool writes that section.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="services-heading">
+    <div class="page">
+      <p class="eyebrow">Services</p>
+      <h2 id="services-heading">Four things most people need, and two they need next year</h2>
+      <ul class="service-grid">
+        {
+          headline.map((item) => (
+            <li>
+              <h3>{item.name}</h3>
+              <p class="service-price numeric">
+                {formatMoney(item.price.INR, 'INR')}
+                <span class="service-price-alt"> · {formatMoney(item.price.USD, 'USD')}</span>
+              </p>
+              <p class="service-days">{item.turnaroundDays} working days</p>
+              <p>{item.summary}</p>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="service-more">
+        <a href="/services">Every service in detail</a> ·
+        <a href="/pricing">The full price sheet</a> ·
+        <a href="/what-we-test">The complete check catalogue</a>
+      </p>
+    </div>
+  </section>
+
+  <ScopeEstimator />
+
+  <section class="section" aria-labelledby="timeline-section-heading">
+    <div class="page">
+      <p class="eyebrow">The engagement</p>
+      <h2 id="timeline-section-heading" class="visually-hidden">Engagement timeline</h2>
+      <EngagementTimeline compact />
+      <p class="service-more"><a href="/how-we-work">Methodology, safety controls and what we will not do</a></p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="honest-heading">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Straight answers</p>
+        <h2 id="honest-heading">What we will not do</h2>
+      </div>
+      <div>
+        <ul class="rule-list">{notDoing.map((item) => <li>{item}</li>)}</ul>
+        <div class="panel-sunk empanelment">
+          <h3>On CERT-In empanelment</h3>
+          <p>
+            {site.brandName} is not CERT-In empanelled. If you are a bank, an NBFC, a payment
+            aggregator, a SEBI-regulated entity, an insurer or a government body, your statutory
+            audit must be done by an empanelled organisation and we cannot do it. What we can do is
+            the pre-audit testing and the remediation verification, so that audit passes the first
+            time. If somebody tells you they are empanelled, it takes thirty seconds to check on the
+            CERT-In site. Check.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="international-heading">
+    <div class="page split">
+      <div>
+        <p class="eyebrow">Working with us from abroad</p>
+        <h2 id="international-heading">The questions international buyers actually ask</h2>
+      </div>
+      <dl class="qa">
+        <dt>What are your overlap hours?</dt>
+        <dd>
+          {site.overlapHours.usEastern} with US Eastern, and {site.overlapHours.unitedKingdom} with
+          the UK. Calls are booked in your timezone.
+        </dd>
+        <dt>Who holds our credentials, and for how long?</dt>
+        <dd>
+          They go into an encrypted vault through a one-time link, never through email or chat. They
+          are destroyed when the engagement closes, and we tell you to rotate them anyway.
+        </dd>
+        <dt>What happens to the evidence?</dt>
+        <dd>
+          Masked as it is captured, encrypted at rest, deleted {site.evidenceRetentionDays} days
+          after the report is released, with a written deletion confirmation you can file.
+        </dd>
+        <dt>Are you insured?</dt>
+        <dd>
+          {
+            site.professionalIndemnity.awaitingOwner
+              ? 'Professional indemnity cover is being arranged; the cover amount will be published here and named in the engagement documents.'
+              : `Professional indemnity cover of ${site.professionalIndemnity.coverAmount}, named in the engagement documents.`
+          }
+        </dd>
+        <dt>Will you sign our data processing agreement?</dt>
+        <dd>
+          Yes, and we bring our own if you would rather start from something. We act as a processor
+          and the obligations are written down, not implied.
+        </dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section closing" aria-labelledby="closing-heading">
+    <div class="page">
+      <h2 id="closing-heading">Send the scope. You will get a fixed price the same day.</h2>
+      <p class="lede">
+        No discovery process, no three-stage sales cycle. A thirty-minute call, a written scope, a
+        number and a date.
+      </p>
+      <p class="hero-actions">
+        <a class="button" href="/contact">Book a scoping call</a>
+        <a class="button button-quiet" href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>
+      </p>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-block: var(--space-2xl) var(--space-xl);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  h1 {
+    max-width: 20ch;
+    margin-bottom: var(--space-m);
+  }
+
+  .hero-lede {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--ink-muted);
+    max-width: 46ch;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    margin-top: var(--space-l);
+    max-width: none;
+  }
+
+  .hero-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--space-m);
+    margin-top: var(--space-xl);
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--rule);
+  }
+
+  .hero-facts dt {
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .hero-facts dd {
+    margin: 0.2rem 0 0;
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  .hero-fact-note {
+    font-family: var(--font-body) !important;
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+    color: var(--ink-muted);
+    margin-top: 0.15rem !important;
+  }
+
+  .service-grid {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-l) 0 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--space-l);
+  }
+
+  .service-grid li {
+    border-top: 2px solid var(--ink);
+    padding-top: var(--space-s);
+    max-width: none;
+  }
+
+  .service-grid h3 {
+    font-size: var(--step-1);
+    margin-bottom: 0.3rem;
+  }
+
+  .service-price {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .service-price-alt {
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    font-weight: 400;
+  }
+
+  .service-days {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-faint);
+    margin: 0.1rem 0 var(--space-2xs);
+  }
+
+  .service-grid p:last-child {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+    margin: 0;
+  }
+
+  .service-more {
+    margin-top: var(--space-l);
+    font-size: var(--step--1);
+  }
+
+  .empanelment {
+    margin-top: var(--space-l);
+  }
+
+  .empanelment h3 {
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    margin-bottom: 0.3rem;
+  }
+
+  .empanelment p {
+    margin: 0;
+    font-size: var(--step--1);
+  }
+
+  .qa dt {
+    font-weight: 600;
+    margin-top: var(--space-m);
+    padding-top: var(--space-s);
+    border-top: 1px solid var(--rule);
+  }
+
+  .qa dt:first-child {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .qa dd {
+    margin: 0.35rem 0 0;
+    color: var(--ink-muted);
+    max-width: var(--measure);
+  }
+
+  .closing h2 {
+    max-width: 24ch;
+  }
+</style>

@@ -1,0 +1,115 @@
+name: check
+
+# Nothing in this workflow scans anything. The unit suite runs entirely against fixtures and the
+# integration suite runs against containers on the runner's own network, behind a guard that throws
+# if a test tries to reach a host outside that network. A CI job that could reach the internet with
+# a scanner in it is an unauthorised scan waiting for a bad merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Turns off every telemetry ping these tools make by default.
+  NEXT_TELEMETRY_DISABLED: '1'
+  ASTRO_TELEMETRY_DISABLED: '1'
+  DO_NOT_TRACK: '1'
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Typecheck the root project
+        run: pnpm exec tsc -p tsconfig.json --noEmit
+
+      - name: Unit and property tests
+        run: pnpm test
+
+      - name: Claim check
+        # Fails the build if a document, template or page claims a certification we do not hold, or
+        # promises an outcome nobody can promise.
+        run: pnpm check:claims
+
+      - name: Build the marketing site
+        run: pnpm --filter @attestor/website build
+
+      - name: Build the console
+        run: pnpm --filter @attestor/console build
+        env:
+          ATTESTOR_SURFACE: console
+          ATTESTOR_API_URL: http://localhost:4000
+
+      - name: Build the portal
+        run: pnpm --filter @attestor/console build
+        env:
+          ATTESTOR_SURFACE: portal
+          ATTESTOR_PORTAL_API_URL: http://localhost:4001
+
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # The integration suite drives real scanners against deliberately vulnerable containers. It runs
+    # on the trunk and on demand, not on every pull request from a fork.
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Start the vulnerable targets
+        run: docker compose -f infra/docker-compose.test.yml up -d --wait
+
+      - name: Integration tests
+        run: pnpm test:integration
+        env:
+          # The guard in infra/test-network-guard.ts refuses to load without this, and refuses any
+          # host that is not one of the local targets.
+          ATTESTOR_TEST_NETWORK_ONLY: '1'
+
+      - name: Stop the targets
+        if: always()
+        run: docker compose -f infra/docker-compose.test.yml down -v

@@ -1,0 +1,95 @@
+---
+import BaseLayout from '../../layouts/base-layout.astro';
+import PriceSheet from '../../components/price-sheet.astro';
+import ScopeEstimator from '../../components/scope-estimator.astro';
+import CommandPalette from '../../components/command-palette.astro';
+import { site } from '../../data/site';
+---
+
+<BaseLayout
+  title="Pricing"
+  description="Published prices in Indian rupees for web, API, cloud, mobile and LLM security assessments, with turnaround in working days and a free retest within 30 days."
+  path="/pricing"
+  ogImage="/og/pricing.png"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Pricing · Indian rupees</p>
+      <h1>The prices are on the page because hiding them wastes your time and ours</h1>
+      <p class="lede">
+        These are the numbers we quote. Scope changes them within a band, and the estimator below
+        will show you where in that band you land. There is no discovery call before you can find
+        out what something costs.
+      </p>
+
+      <PriceSheet currency="INR" />
+
+      <div class="terms">
+        <h2>Terms, in full</h2>
+        <ul class="rule-list">
+          <li>
+            <strong>Payment.</strong> Fifty per cent on signature, before testing starts. Fifty per
+            cent before the report is released. This is not negotiable and it is the same for
+            everybody.
+          </li>
+          <li>
+            <strong>Retest.</strong> One free retest within {site.freeRetestWindowDays} days of
+            report release, covering the findings in that report. After that window a retest is a
+            separate engagement, priced on what is left to verify.
+          </li>
+          <li>
+            <strong>Turnaround.</strong> Working days from the start of the agreed test window, not
+            from the day you pay. If we are going to miss a date you will hear it from us before you
+            ask.
+          </li>
+          <li>
+            <strong>Scope changes.</strong> A new asset is a new statement of work. We will not
+            quietly absorb it and we will not quietly skip something else to fit it in.
+          </li>
+          <li>
+            <strong>Evidence.</strong> Masked at capture, encrypted at rest, deleted{' '}
+            {site.evidenceRetentionDays} days after release, with a written confirmation.
+          </li>
+          <li>
+            <strong>Taxes.</strong> GST is added where applicable. International engagements are
+            invoiced under the USD sheet.
+          </li>
+          <li>
+            <strong>What is not included.</strong> Fixing the code. We do not remediate what we
+            audited, because doing both would compromise the independence the report depends on.
+          </li>
+        </ul>
+      </div>
+
+      <p class="cross-link">
+        Buying from outside India? <a href="/pricing/usd">The USD price sheet</a> is a separate list
+        with its own numbers, not a currency conversion.
+      </p>
+    </div>
+  </section>
+
+  <ScopeEstimator />
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 24ch;
+  }
+
+  .terms {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-l);
+    border-top: 1px solid var(--rule);
+  }
+
+  .terms h2 {
+    font-size: var(--step-2);
+  }
+
+  .cross-link {
+    margin-top: var(--space-l);
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+  }
+</style>

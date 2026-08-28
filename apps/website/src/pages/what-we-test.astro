@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../layouts/base-layout.astro';
+import CoverageExplorer from '../components/coverage-explorer.astro';
+import CommandPalette from '../components/command-palette.astro';
+import { catalogueSummary } from '@attestor/findings/catalogue';
+
+const summary = catalogueSummary();
+---
+
+<BaseLayout
+  title="What we test"
+  description="The complete check catalogue Attestor Security runs from: every check, what it finds, how it is done, and the OWASP WSTG, ASVS, MASVS and LLM Top 10 identifier it maps to."
+  path="/what-we-test"
+  ogImage="/og/what-we-test.png"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Coverage</p>
+      <h1>Every check we run, published</h1>
+      <p class="lede">
+        This is not a marketing summary of our capabilities. It is the actual catalogue the platform
+        runs from, imported into this page at build time. If a check is removed from the platform it
+        disappears from here on the next deploy.
+      </p>
+
+      <dl class="summary">
+        <div>
+          <dt>Checks</dt>
+          <dd class="numeric">{summary.total}</dd>
+        </div>
+        <div>
+          <dt>Automated</dt>
+          <dd class="numeric">{summary.byAutomation.automated ?? 0}</dd>
+        </div>
+        <div>
+          <dt>Tool-assisted, human-judged</dt>
+          <dd class="numeric">{summary.byAutomation.assisted ?? 0}</dd>
+        </div>
+        <div>
+          <dt>Manual</dt>
+          <dd class="numeric">{summary.byAutomation.manual ?? 0}</dd>
+        </div>
+      </dl>
+
+      <p class="note">
+        The manual and tool-assisted counts are the important ones. Anything marked automated is
+        something you could buy a subscription for; the rest is the work. Every automated finding
+        still passes through a human before it can appear in a report.
+      </p>
+
+      <CoverageExplorer />
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 16ch;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--space-m);
+    margin: var(--space-l) 0 var(--space-s);
+    padding-top: var(--space-m);
+    border-top: 1px solid var(--rule);
+  }
+
+  .summary dt {
+    font-size: 0.72rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .summary dd {
+    margin: 0.2rem 0 0;
+    font-family: var(--font-display);
+    font-size: var(--step-3);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .note {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+    border-left: 2px solid var(--accent);
+    padding-left: var(--space-s);
+  }
+</style>

@@ -1,0 +1,145 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/base-layout.astro';
+import CommandPalette from '../../components/command-palette.astro';
+import SectionNav from '../../components/section-nav.astro';
+import { packageById, formatMoney } from '../../data/pricing';
+import { site } from '../../data/site';
+
+export async function getStaticPaths() {
+  const services = await getCollection('services');
+  return services.map((service) => ({ params: { slug: service.id }, props: { service } }));
+}
+
+const { service } = Astro.props;
+const { Content } = await render(service);
+const items = service.data.packageIds.map(packageById);
+
+const sections = [
+  { id: 'what-it-is', label: 'What this is' },
+  { id: 'price', label: 'Price and turnaround' },
+  { id: 'coverage', label: 'What we test' },
+  { id: 'deliverables', label: 'What you receive' },
+];
+---
+
+<BaseLayout
+  title={service.data.title}
+  description={service.data.seoDescription}
+  path={`/services/${service.id}`}
+  ogImage={`/og/services-${service.id}.png`}
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Service</p>
+      <h1>{service.data.title}</h1>
+      <p class="lede">{service.data.summary}</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <SectionNav sections={sections} />
+
+      <div class="service-body">
+        <section id="what-it-is" class="prose">
+          <h2>What this is</h2>
+          <Content />
+        </section>
+
+        <section id="price">
+          <h2>Price and turnaround</h2>
+          <table>
+            <caption class="visually-hidden">Price and turnaround for {service.data.title}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Package</th>
+                <th scope="col">INR</th>
+                <th scope="col">USD</th>
+                <th scope="col">Working days</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                items.map((item) => (
+                  <tr>
+                    <th scope="row">{item.name}</th>
+                    <td class="numeric">
+                      {formatMoney(item.price.INR, 'INR')}
+                      {item.recurring ? '/mo' : ''}
+                    </td>
+                    <td class="numeric">
+                      {formatMoney(item.price.USD, 'USD')}
+                      {item.recurring ? '/mo' : ''}
+                    </td>
+                    <td class="numeric">{item.recurring ? 'Ongoing' : item.turnaroundDays}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+          <p class="terms">
+            Fifty per cent on signature, fifty per cent before the report is released. One free
+            retest within {site.freeRetestWindowDays} days of release. Evidence deleted after{' '}
+            {site.evidenceRetentionDays} days with written confirmation.
+          </p>
+          <p><a class="button" href="/contact">Book a scoping call</a></p>
+        </section>
+
+        <section id="coverage">
+          <h2>What we test</h2>
+          {
+            items.map((item) => (
+              <div class="includes">
+                <h3>{item.name}</h3>
+                <ul class="rule-list">{item.includes.map((line) => <li>{line}</li>)}</ul>
+              </div>
+            ))
+          }
+          <p class="see-all">
+            <a href={`/what-we-test#coverage-heading`}>
+              Every check in the catalogue, filterable by category and by service
+            </a>
+          </p>
+        </section>
+
+        <section id="deliverables">
+          <h2>What you receive</h2>
+          <ul class="rule-list">{items[0]!.deliverables.map((line) => <li>{line}</li>)}</ul>
+          <p class="see-all"><a href="/sample-report">Read a sample report before you commit to anything</a></p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 20ch;
+  }
+
+  .service-body > section {
+    padding-bottom: var(--space-xl);
+    scroll-margin-top: 5.5rem;
+  }
+
+  .service-body h2 {
+    font-size: var(--step-2);
+    border-top: 2px solid var(--ink);
+    padding-top: var(--space-s);
+  }
+
+  .includes h3 {
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    margin-top: var(--space-m);
+  }
+
+  .terms,
+  .see-all {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+  }
+</style>

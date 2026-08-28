@@ -1,0 +1,21 @@
+description: >-
+  Read-only cloud posture review. No network testing, no write API call, and nothing that can change
+  the client's environment. Two working days.
+modules: [cloud]
+intensity: standard
+phases:
+  preLogin: false
+  postLogin: false
+readOnlyMode: true
+accessControlMatrix:
+  enabled: false
+rateLimits:
+  globalRequestsPerSecond: 8
+  perTargetRequestsPerSecond: 4
+  concurrency: 4
+evidence:
+  capture: [terminal, file]
+  retentionDays: 90
+report:
+  templateId: attestor-standard-v1
+  complianceFrameworks: [iso27001, soc2, pciDss]

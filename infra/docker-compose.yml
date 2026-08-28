@@ -1,0 +1,300 @@
+# The whole platform, locally.
+#
+#   docker compose up
+#
+# brings up Postgres, Redis, MinIO, the console API, the portal API, a worker and the console UI,
+# runs the migrations, and seeds a demo engagement so the flow is visible in about five minutes.
+#
+# Two things are deliberate about the network layout and both matter in production too:
+#
+#   1. Only the portal and the console UI are published. The console API binds to the loopback
+#      interface of the host and is reached over WireGuard or Tailscale; the worker and the
+#      databases are not published at all.
+#   2. The worker is the only service with the Docker socket. The API cannot start a container.
+
+name: attestor
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '16m'
+    max-file: '3'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: attestor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: attestor
+      # Checksums catch silent corruption in the one database that holds the audit log.
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U attestor -d attestor']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published. Reached only from the compose network.
+    expose:
+      - '5432'
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--no-auth-warning', '-a', '${REDIS_PASSWORD}', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    expose:
+      - '6379'
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      # Console only, on loopback, for looking at objects during development.
+      - '127.0.0.1:9001:9001'
+    expose:
+      - '9000'
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing local/attestor-evidence
+        mc mb --ignore-existing local/attestor-reports
+        # Nothing in either bucket is ever public. Setting it explicitly means a MinIO upgrade that
+        # changes the default cannot quietly publish a client's evidence.
+        mc anonymous set none local/attestor-evidence
+        mc anonymous set none local/attestor-reports
+        mc version enable local/attestor-reports
+        echo "buckets ready"
+    restart: 'no'
+    logging: *logging
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgres://attestor:${POSTGRES_PASSWORD}@postgres:5432/attestor
+    command: ['node', '--experimental-strip-types', 'apps/api/src/db/migrate.ts']
+    restart: 'no'
+    logging: *logging
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgres://attestor:${POSTGRES_PASSWORD}@postgres:5432/attestor
+      PORTAL_DATABASE_URL: postgres://attestor_portal:${PORTAL_DB_PASSWORD}@postgres:5432/attestor
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      API_BIND_ADDRESS: 0.0.0.0
+    command: ['node', '--experimental-strip-types', 'apps/api/src/server.ts']
+    ports:
+      # Loopback only. In production this port is not published at all and the console is reached
+      # over WireGuard.
+      - '127.0.0.1:8080:8080'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  portal-api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+    env_file: [.env]
+    environment:
+      # The portal connects as the least-privilege role created by migration 0001. It cannot read
+      # the credential vault, and giving it the owner URL here would undo that.
+      DATABASE_URL: postgres://attestor_portal:${PORTAL_DB_PASSWORD}@postgres:5432/attestor
+      PORTAL_DATABASE_URL: postgres://attestor_portal:${PORTAL_DB_PASSWORD}@postgres:5432/attestor
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    command: ['node', '--experimental-strip-types', 'apps/api/src/portal-server.ts']
+    ports:
+      - '${PORTAL_BIND:-0.0.0.0}:8081:8081'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8081/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgres://attestor:${POSTGRES_PASSWORD}@postgres:5432/attestor
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    command: ['node', '--experimental-strip-types', 'apps/api/src/worker.ts']
+    volumes:
+      # The only service with the socket. This is what lets it start tool containers, and it is the
+      # reason the worker is a separate process from the API.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - tool-workspace:/tmp/attestor
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  console:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: console
+      args:
+        ATTESTOR_SURFACE: console
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      ATTESTOR_SURFACE: console
+      ATTESTOR_API_URL: http://api:8080
+    # Loopback only. The console is reached over WireGuard, never from the internet.
+    ports:
+      - '127.0.0.1:3000:3000'
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  # The client portal: the same codebase, built again with the other surface and pointed at the
+  # portal API, which connects to Postgres as a least-privilege role. Two builds rather than one
+  # image with a switch, so a misconfigured environment variable cannot turn one into the other.
+  portal:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+      target: console
+      args:
+        ATTESTOR_SURFACE: portal
+    restart: unless-stopped
+    depends_on:
+      portal-api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      ATTESTOR_SURFACE: portal
+      ATTESTOR_PORTAL_API_URL: http://portal-api:8081
+    ports:
+      - '${PORTAL_BIND:-127.0.0.1}:3100:3000'
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  mailpit:
+    # Local mail capture. Nothing leaves the machine during development, which matters because the
+    # notification queue holds client-facing drafts.
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8025:8025'
+    expose:
+      - '1025'
+    logging: *logging
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  tool-workspace:

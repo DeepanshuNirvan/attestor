@@ -1,0 +1,6 @@
+dist
+.astro
+.next
+coverage
+pnpm-lock.yaml
+apps/website/public

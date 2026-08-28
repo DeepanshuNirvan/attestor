@@ -1,0 +1,80 @@
+---
+title: Your authenticated scan probably ran unauthenticated
+publishedAt: 2026-07-09
+summary: >-
+  Session death mid-scan is the most common reason an authenticated assessment produces
+  unauthenticated results. The tell is a coverage report that looks fine and a finding list that is
+  all headers and TLS.
+tags:
+  - methodology
+  - authentication
+  - tooling
+---
+
+Here is a failure mode that produces a clean-looking report and no findings, which is the worst
+possible combination because everybody believes it.
+
+You configure the scanner with credentials. It logs in. It crawls. Forty minutes later the
+application invalidates the session — an idle timeout, a concurrent session limit, a token expiry, a
+logout link the crawler helpfully clicked — and the scanner carries on. It is now requesting
+authenticated paths with a dead session, receiving redirects to the login page, and treating those
+302s as ordinary responses. Coverage looks complete. Every authenticated finding is gone.
+
+## Why it is so common
+
+Three reasons, and each one is a design decision somebody made for a good reason:
+
+**Logout is a link.** Any crawler that follows links will eventually follow it. Excluding it requires
+knowing the URL in advance, which the crawler does not until it has crawled.
+
+**Concurrent session limits.** Testing with two accounts per role means several browser contexts. An
+application that permits one session per user will kill the first when the second logs in, and
+nothing in the scanner notices.
+
+**Token expiry.** A fifteen-minute access token with a refresh flow is correct design. A scanner that
+does not implement the refresh gets fifteen good minutes.
+
+## The detection has to be positive, not negative
+
+The instinct is to detect logout by looking for a redirect to `/login`. That fails on
+single-page applications, which return a 200 with a JSON body saying the session is gone, and it
+fails on APIs that return 403 for both "you are logged out" and "you are not allowed", which are
+genuinely different situations.
+
+What works is a positive indicator recorded when the session is created: something that is present
+when authenticated and absent when not. A selector that only renders for a signed-in user. A header
+the application sets. A field in a JSON response — `user.id`, `tenant`, anything specific. Every
+authentication profile in our platform carries one, and it is checked on a sample of responses rather
+than on every one, because checking every response doubles the request count for no gain.
+
+When the indicator disappears:
+
+1. Stop parsing. Responses after this point are not evidence of anything.
+2. Re-authenticate through the same flow that created the session.
+3. Mark every request issued since the last positive check as suspect and re-run it.
+
+That third step is the one people skip and it is the one that matters. Without it you have a gap in
+the middle of the scan that nothing tells you about.
+
+## The tell in your existing reports
+
+Go and look at the last authenticated assessment somebody delivered to you. If every finding is a
+missing header, a TLS setting, a cookie flag or an outdated library — things that are equally visible
+without a session — then either your application is unusually good, or the scan lost its session
+early and nobody noticed.
+
+The other tell is the request count. An authenticated crawl of a real application makes several times
+the requests of an unauthenticated one. If the numbers are similar, the session was not doing
+anything.
+
+## What we do about it
+
+Every authentication profile records how to log in, how to tell that the session is still alive, and
+how to log in again. Sessions are checked periodically and after any response that looks like a
+redirect to an authentication path. Each role gets its own browser context so sessions cannot leak
+between them or evict one another. Logout, delete-account, change-password, change-email and payment
+submission are excluded from crawling by default, and the exclusion list is extensible per
+engagement.
+
+None of this is clever. It is the difference between an authenticated assessment and an expensive
+unauthenticated one.

@@ -1,0 +1,32 @@
+description: >-
+  Multi-tenant or multi-role applications: everything in the standard profile plus supply-chain
+  analysis, a wider crawl, and a much larger cross-role replay budget. Eight working days.
+modules: [recon, web, api, code]
+intensity: thorough
+phases:
+  preLogin: true
+  postLogin: true
+readOnlyMode: false
+checks:
+  nucleiSeverities: [critical, high, medium, low, info]
+rateLimits:
+  globalRequestsPerSecond: 12
+  perTargetRequestsPerSecond: 5
+  concurrency: 6
+  jitterMs: 100
+  adaptive:
+    backOffLatencyIncreasePercent: 40
+    abortLatencyIncreasePercent: 150
+    abortErrorRatePercent: 10
+accessControlMatrix:
+  enabled: true
+  testUnauthenticated: true
+  responseSimilarityThreshold: 0.85
+  maxReplayRequests: 5000
+evidence:
+  capture: [request, response, screenshot, terminal, log]
+  retentionDays: 90
+report:
+  templateId: attestor-standard-v1
+  cvssVersion: '4.0'
+  complianceFrameworks: [iso27001, soc2, pciDss, dpdp]

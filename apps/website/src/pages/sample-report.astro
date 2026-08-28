@@ -1,0 +1,53 @@
+---
+import BaseLayout from '../layouts/base-layout.astro';
+import ReportViewer from '../components/report-viewer.astro';
+import CommandPalette from '../components/command-palette.astro';
+---
+
+<BaseLayout
+  title="Sample report"
+  description="A complete sample penetration test report from Attestor Security, produced against OWASP Juice Shop. Read it in full in the browser, or download the PDF."
+  path="/sample-report"
+  ogImage="/og/sample-report.png"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Sample</p>
+      <h1>Read the report before you buy the engagement</h1>
+      <p class="lede">
+        This is the document you are actually paying for, in full, with nothing removed. It was
+        produced against OWASP Juice Shop — a deliberately vulnerable application — so there is no
+        client to redact and you can reproduce every finding yourself.
+      </p>
+      <p class="note">
+        Judge it on the things that matter: are the reproduction steps precise enough for your
+        developer to follow, is the remediation specific to a stack or is it "sanitise all input",
+        does the impact section describe a business consequence or a technical one, and is there an
+        attack narrative that shows how small findings combine. Those four things are the difference
+        between a report your buyer accepts and one they send back.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page">
+      <ReportViewer />
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 20ch;
+  }
+
+  .note {
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+    border-left: 2px solid var(--accent);
+    padding-left: var(--space-s);
+    max-width: 62ch;
+  }
+</style>

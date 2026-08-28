@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+.next/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.pnpm-store/
+apps/website/public/pagefind/
+infra/data/
+tmp/
+
+# Local editor and preview configuration.
+.claude/launch.json

@@ -1,0 +1,91 @@
+---
+import '../styles/base.css';
+import SiteHeader from '../components/site-header.astro';
+import SiteFooter from '../components/site-footer.astro';
+import { site } from '../data/site';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Absolute path, used for the canonical link. */
+  path: string;
+  /** Set on pages that should not be indexed. */
+  noIndex?: boolean;
+  ogImage?: string;
+}
+
+const { title, description, path, noIndex = false, ogImage } = Astro.props;
+
+const canonical = new URL(path, site.origin).href;
+const fullTitle = path === '/' ? `${site.brandName} — ${site.tagline}` : `${title} · ${site.brandName}`;
+const socialImage = new URL(ogImage ?? '/og/default.png', site.origin).href;
+---
+
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/rss+xml" title={`${site.brandName} insights`} href="/rss.xml" />
+
+    <link
+      rel="preload"
+      href="/fonts/public-sans-variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/source-serif-4-variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.brandName} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={socialImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <SiteHeader currentPath={path} />
+    <main id="main">
+      <slot />
+    </main>
+    <SiteFooter />
+
+    <script>
+      // Section entry animation. Disabled entirely when the visitor asks for reduced motion.
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const targets = document.querySelectorAll('.rise');
+      if (reduced.matches || !('IntersectionObserver' in window)) {
+        targets.forEach((element) => element.classList.add('is-visible'));
+      } else {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          },
+          { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
+        );
+        targets.forEach((element) => observer.observe(element));
+      }
+    </script>
+  </body>
+</html>

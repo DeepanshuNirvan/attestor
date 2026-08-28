@@ -1,0 +1,80 @@
+---
+title: Web application and API security assessment
+navLabel: Web and API
+order: 1
+audience: For a company that has been sent a security questionnaire, or is about to be.
+summary: >-
+  Authenticated, per-role testing of a web application and the API behind it. This is the engagement
+  most companies mean when they say "we need a pentest report", and it is the one an enterprise
+  buyer's security team is actually asking for.
+packageIds:
+  - web-standard
+  - web-complex
+coverageCategories:
+  - accessControl
+  - authentication
+  - sessionManagement
+  - inputValidation
+  - businessLogic
+  - configuration
+  - cryptography
+  - clientSide
+standards:
+  - OWASP WSTG 4.2
+  - OWASP ASVS 5.0
+  - OWASP Top 10:2025
+  - OWASP API Top 10:2023
+  - NIST SP 800-115
+  - PTES
+seoDescription: >-
+  Authenticated web application and API penetration testing from Attestor Security. Fixed price,
+  five working days, one free retest, evidence mapped to OWASP WSTG and ASVS 5.0.
+---
+
+We test the application the way somebody with an account would attack it, not the way a scanner
+crawls it.
+
+That distinction is the whole engagement. An unauthenticated scan finds missing headers and an
+out-of-date library. It does not find that your support role can read an enterprise customer's
+invoices, that the checkout accepts the total from the browser, or that a coupon can be applied
+twice if two requests arrive together. Those are the findings that change what your buyer thinks of
+you, and every one of them requires somebody logged in as two different users at once, comparing
+what each can reach.
+
+## How the five days are spent
+
+Day zero is machine time. Discovery, crawling, the tool suite, evidence capture — all of it runs
+unattended inside your agreed window and rate limits, and none of it produces a finding you will
+ever see. It produces a queue of candidates.
+
+Day one is triage. Every candidate gets reproduced by hand or discarded. Tools in this category
+report between forty and seventy per cent false positives; passing that on to you would be charging
+you to read noise.
+
+Days one to four are the work. Access control across every role pair, both directions — one role
+against another, and one customer against another customer in the same role. Business logic:
+workflow order, price and quantity handling, race conditions on anything limited. Multi-step flows,
+password reset, session handling. And then the part that separates a five-day engagement from a
+one-day scan: working out what several small findings become when chained, and writing that up as a
+narrative with a real business outcome at the end of it.
+
+Day five is the report and a thirty-minute call with the people who will do the fixing.
+
+## What we need from you
+
+Two accounts per role. Not one — two. Half of access control testing is checking whether customer A
+can reach customer B's data, and that is impossible with a single account per role. If your
+application has customers, admins and support, that is six test accounts. They can be disposable and
+they should be, because we will tell you to rotate them when we finish.
+
+A staging environment that matches production is better than production. If it has to be production,
+say so early: we halve every rate limit, suppress state-changing requests on the first pass, and
+agree a stop-the-test contact who is reachable throughout.
+
+## When to buy the complex tier instead
+
+Four or more roles, multiple tenants, payment or approval workflows, or an application big enough
+that five days would be a fiction. The complex tier is eight days and adds tenant isolation testing
+across separate customer organisations, settlement and approval workflow abuse, and a longer chained
+exploitation phase. If we think you need it we will say so on the scoping call, and if we think you
+do not, we will say that too.

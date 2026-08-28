@@ -1,0 +1,26 @@
+{
+  "name": "@attestor/report",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures": "./src/fixtures/index.ts",
+    "./legal": "./src/legal/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "generate:sample": "node --experimental-strip-types scripts/generate-sample-report.ts"
+  },
+  "dependencies": {
+    "@attestor/findings": "workspace:*",
+    "@attestor/shared": "workspace:*",
+    "playwright": "^1.56.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

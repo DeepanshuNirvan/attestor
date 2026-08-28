@@ -1,0 +1,396 @@
+---
+import { packages, formatMoney } from '../data/pricing';
+import { site } from '../data/site';
+
+/**
+ * The estimator. It is a real calculator over the published price sheet, not a lead-capture form:
+ * it returns a band and a number of working days for every valid combination, and it never ends in
+ * "contact us for pricing".
+ *
+ * Without JavaScript the same section still shows the published packages, which is the answer for
+ * most visitors anyway.
+ */
+
+const assetTypes = [
+  { value: 'web', label: 'Web application', unitLabel: 'Roughly how many endpoints or screens?' },
+  { value: 'api', label: 'API only', unitLabel: 'Roughly how many endpoints?' },
+  { value: 'mobile', label: 'Mobile application', unitLabel: 'Roughly how many screens?' },
+  { value: 'cloud', label: 'Cloud account', unitLabel: 'Roughly how many cloud resources?' },
+  { value: 'llm', label: 'LLM or AI application', unitLabel: 'How many tools or data sources can the model reach?' },
+  { value: 'external', label: 'External surface only', unitLabel: 'Roughly how many public hosts?' },
+];
+
+const authOptions = [
+  { value: 'none', label: 'No login — public only' },
+  { value: 'simple', label: 'Username and password' },
+  { value: 'multiStep', label: 'Multi-step, OTP or device checks' },
+  { value: 'federated', label: 'SSO, OAuth or an identity provider' },
+];
+
+const headlinePackages = packages.filter((item) => !item.recurring).slice(0, 6);
+---
+
+<section class="estimator section" id="estimator" aria-labelledby="estimator-heading">
+  <div class="page">
+    <p class="eyebrow">Scope and price</p>
+    <h2 id="estimator-heading">Work out what this costs before you talk to anyone</h2>
+    <p class="lede">
+      The numbers below are the published price sheet with your scope applied. A scoping call
+      confirms them; it does not change the basis.
+    </p>
+
+    <form class="estimator-form" data-estimator novalidate>
+      <div class="field">
+        <label for="est-asset">What is being tested?</label>
+        <select id="est-asset" name="assetType">
+          {assetTypes.map((option) => <option value={option.value}>{option.label}</option>)}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="est-scale" data-scale-label>{assetTypes[0]!.unitLabel}</label>
+        <input id="est-scale" name="scaleUnits" type="number" min="1" max="5000" step="1" value="40" inputmode="numeric" />
+      </div>
+
+      <div class="field">
+        <label for="est-roles">How many distinct user roles?</label>
+        <input id="est-roles" name="roleCount" type="number" min="0" max="20" step="1" value="2" inputmode="numeric" />
+        <p class="field-note">
+          Cross-role access control testing needs two accounts per role. That is what finds the
+          findings worth paying for.
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="est-auth">How does login work?</label>
+        <select id="est-auth" name="authComplexity">
+          {authOptions.map((option) => <option value={option.value} selected={option.value === 'simple'}>{option.label}</option>)}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="est-envs">How many environments?</label>
+        <input id="est-envs" name="environmentCount" type="number" min="1" max="6" step="1" value="1" inputmode="numeric" />
+      </div>
+
+      <fieldset class="field field-inline">
+        <legend>Currency</legend>
+        <label><input type="radio" name="currency" value="INR" checked /> INR</label>
+        <label><input type="radio" name="currency" value="USD" /> USD</label>
+      </fieldset>
+
+      <label class="field field-checkbox">
+        <input type="checkbox" name="needsRetest" checked />
+        <span>Include the free retest within 30 days</span>
+      </label>
+    </form>
+
+    <div class="estimator-output" data-estimator-output aria-live="polite" aria-atomic="true" hidden>
+      <div class="estimate-headline">
+        <div>
+          <p class="estimate-label">Estimated fee</p>
+          <p class="estimate-number numeric" data-estimate-range></p>
+        </div>
+        <div>
+          <p class="estimate-label">Working days</p>
+          <p class="estimate-number numeric" data-estimate-days></p>
+        </div>
+        <div>
+          <p class="estimate-label">Closest package</p>
+          <p class="estimate-package" data-estimate-package></p>
+        </div>
+      </div>
+
+      <div class="estimate-detail">
+        <div>
+          <h3>What the engagement includes</h3>
+          <ul class="rule-list" data-estimate-includes></ul>
+        </div>
+        <div>
+          <h3>What you receive</h3>
+          <ul class="rule-list" data-estimate-deliverables></ul>
+        </div>
+      </div>
+
+      <ul class="estimate-notes" data-estimate-notes></ul>
+
+      <p class="estimate-actions">
+        <a class="button" href={site.bookingUrl} data-estimate-booking rel="noopener">
+          Book the scoping call
+        </a>
+        <a class="button button-quiet" href="/contact" data-estimate-contact>Send the scope by email</a>
+      </p>
+      <p class="estimate-fine">
+        Fifty per cent on signature, fifty per cent before the report is released. One free retest
+        within {site.freeRetestWindowDays} days. Evidence deleted after {site.evidenceRetentionDays} days,
+        with written confirmation.
+      </p>
+    </div>
+
+    <noscript>
+      <div class="panel-sunk">
+        <p>
+          The estimator needs JavaScript. The published packages are below and the price sheet is on
+          the <a href="/pricing">pricing page</a>.
+        </p>
+        <ul class="rule-list">
+          {
+            headlinePackages.map((item) => (
+              <li>
+                <strong>{item.name}</strong> — {formatMoney(item.price.INR, 'INR')} /{' '}
+                {formatMoney(item.price.USD, 'USD')}, {item.turnaroundDays} working days
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </noscript>
+  </div>
+</section>
+
+<script>
+  import { estimate, formatMoney, scaleUnitNoun } from '../data/pricing';
+  import type { AssetType, Currency, EstimatorInputs } from '../data/pricing';
+
+  const form = document.querySelector<HTMLFormElement>('[data-estimator]');
+  const output = document.querySelector<HTMLElement>('[data-estimator-output]');
+  if (form && output) {
+    const scaleLabel = form.querySelector<HTMLLabelElement>('[data-scale-label]');
+    const rangeEl = output.querySelector<HTMLElement>('[data-estimate-range]');
+    const daysEl = output.querySelector<HTMLElement>('[data-estimate-days]');
+    const packageEl = output.querySelector<HTMLElement>('[data-estimate-package]');
+    const includesEl = output.querySelector<HTMLElement>('[data-estimate-includes]');
+    const deliverablesEl = output.querySelector<HTMLElement>('[data-estimate-deliverables]');
+    const notesEl = output.querySelector<HTMLElement>('[data-estimate-notes]');
+    const bookingEl = output.querySelector<HTMLAnchorElement>('[data-estimate-booking]');
+    const contactEl = output.querySelector<HTMLAnchorElement>('[data-estimate-contact]');
+
+    const scaleLabels: Record<string, string> = {
+      web: 'Roughly how many endpoints or screens?',
+      api: 'Roughly how many endpoints?',
+      mobile: 'Roughly how many screens?',
+      cloud: 'Roughly how many cloud resources?',
+      llm: 'How many tools or data sources can the model reach?',
+      external: 'Roughly how many public hosts?',
+    };
+
+    function readNumber(name: string, fallback: number, min: number, max: number): number {
+      const field = form!.elements.namedItem(name) as HTMLInputElement | null;
+      const parsed = Number(field?.value);
+      if (!Number.isFinite(parsed)) return fallback;
+      return Math.min(max, Math.max(min, Math.round(parsed)));
+    }
+
+    function readInputs(): EstimatorInputs {
+      const assetType = (form!.elements.namedItem('assetType') as HTMLSelectElement).value as AssetType;
+      const currency = (form!.querySelector('input[name="currency"]:checked') as HTMLInputElement)
+        .value as Currency;
+      return {
+        assetType,
+        scaleUnits: readNumber('scaleUnits', 40, 1, 5000),
+        roleCount: readNumber('roleCount', 1, 0, 20),
+        authComplexity: (form!.elements.namedItem('authComplexity') as HTMLSelectElement)
+          .value as EstimatorInputs['authComplexity'],
+        environmentCount: readNumber('environmentCount', 1, 1, 6),
+        needsRetest: (form!.elements.namedItem('needsRetest') as HTMLInputElement).checked,
+        currency,
+      };
+    }
+
+    function fill(list: HTMLElement | null, items: string[]): void {
+      if (!list) return;
+      list.replaceChildren(
+        ...items.map((text) => {
+          const li = document.createElement('li');
+          li.textContent = text;
+          return li;
+        }),
+      );
+    }
+
+    function render(): void {
+      const inputs = readInputs();
+      const result = estimate(inputs);
+
+      if (scaleLabel) scaleLabel.textContent = scaleLabels[inputs.assetType] ?? scaleLabels.web!;
+
+      if (rangeEl) {
+        rangeEl.textContent = `${formatMoney(result.low, inputs.currency)} – ${formatMoney(result.high, inputs.currency)}`;
+      }
+      if (daysEl) daysEl.textContent = String(result.days);
+      if (packageEl) packageEl.textContent = result.basePackage.name;
+      fill(includesEl, result.includes);
+      fill(deliverablesEl, result.deliverables);
+      fill(notesEl, result.notes);
+
+      const summary = [
+        `Asset: ${inputs.assetType}`,
+        `${inputs.scaleUnits} ${scaleUnitNoun(inputs.assetType)}`,
+        `${inputs.roleCount} role(s)`,
+        `auth: ${inputs.authComplexity}`,
+        `${inputs.environmentCount} environment(s)`,
+        `estimate ${formatMoney(result.low, inputs.currency)}–${formatMoney(result.high, inputs.currency)}`,
+      ].join(', ');
+
+      if (bookingEl) {
+        const url = new URL(bookingEl.dataset.baseHref ?? bookingEl.href);
+        url.searchParams.set('notes', summary);
+        bookingEl.dataset.baseHref ??= bookingEl.href;
+        bookingEl.href = url.href;
+      }
+      if (contactEl) {
+        contactEl.href = `/contact?scope=${encodeURIComponent(summary)}`;
+      }
+
+      output!.hidden = false;
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+    render();
+  }
+</script>
+
+<style>
+  .estimator-form {
+    display: grid;
+    gap: var(--space-m) var(--space-l);
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    margin-block: var(--space-l);
+    padding: var(--space-m);
+    border: 1px solid var(--rule);
+    background: var(--ground-raised);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .field label,
+  .field legend {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--ink);
+    padding: 0;
+  }
+
+  .field-note {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  select,
+  input[type='number'] {
+    border: 1px solid var(--rule-strong);
+    background: var(--ground);
+    padding: 0.5rem 0.6rem;
+    font-size: var(--step-0);
+    width: 100%;
+  }
+
+  .field-inline {
+    flex-direction: column;
+  }
+
+  .field-inline label {
+    font-weight: 400;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-right: var(--space-s);
+  }
+
+  .field-checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .field-checkbox span {
+    font-size: var(--step--1);
+    font-weight: 500;
+  }
+
+  .estimate-headline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: var(--space-m);
+    border-top: 2px solid var(--ink);
+    border-bottom: 1px solid var(--rule);
+    padding-block: var(--space-m);
+  }
+
+  .estimate-label {
+    font-size: var(--step--1);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.25rem;
+  }
+
+  .estimate-number {
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.1;
+  }
+
+  .estimate-package {
+    font-size: var(--step-0);
+    margin: 0;
+    color: var(--ink-muted);
+  }
+
+  .estimate-detail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: var(--space-l);
+    margin-top: var(--space-l);
+  }
+
+  .estimate-detail h3 {
+    font-size: var(--step-0);
+    font-family: var(--font-body);
+    letter-spacing: 0.02em;
+  }
+
+  .estimate-detail li {
+    font-size: var(--step--1);
+    padding-block: 0.55rem;
+  }
+
+  .estimate-notes {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-m) 0 0;
+    border-left: 2px solid var(--accent);
+  }
+
+  .estimate-notes li {
+    padding: 0.3rem 0 0.3rem var(--space-s);
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+  }
+
+  .estimate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    margin-top: var(--space-l);
+  }
+
+  .estimate-fine {
+    font-size: 0.82rem;
+    color: var(--ink-faint);
+    max-width: 58ch;
+  }
+</style>

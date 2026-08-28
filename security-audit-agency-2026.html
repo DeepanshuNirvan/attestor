@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Audit Agency — Full Dossier (India, Aug 2026)</title>
+<style>
+:root{
+  --bg:#080b0a; --panel:#0f1513; --panel2:#131b18; --line:#1f2b26;
+  --tx:#dfe9e4; --dim:#8fa39a; --acc:#4ade80; --acc2:#22d3ee;
+  --warn:#fbbf24; --bad:#f87171; --good:#34d399; --pur:#c084fc;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.65 -apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 100px}
+header{padding:60px 0 30px;border-bottom:1px solid var(--line);margin-bottom:40px}
+h1{font-size:2.5rem;line-height:1.15;margin:0 0 12px;letter-spacing:-.02em}
+h1 span{color:var(--acc)}
+.sub{color:var(--dim);font-size:1.05rem;max-width:820px}
+h2{font-size:1.7rem;margin:64px 0 18px;padding-top:14px;border-top:2px solid var(--acc);display:inline-block;letter-spacing:-.01em}
+h3{font-size:1.22rem;margin:34px 0 10px}
+h4{font-size:1.02rem;margin:22px 0 8px;color:var(--acc2)}
+p{margin:10px 0}
+ul,ol{margin:10px 0;padding-left:22px}
+li{margin:6px 0}
+a{color:var(--acc2)}
+b{color:#fff}
+code{background:#0b1210;border:1px solid var(--line);padding:1px 6px;border-radius:4px;font-size:.88em;color:var(--acc)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:18px 0}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:880px){.g2,.g3,.g4{grid-template-columns:1fr}h1{font-size:1.9rem}}
+.tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:.92rem}
+th,td{padding:10px 13px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--panel2);color:var(--acc);font-weight:600}
+tr:last-child td{border-bottom:none}
+.verdict{background:linear-gradient(135deg,#0d1a14,#0f1513);border:2px solid var(--acc);border-radius:14px;padding:26px 28px;margin:26px 0}
+.big{font-size:3.4rem;font-weight:800;color:var(--acc);line-height:1}
+.tag{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.76rem;font-weight:600;margin:3px 5px 3px 0;border:1px solid}
+.t-g{color:var(--good);border-color:#14532d;background:#0a1f14}
+.t-y{color:var(--warn);border-color:#5b4508;background:#1c1503}
+.t-r{color:var(--bad);border-color:#5c1a1a;background:#1e0b0b}
+.t-b{color:var(--acc2);border-color:#134e5a;background:#062028}
+.t-p{color:var(--pur);border-color:#4c1d70;background:#150a20}
+.warn{border-left:3px solid var(--warn);background:#17130a;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.bad{border-left:3px solid var(--bad);background:#180d0d;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.good{border-left:3px solid var(--good);background:#0a1712;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.note{border-left:3px solid var(--acc2);background:#08171c;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+.score{float:right;background:#0a1f14;border:1px solid var(--acc);color:var(--acc);padding:4px 12px;border-radius:999px;font-weight:700;font-size:.9rem}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:16px}
+.kpi .n{font-size:1.6rem;font-weight:700;color:var(--acc);display:block;line-height:1.2}
+.kpi .l{font-size:.82rem;color:var(--dim);margin-top:4px;display:block}
+.toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 24px;columns:2;column-gap:36px}
+@media(max-width:700px){.toc{columns:1}}
+.toc a{display:block;padding:3px 0;text-decoration:none;font-size:.93rem;break-inside:avoid}
+.toc a:hover{color:var(--acc)}
+.faq{border-bottom:1px solid var(--line);padding:16px 0}
+.faq:last-child{border-bottom:none}
+.faq .q{font-weight:700;color:#fff;margin-bottom:6px}
+.pipe{font-family:ui-monospace,Consolas,monospace;font-size:.82rem;background:#070c0a;border:1px solid var(--line);border-radius:10px;padding:18px;overflow-x:auto;white-space:pre;color:var(--dim);line-height:1.5}
+.pipe b{color:var(--acc)}
+footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--line);color:var(--dim);font-size:.85rem}
+.src{font-size:.82rem;color:var(--dim);word-break:break-all}
+.step{display:flex;gap:14px;margin:14px 0}
+.step .num{flex:0 0 34px;height:34px;border-radius:50%;background:#0a1f14;border:1px solid var(--acc);color:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+<h1>The Security Audit Agency — <span>full dossier</span></h1>
+<p class="sub">Web + API + cloud + mobile + hardware + LLM testing, sold as a productised audit business from India. Every number, every tool, every law, every objection, every rupee. Researched August 2026. Unbiased — the bad parts are in here too.</p>
+</header>
+
+<div class="toc">
+<a href="#verdict">01 · Verdict in 60 seconds</a>
+<a href="#market">02 · Is there money? Market numbers</a>
+<a href="#drivers">03 · Who is forced to buy (regulation calendar)</a>
+<a href="#wall">04 · The CERT-In wall — read before anything</a>
+<a href="#compete">05 · Competition, honestly</a>
+<a href="#lines">06 · Every service line scored</a>
+<a href="#auto">07 · Can it be automated? The real answer</a>
+<a href="#arch">08 · Platform architecture + all features</a>
+<a href="#tools">09 · Complete tool stack (free vs paid)</a>
+<a href="#burp">10 · Do you need Burp? Is Strix enough?</a>
+<a href="#budget">11 · Can you start under ₹20,000?</a>
+<a href="#legal">12 · Law, licences, contracts, what NOT to do</a>
+<a href="#trust">13 · Trust when nobody knows you</a>
+<a href="#clients">14 · Finding clients — 11 channels</a>
+<a href="#objections">15 · "We don't want testing" — objection playbook</a>
+<a href="#money">16 · Pricing, unit economics, path to ₹3L/mo</a>
+<a href="#give">17 · What to give, what never to give</a>
+<a href="#product">18 · Should you build the testing suite as a product?</a>
+<a href="#swot">19 · SWOT</a>
+<a href="#risk">20 · How this business dies (failure modes)</a>
+<a href="#plan">21 · 90-day and 12-month plan</a>
+<a href="#faq">22 · FAQ — 32 questions</a>
+<a href="#sources">23 · Sources</a>
+</div>
+
+<h2 id="verdict">01 · Verdict in 60 seconds</h2>
+
+<div class="verdict">
+<div class="grid g4" style="align-items:center">
+<div><span class="big">8.2</span><span style="color:var(--dim);font-size:.9rem">/ 10 overall</span></div>
+<div style="grid-column:span 3">
+<p style="margin-top:0"><b>Start it. This is the right business for you</b> — you already have the skill, it needs no office, no inventory, no licence, no approval, and the buyer pays in advance. It is the lowest-dependency high-margin business on your entire list.</p>
+<p><b>But delete the phrase "no competition" from this one.</b> VAPT in India is crowded and price-pressured at the bottom: entry price for a basic web app is already ₹25,000–30,000 and there are hundreds of shops. You do not win by being another VAPT vendor. You win on the three things nobody serves well at the SMB end: <b>speed, evidence quality, and the new attack surfaces (LLM/AI, cloud config, supply chain)</b>.</p>
+</div>
+</div>
+</div>
+
+<div class="grid g3">
+<div class="kpi"><span class="n">8.2/10</span><span class="l">Audit agency, services-first</span></div>
+<div class="kpi"><span class="n">9.0/10</span><span class="l">Automation as YOUR internal tool</span></div>
+<div class="kpi"><span class="n">5.5/10</span><span class="l">Automation sold AS the product</span></div>
+</div>
+
+<div class="grid g2" style="margin-top:16px">
+<div class="card">
+<h4 style="margin-top:0">The 6 decisions that matter</h4>
+<ol style="margin-bottom:0">
+<li><b>Services first, product later.</b> Build the platform to serve YOUR delivery, never as the thing you sell. Productise it only after ~10 paid engagements.</li>
+<li><b>Do not chase banks, NBFCs, brokers, insurers or government.</b> Legally closed without CERT-In empanelment (section 04).</li>
+<li><b>Own two wedges:</b> (a) startups/SaaS/D2C stuck on enterprise security questionnaires, (b) <b>LLM/AI red teaming</b>, where no price is set yet.</li>
+<li><b>Drop hardware testing on day one.</b> 4.5/10 for a solo Indian shop. Year 2 or never (section 06).</li>
+<li><b>Automate recon, scanning, evidence and reporting.</b> Never automate the hunt for business-logic flaws — that is the part clients actually pay for.</li>
+<li><b>Land one foreign client by month 6.</b> Same work, 3–5× the price, no Indian price war.</li>
+</ol>
+</div>
+<div class="card">
+<h4 style="margin-top:0">Reality check, cold</h4>
+<ul style="margin-bottom:0">
+<li>Year 1 realistic: <b>₹8–25 lakh total</b>, not per month. Months 1–3 will be near zero.</li>
+<li>₹2–3 lakh/month arrives around <b>month 7–12</b> with 4–6 recurring clients, not 40.</li>
+<li>Gross margin <b>85–92%</b> once tooling is built. Very few businesses beat that.</li>
+<li>Your killer is not competition — it is <b>being unknown</b>. Months 1–3 buy proof, not code.</li>
+<li>The market is shifting from annual checkbox tests to <b>continuous programmes</b>. Sell retainers, not one-shot PDFs.</li>
+</ul>
+</div>
+</div>
+
+<h2 id="market">02 · Is there money? Market numbers</h2>
+
+<div class="grid g4">
+<div class="kpi"><span class="n">$6.56B</span><span class="l">India cybersecurity market, 2026</span></div>
+<div class="kpi"><span class="n">$15.06B</span><span class="l">India by 2031 (18.07% CAGR)</span></div>
+<div class="kpi"><span class="n">800k–1M</span><span class="l">India cyber staff shortage</span></div>
+<div class="kpi"><span class="n">22.6%</span><span class="l">Global PTaaS CAGR to 2031</span></div>
+</div>
+
+<p>India's cybersecurity market: ~<b>$5.56B in 2025</b>, ~<b>$6.56B in 2026</b>, to <b>$15.06B by 2031</b> at 18.07% CAGR (Mordor). Other houses run steeper — $11.3B in 2025 to $44B by 2034. Different series, same direction.</p>
+
+<p>Globally <b>PTaaS</b> is $0.72B (MarketsandMarkets) to $1.20B (Persistence) in 2026, reaching $1.98B by 2031 / $4.88B by 2033 — 22%+ CAGR. Fastest-growing slice of security services, and the one an automated small shop can actually serve.</p>
+
+<div class="good"><b>The number that matters most to you:</b> India is short <b>800,000–1,000,000</b> cybersecurity professionals. There is demand that structurally cannot be served. You are entering an under-supplied labour market where the output happens to be sold as a deliverable instead of a salary.</div>
+
+<h4>What buyers actually pay in India, 2026</h4>
+<div class="tw"><table>
+<tr><th>Engagement</th><th>India price band 2026</th><th>Days</th><th>Your read</th></tr>
+<tr><td>Basic web app / simple mobile app (startup)</td><td>₹25,000 – 30,000</td><td>1–2</td><td>Entry offer / loss-leader only</td></tr>
+<tr><td>Web app, SaaS-scale scope</td><td>₹40,000 – 1,50,000</td><td>3–6</td><td><b>₹50–75k is your sweet spot</b></td></tr>
+<tr><td>Comprehensive web app, manual + report</td><td>₹50,000 – 75,000</td><td>4–6</td><td>Core product</td></tr>
+<tr><td>Mobile app (Android + iOS)</td><td>₹40,000 – 1,00,000</td><td>3–5</td><td>MobSF cuts this to 2–3 days</td></tr>
+<tr><td>API-only assessment</td><td>₹35,000 – 80,000</td><td>2–4</td><td>Highest automation ratio</td></tr>
+<tr><td>Cloud configuration review (AWS/Azure)</td><td>₹40,000 – 1,00,000</td><td>1–3</td><td><b>Best ₹/hour in the list</b></td></tr>
+<tr><td>Network / infra (per ~50 IPs)</td><td>₹50,000 – 1,00,000</td><td>3–5</td><td>Commodity — bundle only</td></tr>
+<tr><td>Enterprise / compliance-grade programme</td><td>₹2,00,000 – 8,50,000</td><td>15–30</td><td>Needs team + often empanelment</td></tr>
+<tr><td>LLM / AI red team assessment</td><td><b>Unsettled. ₹75,000 – 2,50,000</b></td><td>4–8</td><td><b>You set the price here</b></td></tr>
+<tr><td>Continuous testing retainer</td><td>₹25,000 – 60,000 / month</td><td>~3 days/mo</td><td><b>The goal. Build toward this</b></td></tr>
+<tr><td>Foreign (US/EU/Gulf) web app</td><td>$2,500 – 8,000</td><td>4–7</td><td>₹2–7 lakh for the same work</td></tr>
+</table></div>
+
+<div class="note"><b>The arbitrage:</b> mid-market US/UK web app pentests run <b>$4,200–15,000</b>, enterprise $25,000–75,000+, and reputable providers bill <b>$200–300/hour</b> (seniors $250–500). South/Southeast Asian testers bill <b>$25–65/hour</b>. You don't have to win the Indian price war. One US client at $60/hour beats four Indian clients at ₹40,000.</div>
+
+<h2 id="drivers">03 · Who is forced to buy — the regulation calendar</h2>
+
+<p>Nobody buys security because they feel unsafe. They buy because a <b>date</b>, a <b>contract</b> or a <b>deal</b> forces them. Every live forcing function in India:</p>
+
+<div class="tw"><table>
+<tr><th>Force</th><th>Who it binds</th><th>Deadline / trigger</th><th>Can you serve it?</th></tr>
+<tr><td><b>DPDP Act 2023 + Rules 2025</b></td><td>Every company processing personal data in India</td><td>Rules notified 13 Nov 2025 · Consent Manager 13 Nov 2026 · <b>full compliance 13 May 2027</b> · penalties to ₹250 crore</td><td class="t-g"><b>YES — biggest wedge.</b> "Reasonable security safeguards" needs evidence. Evidence = a test report.</td></tr>
+<tr><td><b>SEBI CSCRF</b></td><td>Brokers, AMCs, MIIs, all SEBI REs</td><td>Adoption deadline passed 31 Aug 2025 · now recurring <b>annual audit + VAPT cadence</b> (half-yearly for QSBs)</td><td class="t-r"><b>NO.</b> Audits must be by CERT-In empanelled organisations.</td></tr>
+<tr><td><b>RBI frameworks / IT outsourcing MD</b></td><td>Banks, NBFCs, payment aggregators</td><td>Continuous</td><td class="t-r"><b>NO.</b> Empanelment clause in nearly every RFP.</td></tr>
+<tr><td><b>IRDAI</b></td><td>Insurers, brokers</td><td>Continuous</td><td class="t-r">NO — same reason.</td></tr>
+<tr><td><b>ISO 27001:2022 control A.8.8</b></td><td>Any company certifying</td><td>Certification + surveillance audits</td><td class="t-g"><b>YES.</b> No empanelment needed. Large and growing.</td></tr>
+<tr><td><b>SOC 2 Type 2</b></td><td>Indian SaaS selling to US buyers</td><td>Annual window</td><td class="t-g"><b>YES.</b> 80–90% of US Fortune 1000 demand SOC 2 from vendors.</td></tr>
+<tr><td><b>PCI DSS 4.0 (req. 11.4)</b></td><td>Anyone touching card data</td><td>Annual + after significant change</td><td class="t-y">Partly — some buyers want QSA-adjacent credentials.</td></tr>
+<tr><td><b>Enterprise vendor security questionnaire</b></td><td>Any startup selling to a big company</td><td><b>The moment a deal is on the table</b></td><td class="t-g"><b>YES — fastest-closing trigger there is.</b> They lose revenue every week they can't answer it.</td></tr>
+<tr><td><b>Cyber insurance underwriting</b></td><td>SMBs renewing cover</td><td>Renewal date</td><td class="t-g"><b>YES.</b> 2026 underwriting is evidence-based — carriers run external scans and want proof, not checkboxes; some require an independent audit to keep cover.</td></tr>
+<tr><td><b>Play Store / App Store data-safety declarations</b></td><td>Every app publisher</td><td>Continuous</td><td class="t-g">YES — ₹15–40k quick audits.</td></tr>
+<tr><td><b>EU AI Act</b></td><td>Anyone shipping AI into the EU</td><td>Art.5 + GPAI + Art.50 live 2 Aug 2026 · <b>high-risk deferred to 2 Dec 2027 (Annex III) and 2 Aug 2028 (Annex I)</b></td><td class="t-y">YES, but <b>never sell a fake 2026 high-risk deadline</b> — it was pushed. Sell the real risk.</td></tr>
+<tr><td><b>TEC MTCTE</b> (hardware)</td><td>Telecom equipment sold/imported in India</td><td>ILAC report acceptance extended to <b>30 June 2026</b>; security may route via TEC or IC3S</td><td class="t-r"><b>NO.</b> Needs an accredited lab, not a consultant.</td></tr>
+</table></div>
+
+<div class="good"><b>Read that table again and see the pattern.</b> Every row you can serve is one where <b>a private buyer picks their own auditor</b>. Every row you cannot serve is one where <b>a regulator picks who is allowed to audit</b>. That single line defines your target market.</div>
+
+<h2 id="wall">04 · The CERT-In wall — read this before anything else</h2>
+
+<p>CERT-In (under MeitY) empanels information security auditing organisations. It is the one real gate in Indian security services. Know exactly where it binds and where it doesn't.</p>
+
+<div class="grid g2">
+<div class="card" style="border-color:#5c1a1a">
+<h4 style="margin-top:0;color:var(--bad)">Empanelment REQUIRED — closed to you</h4>
+<ul style="margin-bottom:0">
+<li>Banks (RBI Cybersecurity Framework)</li>
+<li>NBFCs, payment aggregators, payment gateways</li>
+<li>SEBI-regulated entities — CSCRF audits <b>must</b> use empanelled orgs</li>
+<li>Insurers (IRDAI)</li>
+<li>Government departments, PSUs</li>
+<li>Anything hosted on NIC infrastructure</li>
+<li>UIDAI-linked systems</li>
+<li>Critical infra — power, telecom, transport</li>
+</ul>
+</div>
+<div class="card" style="border-color:#14532d">
+<h4 style="margin-top:0;color:var(--good)">Empanelment NOT required — wide open</h4>
+<ul style="margin-bottom:0">
+<li>SaaS companies, product startups, D2C brands</li>
+<li>Ecommerce, marketplaces, edtech, healthtech (non-regulated parts)</li>
+<li>Any company doing ISO 27001 or SOC 2</li>
+<li>Any company answering an enterprise security questionnaire</li>
+<li>App publishers, agencies, dev shops</li>
+<li>Manufacturing, logistics, real estate, hospitality IT</li>
+<li>Cyber-insurance-driven SMB audits</li>
+<li><b>Every foreign client, without exception</b></li>
+</ul>
+</div>
+</div>
+
+<p>Empanelment demands proven capability across network, infrastructure, web app and wireless security, staff holding <b>CISSP / CISA / CISM</b>, organisational maturity and a technical evaluation. It is an <b>organisation</b>-level status, not an individual one. A solo operator does not get it in year one, and chasing it early is the classic way a new shop burns 12 months and a lot of cash.</p>
+
+<div class="warn"><b>Rule:</b> never claim or imply empanelment you don't have. It is checkable on the CERT-In site in 30 seconds, it is fraud, and it ends you in a small market. When a prospect demands it, say plainly: <i>"We're not empanelled — for your SEBI audit you need one. We do the pre-audit remediation testing so that audit passes first time."</i> That reframe converts the rejection into a sale often enough to be worth memorising.</div>
+
+<p><b>Path to empanelment (year 2–3, if ever):</b> incorporate Pvt Ltd → 2–3 certified staff (CISSP/CISA/CISM) → ISO 27001 for your own firm → documented audit methodology + sample reports → apply in an open cycle → technical evaluation. Treat it as a <b>year-3 unlock for a ₹2 crore+ market</b>, not a startup requirement.</p>
+
+<h2 id="compete">05 · Competition, honestly</h2>
+
+<p>You asked for unbiased. Here it is: <b>this is not a no-competition market.</b> It is a medium-to-high competition market with soft spots. Anyone telling you otherwise is selling you a course.</p>
+
+<div class="tw"><table>
+<tr><th>Layer</th><th>Who</th><th>Their price</th><th>Competition</th><th>Your position</th></tr>
+<tr><td>Indian audit firms</td><td>TCSA, SecureLayer7, Security Brigade, Indusface, CyberOps, Eventus, Penetolabs, ~200+ more</td><td>₹40k–1.5L web app</td><td class="t-r">HIGH</td><td>Match on quality, beat on turnaround + price transparency</td></tr>
+<tr><td>CERT-In empanelled firms</td><td>~100+ empanelled orgs</td><td>₹1L–8.5L</td><td class="t-y">MED but gated</td><td>Can't enter. Partner instead.</td></tr>
+<tr><td>Global PTaaS platforms</td><td>Astra ($1,999–5,999/yr/target), Intruder ($299–499/mo, AI pentest from $3,500), Pentest-Tools ($95–190/mo), Cobalt, HackerOne</td><td>$1,200–6,000/yr</td><td class="t-r">HIGH (funded)</td><td>Do not build a clone. Use them as comparison anchors.</td></tr>
+<tr><td>Freelancers on Upwork/Fiverr</td><td>Thousands</td><td>$25–65/hr, ₹10–25k jobs</td><td class="t-r">HIGH, low trust</td><td>Beat them with a company, contract, insurance and a real report</td></tr>
+<tr><td>Big 4 / large SI</td><td>Deloitte, PwC, EY, Wipro, TCS</td><td>₹5L–50L</td><td class="t-g">LOW overlap</td><td>They can't serve ₹50k deals. Their rejects are your leads.</td></tr>
+<tr><td><b>LLM / AI red teaming</b></td><td>Lakera, Mindgard, HiddenLayer, SPLX, Enkrypt (all foreign, all enterprise-priced)</td><td>$$$ enterprise</td><td class="t-g"><b>LOW in India</b></td><td><b>Your best opening. Almost nobody sells this to Indian mid-market.</b></td></tr>
+<tr><td>Cloud config review</td><td>Fragmented, mostly bundled by MSPs</td><td>₹40k–1L</td><td class="t-y">MED-LOW</td><td>High margin, 1–3 days, easy to automate</td></tr>
+<tr><td>Hardware / IoT security</td><td>Payatu, Attify, a handful of others</td><td>₹2L–15L</td><td class="t-g">LOW</td><td>Low competition <b>because the buyer pool is tiny</b>. Not the same as opportunity.</td></tr>
+</table></div>
+
+<div class="bad"><b>The honest risk nobody in the brochures says out loud:</b> at the bottom of this market, an "annual compliance-checkbox pentest" is being commoditised from both sides — cheap freelancers below, automated PTaaS platforms above. If your product is a PDF produced by running a scanner, you will be competing at ₹25,000 forever and AI tooling will halve that. The escape is not working harder — it is selling <b>validated exploitation, business-logic findings, and continuous coverage</b>, which no scanner produces.</div>
+
+<h4>Where the soft spots genuinely are</h4>
+<ul>
+<li><b>Speed.</b> Most Indian shops quote 2–4 weeks. A 72-hour turnaround for a scoped web app is a real, defensible wedge for a solo operator with automation.</li>
+<li><b>Price transparency.</b> Nearly every Indian competitor hides pricing behind "contact us". Publishing fixed prices converts buyers who hate sales calls.</li>
+<li><b>Retest included.</b> Most charge again for the retest. Include one free retest within 30 days and say so on the homepage.</li>
+<li><b>LLM/AI.</b> Genuinely open in the Indian mid-market right now. This is a 12–18 month window, not forever.</li>
+<li><b>Vertical depth.</b> "We test healthtech apps" beats "we test apps." Pick one vertical after your first 5 clients.</li>
+</ul>
+
+<h2 id="lines">06 · Every service line scored</h2>
+
+<p>Same rubric for all: demand today, competition, automation ratio, margin, how hard to sell as an unknown, capital needed.</p>
+
+<div class="card"><h3 style="margin-top:0">Web app + API VAPT <span class="score">9.0 / 10</span></h3>
+<p><b>The problem:</b> a startup is asked for a pentest report by an enterprise buyer, an insurer, an ISO auditor, or a DPDP-conscious board — and has nothing.</p>
+<p><b>Product:</b> OWASP-based grey-box test, authenticated, 3–6 days, PDF + client portal, one free retest in 30 days, compliance mapping (ISO A.8.8 / SOC 2 CC7.1 / PCI 11.4 / DPDP).</p>
+<div><span class="tag t-g">Demand: HIGH</span><span class="tag t-y">Competition: HIGH</span><span class="tag t-g">Automation: 55–65%</span><span class="tag t-g">Margin: 88%</span><span class="tag t-g">Capital: ₹0</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> your bread and butter. It pays the bills, it is what people search for, and it is the door through which every other service is sold. Accept the competition and win on turnaround + retest + honest fixed pricing.</p></div>
+
+<div class="card"><h3 style="margin-top:0">Cloud configuration & posture review <span class="score">8.5 / 10</span></h3>
+<p><b>The problem:</b> nearly every small AWS/Azure account has public S3 buckets, over-permissive IAM, unrotated keys, no logging, open security groups. It is the highest-density source of real findings in the shortest time.</p>
+<p><b>Product:</b> read-only IAM role → Prowler (600 checks / 84 AWS services / 44 frameworks) + manual review → prioritised report with exact fix commands. 1–3 days, ₹40k–1L.</p>
+<div><span class="tag t-g">Demand: HIGH</span><span class="tag t-b">Competition: MED-LOW</span><span class="tag t-g">Automation: 80%</span><span class="tag t-g">Margin: 93%</span><span class="tag t-g">Capital: ₹0</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> best ₹-per-hour in the whole business, lowest legal risk (read-only, no exploitation), easiest to deliver remotely. <b>Make this your second offer, and often your first sale</b> — clients approve it faster because nothing can break.</p></div>
+
+<div class="card"><h3 style="margin-top:0">Compliance-attached testing (ISO 27001 / SOC 2 / DPDP) <span class="score">8.8 / 10</span></h3>
+<p><b>The problem:</b> the compliance consultant sells the certificate but cannot do the technical test. The auditor demands one. Somebody has to fill that gap on a deadline.</p>
+<p><b>Product:</b> VAPT + evidence pack formatted for the auditor, plus remediation verification. ₹60k–1.5L, repeats every year automatically.</p>
+<div><span class="tag t-g">Demand: HIGH</span><span class="tag t-b">Competition: MED</span><span class="tag t-y">Automation: 50%</span><span class="tag t-g">Margin: 85%</span><span class="tag t-g">Recurring: YES</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> the single best <b>channel</b> in the business. You don't find these clients — the compliance consultant hands them to you, forever. See section 14, channel #1.</p></div>
+
+<div class="card"><h3 style="margin-top:0">LLM / AI red teaming <span class="score">8.0 / 10</span></h3>
+<p><b>The problem:</b> every Indian company shipped an AI chatbot or agent in 2025–26. Almost none has tested it. Prompt injection is #1 on the OWASP LLM Top 10 for the second year running, and an agent with tool access is a remote code execution surface wearing a friendly face.</p>
+<p><b>Product:</b> prompt injection (direct + indirect), jailbreak matrix, system-prompt extraction, RAG poisoning, tool/function abuse, excessive agency, insecure output handling (XSS via model output), PII leakage, token-flood cost DoS, guardrail bypass. Mapped to OWASP LLM Top 10. ₹75k–2.5L.</p>
+<p><b>Tools:</b> garak (~100 probes, NVIDIA), PyRIT (Microsoft — multi-turn Crescendo and TAP attacks), Promptfoo (YAML-driven, acquired by OpenAI March 2026 for ~$86M and kept MIT-licensed), DeepTeam (40+ vulnerability types mapped to OWASP LLM).</p>
+<div><span class="tag t-g">Demand: RISING FAST</span><span class="tag t-g">Competition: LOW in India</span><span class="tag t-g">Automation: 70%</span><span class="tag t-g">Margin: 90%</span><span class="tag t-y">Buyer pool: still smallish</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> highest-upside line. It is not yet a big enough market to live on alone in 2026 — but it is the line that gets you written about, invited to speak, and quoted at prices nobody can compare. <b>Attach it to every web app engagement as a ₹40k add-on.</b></p></div>
+
+<div class="card"><h3 style="margin-top:0">Mobile app VAPT <span class="score">8.3 / 10</span></h3>
+<p><b>The problem:</b> hardcoded API keys, unpinned TLS, insecure local storage, exported components, and Play Store data-safety declarations that don't match reality.</p>
+<p><b>Product:</b> MobSF static + dynamic, Frida/objection runtime, API layer, OWASP MASVS mapping. 3–5 days, ₹40k–1L.</p>
+<div><span class="tag t-g">Demand: HIGH</span><span class="tag t-y">Competition: MED-HIGH</span><span class="tag t-g">Automation: 70%</span><span class="tag t-g">Margin: 88%</span><span class="tag t-y">Needs: rooted test device (~₹12k)</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> strong second line. MobSF does so much of the static work that your effective hourly rate is high.</p></div>
+
+<div class="card"><h3 style="margin-top:0">Continuous testing retainer / vCISO <span class="score">8.6 / 10</span></h3>
+<p><b>Product:</b> monthly rescans, new-asset discovery, alerting, quarterly deep test, security questionnaire support, policy help. ₹25–60k/mo (testing) or ₹75k–2L/mo (vCISO).</p>
+<div><span class="tag t-g">Recurring: YES</span><span class="tag t-b">Competition: MED</span><span class="tag t-g">Automation: 85%</span><span class="tag t-g">Margin: 92%</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> the whole point of the automation you're building. Four retainers at ₹50k = ₹2L/month with ~12 days of work. <b>This is how you hit your target without chasing new logos every month.</b></p></div>
+
+<div class="card"><h3 style="margin-top:0">Network / internal infrastructure testing <span class="score">7.0 / 10</span></h3>
+<div><span class="tag t-y">Demand: MED</span><span class="tag t-r">Competition: HIGH</span><span class="tag t-g">Automation: 60%</span><span class="tag t-y">Margin: 80%</span><span class="tag t-r">Often needs on-site</span></div>
+<p style="margin-bottom:0"><b>Verdict:</b> commoditised, sometimes requires travel or a shipped jump-box, and the buyers most likely to want it are the regulated ones you can't serve. Offer it as a bundle item, don't lead with it.</p></div>
+
+<div class="card"><h3 style="margin-top:0">Hardware / IoT / firmware testing <span class="score" style="border-color:var(--bad);color:var(--bad);background:#1e0b0b">4.5 / 10</span></h3>
+<p><b>Why it scores low despite low competition — and this is the important one:</b></p>
+<ul>
+<li><b>Tiny buyer pool.</b> India's hardware product companies that budget for security testing number in the low hundreds. Most Indian "hardware" firms import reference designs and change the casing.</li>
+<li><b>Capital + lab.</b> ChipWhisperer $250–$3,800, Attify IoT kit ~$1,555, logic analyser, bench PSU, soldering/rework, JTAGulator, Bus Pirate, adapters. ₹1.5–4 lakh before your first rupee — and it needs <b>physical space</b>, which you said you don't want.</li>
+<li><b>Not automatable.</b> You asked for "provide details and it's automatic." Hardware is the opposite: physical access, desoldering, probing, glitching, per-chip datasheets. It is the most manual work in security.</li>
+<li><b>Devices must be shipped to you</b> and often destroyed. Logistics, insurance, NDAs on unreleased hardware.</li>
+<li><b>The compliance money is closed.</b> TEC/MTCTE routes through ILAC-accredited labs and IC3S, not consultants. Becoming a lab is a crore-scale, multi-year accreditation business.</li>
+<li><b>Long sales cycles</b> tied to hardware release schedules, not quarters.</li>
+</ul>
+<div class="bad" style="margin-bottom:0"><b>Recommendation: do not offer hardware testing in year 1.</b> If you want the halo, offer <b>"IoT ecosystem testing"</b> instead — the mobile app, the cloud API and the firmware update mechanism. That is 80% of real IoT risk, needs zero lab, and you can do it today from a laptop.</div></div>
+
+<div class="card"><h3 style="margin-top:0">General QA / functional testing ("we can also act as tester") <span class="score" style="border-color:var(--bad);color:var(--bad);background:#1e0b0b">4.0 / 10</span></h3>
+<p style="margin-bottom:0">Different buyer, different budget line, brutal competition, ₹300–800/hour offshore rates, and it destroys your positioning. A security specialist who also does manual QA reads as a body shop, and body shops get squeezed. <b>Say no to this.</b> The one exception: automated regression on the security controls you built for a retainer client — that is security work wearing a QA hat, and it's fine.</p></div>
+
+<h4>Scoreboard</h4>
+<div class="tw"><table>
+<tr><th>Line</th><th>Demand</th><th>Compete</th><th>Auto %</th><th>Margin</th><th>Capital</th><th>Score</th></tr>
+<tr><td>Web app + API VAPT</td><td>High</td><td>High</td><td>60%</td><td>88%</td><td>₹0</td><td><b>9.0</b></td></tr>
+<tr><td>Compliance-attached testing</td><td>High</td><td>Med</td><td>50%</td><td>85%</td><td>₹0</td><td><b>8.8</b></td></tr>
+<tr><td>Retainer / vCISO</td><td>High</td><td>Med</td><td>85%</td><td>92%</td><td>₹0</td><td><b>8.6</b></td></tr>
+<tr><td>Cloud posture review</td><td>High</td><td>Med-Low</td><td>80%</td><td>93%</td><td>₹0</td><td><b>8.5</b></td></tr>
+<tr><td>Mobile VAPT</td><td>High</td><td>Med-High</td><td>70%</td><td>88%</td><td>₹12k</td><td><b>8.3</b></td></tr>
+<tr><td>LLM / AI red team</td><td>Rising</td><td>Low</td><td>70%</td><td>90%</td><td>₹5k</td><td><b>8.0</b></td></tr>
+<tr><td>Network / internal</td><td>Med</td><td>High</td><td>60%</td><td>80%</td><td>₹0</td><td><b>7.0</b></td></tr>
+<tr><td>Hardware / IoT / firmware</td><td>Low</td><td>Low</td><td>10%</td><td>70%</td><td>₹1.5–4L</td><td><b>4.5</b></td></tr>
+<tr><td>General QA testing</td><td>High</td><td>Extreme</td><td>—</td><td>40%</td><td>₹0</td><td><b>4.0</b></td></tr>
+</table></div>
+
+<h2 id="auto">07 · Can it all be automated? The real answer</h2>
+
+<p>Your vision was: <i>"provide the link, creds and needed things — and all work done automatically."</i> Here is the unvarnished 2026 position.</p>
+
+<div class="grid g2">
+<div class="card" style="border-color:#14532d">
+<h4 style="margin-top:0;color:var(--good)">Automate 100% — do this today</h4>
+<ul style="margin-bottom:0">
+<li>Subdomain + asset discovery, DNS, cert transparency</li>
+<li>Port and service enumeration</li>
+<li>Known-CVE matching on discovered versions</li>
+<li>Template-based vulnerability checks (Nuclei)</li>
+<li>TLS/SSL, headers, cookie flags, CORS misconfig</li>
+<li>Secret scanning in JS bundles and repos</li>
+<li>Dependency / SBOM / container CVEs</li>
+<li>Cloud config checks against benchmarks</li>
+<li>Mobile static analysis</li>
+<li>LLM probe suites (garak/promptfoo/DeepTeam)</li>
+<li>Evidence capture (request/response pairs, screenshots)</li>
+<li><b>Report generation, dedupe, CVSS scoring, retest diffing</b></li>
+</ul>
+</div>
+<div class="card" style="border-color:#5c1a1a">
+<h4 style="margin-top:0;color:var(--bad)">Cannot automate — this is what they pay for</h4>
+<ul style="margin-bottom:0">
+<li><b>Business logic flaws</b> — price manipulation, coupon stacking, workflow bypass, negative quantity, race conditions in payments</li>
+<li><b>IDOR / broken access control</b> across multi-role apps (still the #1 real-world finding)</li>
+<li><b>Chaining</b> — the good testers turn 3–5 low findings into one critical path; no scanner reasons across steps</li>
+<li>Multi-step authenticated flows, OTP/2FA logic, session edge cases</li>
+<li>Tenant isolation in multi-tenant SaaS</li>
+<li>Judging <b>business impact</b> — the difference between a ₹25k report and a ₹75k one</li>
+<li>Validating and killing false positives</li>
+<li>Sitting on a call and explaining it to a CTO</li>
+</ul>
+</div>
+</div>
+
+<div class="warn"><b>The 2026 industry consensus, quoted plainly:</b> autonomous agents own <b>breadth and continuous coverage</b>; humans own <b>validation, judgment and regulatory sign-off</b>. Traditional DAST reports 40–70% false positives; purpose-built agentic systems that only report what they can exploit with reproducible proof get under 2% — but they still miss the business-logic class entirely. AI pentesting agents are not a replacement for human testers, and the whole category converged on that in 2026.</div>
+
+<div class="good"><b>So the correct model — and this is the single most valuable line in this document:</b><br>
+<b>Automation is your margin, not your product.</b><br>
+The client buys a validated, exploit-proven, business-context report. Automation is how you deliver it in 3 days instead of 12 and keep 88% margin. You never sell "our scanner ran" — because a scanner costs $95/month and they can buy it themselves.</div>
+
+<h4>What "automatic" realistically looks like in your delivery</h4>
+<div class="pipe">DAY 0  <b>intake form</b>      client fills scope, uploads authorisation, drops creds in vault
+       <b>scope guard</b>       system refuses any target not on the signed scope list
+DAY 0  <b>auto recon</b>        subfinder, httpx, katana, naabu, tlsx        ~30 min unattended
+DAY 0  <b>auto scan</b>         nuclei + ZAP + semgrep + trivy + prowler     ~2-4 hrs unattended
+DAY 1  <b>auto triage</b>       dedupe, CVSS, false-positive filter, LLM pass
+DAY 1-4 <b>YOU</b>              auth flows, IDOR, logic, chaining, exploitation   <-- the actual product
+DAY 4  <b>auto report</b>       findings DB -> branded PDF + portal, compliance mapping
+DAY 5  <b>YOU</b>              30-min walkthrough call, remediation Q&amp;A
++30d   <b>auto retest</b>       rerun scoped checks, diff, issue retest letter</div>
+
+<p><b>Result:</b> ~60% of the calendar time is unattended machine work. You touch the engagement for 3–4 days and bill ₹50–75k. Three of these a month plus one retainer is your ₹2–3 lakh.</p>
+
+<h2 id="arch">08 · Platform architecture + every feature worth building</h2>
+
+<div class="bad"><b>Before the feature list, the discipline:</b> do NOT build this platform first. Building a platform before you have paying clients is the most common way technical founders spend nine months and earn zero. <b>Deliver your first 10 engagements with shell scripts, a findings spreadsheet and a Word template.</b> The platform earns its existence only when repetition hurts.</div>
+
+<h4>Build order (each stage only after the pain is real)</h4>
+<div class="step"><div class="num">0</div><div><b>Engagements 1–3 — nothing.</b> Bash script that runs your tool chain, a folder per client, a hand-written report from a template. Cost: ₹0. Time: one evening.</div></div>
+<div class="step"><div class="num">1</div><div><b>Engagements 4–10 — a findings database.</b> Install <b>DefectDojo</b> (open source, ingests output from nearly every scanner, dedupes, tracks status). Do not write your own. This alone removes most of the pain.</div></div>
+<div class="step"><div class="num">2</div><div><b>Engagement 10+ — report generation.</b> Findings DB → templated PDF. This is the highest-value automation you will ever write, because report writing is 30–40% of engagement hours.</div></div>
+<div class="step"><div class="num">3</div><div><b>Retainer clients exist — scheduling + diffing.</b> Cron the scans, diff against last run, alert on new findings. Now you can sell continuous testing without doing continuous work.</div></div>
+<div class="step"><div class="num">4</div><div><b>5+ retainers — client portal.</b> Login, findings list, status, retest button. This is when the platform starts to look like a product.</div></div>
+
+<h4>Reference architecture (when you do build it)</h4>
+<div class="tw"><table>
+<tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+<tr><td>Orchestrator</td><td>Python + FastAPI + Celery + Redis</td><td>Every security tool has a Python wrapper; Celery handles long unattended jobs</td></tr>
+<tr><td>Tool execution</td><td>Docker container per tool, one network-isolated worker per client</td><td>Version pinning, clean teardown, no cross-client contamination</td></tr>
+<tr><td>Egress</td><td>Dedicated VPS with a fixed IP per client (₹400–900/mo each)</td><td>Client whitelists your IP; your home IP never touches a client asset</td></tr>
+<tr><td>Findings store</td><td>PostgreSQL, or DefectDojo as the whole layer</td><td>Dedupe, history, retest diffs</td></tr>
+<tr><td>Evidence</td><td>MinIO / S3, encrypted, lifecycle-deleted at 90 days</td><td>Screenshots + HTTP pairs; auto-deletion is a contract promise you can keep</td></tr>
+<tr><td>Secrets</td><td>HashiCorp Vault or age-encrypted files, never plaintext .env</td><td>You are holding client credentials — this is your single largest liability</td></tr>
+<tr><td>Report render</td><td>HTML template → WeasyPrint / Typst</td><td>Version-controlled reports, no Word fights</td></tr>
+<tr><td>LLM assist</td><td>Claude API for description writing, dedupe, severity drafting</td><td>Writes the prose; you approve every word before it ships</td></tr>
+<tr><td>Portal</td><td>Next.js + auth, read-only for clients</td><td>Only after 5 retainers</td></tr>
+<tr><td>Audit log</td><td>Append-only: who ran what, against what, when, under which authorisation</td><td><b>This is your legal defence.</b> Build it in stage 1, not stage 5.</td></tr>
+</table></div>
+
+<h4>Feature list — everything worth having, grouped</h4>
+
+<div class="grid g2">
+<div class="card"><h4 style="margin-top:0">Intake &amp; safety</h4>
+<ul style="margin-bottom:0">
+<li>Scope form: domains, IPs, app URLs, exclusions, test window</li>
+<li>E-signed authorisation capture, stored with the engagement</li>
+<li><b>Scope guard</b> — hard blocklist that refuses to run any tool against an unlisted target (your #1 legal safety net)</li>
+<li>Credential vault with per-engagement expiry</li>
+<li>Client contact + escalation path for out-of-band critical findings</li>
+<li>Auto-generated pre-test checklist (backups taken? WAF whitelisted? staging or prod?)</li>
+</ul></div>
+
+<div class="card"><h4 style="margin-top:0">Discovery &amp; scanning</h4>
+<ul style="margin-bottom:0">
+<li>Passive recon: subdomains, cert transparency, DNS, WHOIS, exposed buckets</li>
+<li>Active: port/service scan, tech fingerprint, crawl + JS endpoint extraction</li>
+<li>Template scanning (Nuclei) + authenticated DAST (ZAP)</li>
+<li>SAST + secrets + dependency + IaC (Semgrep, gitleaks, Trivy)</li>
+<li>Cloud benchmark (Prowler), Kubernetes (kube-bench)</li>
+<li>Mobile static + dynamic (MobSF, Frida)</li>
+<li>Rate limiting and throttle controls per target (don't take a client down)</li>
+</ul></div>
+
+<div class="card"><h4 style="margin-top:0">Triage &amp; validation</h4>
+<ul style="margin-bottom:0">
+<li>Cross-tool dedupe and normalisation</li>
+<li>CVSS 4.0 scoring + <b>business-impact override</b> field (the human bit)</li>
+<li>False-positive marking that persists across future scans of the same asset</li>
+<li>Exploit-proof attachment: request, response, screenshot, repro steps</li>
+<li>Severity justification text — auditors ask for this</li>
+</ul></div>
+
+<div class="card"><h4 style="margin-top:0">Reporting</h4>
+<ul style="margin-bottom:0">
+<li>Branded PDF + HTML, executive summary + technical detail</li>
+<li><b>Compliance mapping</b>: ISO 27001 A.8.8, SOC 2 CC7.1, PCI DSS 11.4, DPDP reasonable safeguards</li>
+<li>Remediation with actual code/config snippets, not "sanitise input"</li>
+<li>Retest report showing fixed / open / accepted with dates</li>
+<li><b>Attestation letter</b> — the one-page PDF the client forwards to their enterprise buyer. Clients value this more than the 60-page report.</li>
+<li>Questionnaire helper: pre-written answers to common vendor security questionnaires</li>
+</ul></div>
+
+<div class="card"><h4 style="margin-top:0">Continuous (retainer engine)</h4>
+<ul style="margin-bottom:0">
+<li>Scheduled rescans, diff vs previous run</li>
+<li>New subdomain / new port / new service alerts</li>
+<li>Certificate + domain expiry watch</li>
+<li>Leaked-credential and exposed-secret monitoring</li>
+<li>Monthly one-page posture summary, auto-emailed</li>
+<li>SLA timers on open critical findings</li>
+</ul></div>
+
+<div class="card"><h4 style="margin-top:0">LLM / AI module</h4>
+<ul style="margin-bottom:0">
+<li>Probe suites: garak breadth sweep + PyRIT multi-turn campaigns</li>
+<li>Prompt-injection corpus, direct and indirect (poisoned docs/webpages)</li>
+<li>Jailbreak matrix, system-prompt extraction, guardrail bypass</li>
+<li>RAG poisoning, tool/function abuse, excessive agency tests</li>
+<li>Insecure output handling (XSS/SSRF via model output)</li>
+<li>PII leakage + training-data extraction probes</li>
+<li>Token-flood cost/DoS test with billing impact estimate</li>
+<li>OWASP LLM Top 10 coverage matrix in the report</li>
+</ul></div>
+</div>
+
+<div class="note"><b>Differentiator features worth more than any scanner:</b> (1) 72-hour turnaround guarantee on scoped web apps; (2) one free retest inside 30 days, in writing; (3) the one-page attestation letter; (4) compliance-mapped findings; (5) a fix-verification call with the client's developers, not just a PDF drop. Every one of these is a sales feature, and none requires a line of scanner code.</div>
+
+<h2 id="tools">09 · Complete tool stack — free vs paid</h2>
+
+<div class="tw"><table>
+<tr><th>Phase</th><th>Tools (free / open source)</th><th>Paid alternative</th><th>Buy it?</th></tr>
+<tr><td>OS / base</td><td>Kali Linux, Parrot OS, Docker</td><td>—</td><td>Never pay</td></tr>
+<tr><td>Recon</td><td>subfinder, amass, httpx, naabu, katana, dnsx, tlsx, gau, waybackurls, shodan CLI</td><td>Shodan/Censys paid tiers</td><td>Later, ~$60/yr</td></tr>
+<tr><td>Vuln scanning</td><td><b>Nuclei</b> (26.9k stars, 11,000+ community templates), Nikto, testssl.sh</td><td>Acunetix, Invicti</td><td>No</td></tr>
+<tr><td>Web proxy / manual</td><td><b>Caido</b> (free Community tier, modern UI), <b>OWASP ZAP</b> (full-feature, free)</td><td><b>Burp Suite Pro $449–475/yr</b></td><td>After client #3</td></tr>
+<tr><td>Injection / fuzzing</td><td>sqlmap, ffuf, dalfox, Arjun, commix</td><td>—</td><td>Never pay</td></tr>
+<tr><td>SAST / code</td><td><b>Semgrep</b>, gitleaks, trufflehog, bandit</td><td>Snyk, Checkmarx</td><td>No</td></tr>
+<tr><td>Deps / containers / IaC</td><td><b>Trivy</b> (32.2k stars — code, images, k8s, SBOM), grype, syft, checkov</td><td>Snyk</td><td>No</td></tr>
+<tr><td>Cloud</td><td><b>Prowler</b> (600 AWS checks, 84 services, 44 frameworks), ScoutSuite (~200 checks, <b>unmaintained since May 2024</b>), kube-bench, cloudsplaining</td><td>Wiz, Orca (enterprise)</td><td>No</td></tr>
+<tr><td>Mobile</td><td><b>MobSF</b>, Frida, objection, apktool, jadx, Ghidra</td><td>NowSecure, Corellium</td><td>No</td></tr>
+<tr><td>API</td><td>Postman, Schemathesis, Kiterunner, mitmproxy</td><td>—</td><td>Never pay</td></tr>
+<tr><td>LLM / AI</td><td><b>garak</b> (~100 probes), <b>PyRIT</b> (multi-turn Crescendo/TAP), <b>Promptfoo</b> (MIT, OpenAI-owned since Mar 2026), <b>DeepTeam</b> (40+ vulns, OWASP LLM)</td><td>Lakera, Mindgard, HiddenLayer, SPLX, Enkrypt</td><td>No — open source is genuinely competitive here</td></tr>
+<tr><td>AI pentest agents</td><td><b>Strix</b> (open source agentic pentest, ~36k stars — OWASP Top 10, IDOR, SSRF, XSS, race conditions, with PoC validation), PentestGPT</td><td>XBOW, Horizon3, FireCompass</td><td>Use free, pay LLM tokens only</td></tr>
+<tr><td>Findings management</td><td><b>DefectDojo</b>, Faraday</td><td>—</td><td>Never pay</td></tr>
+<tr><td>Reporting</td><td>Your own template, SysReptor (open source), WeasyPrint</td><td>PlexTrac (~$$$)</td><td>No</td></tr>
+<tr><td>Infrastructure</td><td>Hetzner / DigitalOcean VPS ₹400–900/mo</td><td>—</td><td>Yes — required</td></tr>
+</table></div>
+
+<div class="good"><b>Total cost of a fully capable stack: ₹0 in software.</b> Every category above has a production-grade free tool. Your real costs are a VPS, a domain, insurance, and eventually Burp.</div>
+
+<h2 id="burp">10 · Do you really need Burp? Is Strix enough?</h2>
+
+<h4>Burp Suite Professional — $449–475/year (~₹40,000)</h4>
+<p><b>Short answer: not to start. Yes by client #3–5.</b></p>
+<div class="grid g2">
+<div class="card"><h4 style="margin-top:0;color:var(--good)">You can genuinely skip it because</h4>
+<ul style="margin-bottom:0">
+<li><b>Caido</b> has a free Community tier and a cleaner, faster workflow than Burp for manual testing</li>
+<li><b>ZAP</b> is the most complete free scanner — full active scan, scripting, automation framework</li>
+<li><b>Nuclei</b> covers templated checks better than Burp's scanner for known issues</li>
+<li>Burp Community's Intruder is deliberately rate-throttled — but <code>ffuf</code> is faster than Burp Intruder anyway</li>
+</ul></div>
+<div class="card"><h4 style="margin-top:0;color:var(--warn)">You will eventually want it because</h4>
+<ul style="margin-bottom:0">
+<li>The BApp extension ecosystem (Autorize for IDOR/authz testing alone can justify the licence)</li>
+<li>DOM Invader for client-side work</li>
+<li>Turbo Intruder for race conditions — a real revenue-generating finding class</li>
+<li><b>Clients and partners ask what tools you use.</b> "Burp Pro" is a trust signal in an industry that runs on signals</li>
+<li>The Burp certification (BSCP) is a cheap credibility artifact</li>
+</ul></div>
+</div>
+<div class="bad"><b>Absolute rule: never use a cracked Burp.</b> It is a licence-audit risk, it destroys you if a client ever sees it, and it is indefensible in a market whose entire product is trustworthiness. Free tools until you can pay, then pay.</div>
+
+<h4>Strix and AI agents — what they're actually good for</h4>
+<p>Strix is a real open-source agentic pentesting tool with a large community, running agents in parallel across targets, validating findings with proofs-of-concept across OWASP Top 10 classes. Use it. But understand its place:</p>
+<ul>
+<li><b>Good for:</b> a fast breadth pass on a new target, generating candidate findings, and catching the obvious things before you start manual work. It compresses day 1.</li>
+<li><b>Not good for:</b> being the deliverable. Everything it reports must be human-validated, and the classes it misses (multi-role business logic, tenant isolation, chained exploits) are exactly the classes your fee is justified by.</li>
+<li><b>Costs:</b> it is free software with a non-free bill — agentic runs burn LLM tokens. Budget $5–50 per deep run and put it in your engagement cost model.</li>
+<li><b>Legal:</b> an autonomous agent that decides its own actions is <b>more</b> dangerous under a narrow scope, not less. Run it only against explicitly authorised targets, inside your scope guard, never with "explore the network" freedom.</li>
+</ul>
+
+<div class="note"><b>Answer to your question in one line:</b> yes — start with Kali + Caido + ZAP + Nuclei + Prowler + MobSF + garak + Strix, all free, and buy Burp Pro out of your third client's payment.</div>
+
+<h2 id="budget">11 · Can you start under ₹20,000?</h2>
+
+<div class="verdict" style="padding:20px 24px">
+<p style="margin:0"><b>Yes. Comfortably.</b> A working, sellable security audit practice costs <b>₹8,000–15,000</b> to stand up. This is one of the cheapest real businesses that exists, and the only reason it's cheap is that you already own the expensive part — the skill.</p>
+</div>
+
+<h4>Tier 1 — the ₹20,000 start (do this)</h4>
+<div class="tw"><table>
+<tr><th>Item</th><th>Cost</th><th>Note</th></tr>
+<tr><td>Laptop</td><td>₹0</td><td>You have one. 16GB RAM is the practical floor for Docker + VMs.</td></tr>
+<tr><td>All tools</td><td>₹0</td><td>Kali, Caido Community, ZAP, Nuclei, Semgrep, Trivy, Prowler, MobSF, garak, PyRIT, Strix, DefectDojo</td></tr>
+<tr><td>Scanning VPS</td><td>₹500–900/mo</td><td><b>Non-negotiable.</b> Never scan from your home IP.</td></tr>
+<tr><td>Domain (.in or .com)</td><td>₹900–1,200/yr</td><td>Your credibility starts here</td></tr>
+<tr><td>Business email</td><td>₹0–1,500/yr</td><td>Zoho Mail free tier works. <b>Never sell from a gmail address.</b></td></tr>
+<tr><td>One-page website</td><td>₹0</td><td>You are a developer. Static page, fixed prices, sample report link.</td></tr>
+<tr><td>Sole proprietorship + current account</td><td>₹0–2,000</td><td>Start here; incorporate later</td></tr>
+<tr><td>Contract templates (MSA, SOW, RoE, NDA)</td><td>₹0–5,000</td><td>Adapt public templates; one lawyer review later</td></tr>
+<tr><td>LLM API credits (reporting + Strix)</td><td>₹1,000–2,000/mo</td><td>Scales with work, not fixed</td></tr>
+<tr><td><b>Total month 1</b></td><td><b>₹6,000–12,000</b></td><td>Under ₹20k with room to spare</td></tr>
+</table></div>
+
+<h4>Tier 2 — the ₹60,000–90,000 credibility build (months 3–6, funded by clients)</h4>
+<div class="tw"><table>
+<tr><th>Item</th><th>Cost</th><th>Why now</th></tr>
+<tr><td>Burp Suite Professional</td><td>~₹40,000/yr</td><td>Extensions + a trust signal buyers recognise</td></tr>
+<tr><td>Professional indemnity insurance (₹25L cover)</td><td>₹8,000–18,000/yr</td><td><b>Get this before your first paid engagement if you can.</b> ₹50L cover for a freelance IT consultant runs ₹10,000–30,000/yr.</td></tr>
+<tr><td>LLP or Pvt Ltd incorporation</td><td>₹8,000–15,000</td><td>Bigger clients won't contract with a proprietorship; also caps personal liability</td></tr>
+<tr><td>Rooted Android test device</td><td>₹10,000–15,000</td><td>Only when you sell mobile testing</td></tr>
+<tr><td>Second VPS + Shodan/Censys</td><td>₹6,000/yr</td><td>Per-client egress isolation</td></tr>
+</table></div>
+
+<h4>Tier 3 — optional (year 1–2)</h4>
+<p><b>OSCP</b> $1,699 exam-only / $1,749 bundle / $2,749 Learn One (~₹1.5–2.4 lakh). Real credibility, real curriculum, but <b>it is not a prerequisite to earn</b>. Buy it from profits in year 2, not from savings in month 1. Cheaper credibility first: Burp's BSCP, TryHackMe/HackTheBox leaderboard rank, a published CVE, and 2–3 anonymised findings write-ups on your blog.</p>
+
+<div class="bad"><b>What NOT to spend on in year 1:</b> an office, a logo designer, paid ads, a CRM, a "brand video", an enterprise scanner licence, a hardware lab, or empanelment consultants promising to fast-track you. Every one of those is a way to convert cash into the feeling of progress.</div>
+
+<h2 id="legal">12 · Law, licences, contracts — and what NOT to do</h2>
+
+<h3>Do you need a licence or certificate? No.</h3>
+<p>Security testing for private companies in India is <b>not a licensed profession</b>. There is no registration, no bar council, no mandatory certification. You need a business registration and GST like any service business, and that's it. The only gate that exists anywhere in the chain is CERT-In empanelment, and that binds the <b>buyer's</b> obligations, not your right to trade (section 04).</p>
+
+<h3>The law that actually governs you</h3>
+<div class="tw"><table>
+<tr><th>Provision</th><th>What it says</th><th>What it means for you</th></tr>
+<tr><td><b>IT Act s.43</b></td><td>Civil liability for accessing, downloading, damaging or disrupting a computer resource without authorisation. Compensation up to <b>₹1 crore</b>.</td><td>An unauthorised scan is a civil wrong even if you break nothing.</td></tr>
+<tr><td><b>IT Act s.66</b></td><td>Criminal: dishonest/fraudulent s.43 acts — up to <b>3 years imprisonment and/or ₹5 lakh fine</b>. <b>Unsolicited penetration testing falls here.</b></td><td>The line between "security researcher" and "accused" is one signed page.</td></tr>
+<tr><td><b>IT Act s.66C / 66D</b></td><td>Identity theft / cheating by personation</td><td>Governs phishing simulations and social engineering. Never impersonate a bank, a government body, or a real third-party brand.</td></tr>
+<tr><td><b>IT Act s.72 / 72A</b></td><td>Breach of confidentiality and disclosure of information in breach of contract</td><td>You will hold client data. Leaking it is criminal, not just a contract breach.</td></tr>
+<tr><td><b>DPDP Act 2023 + Rules 2025</b></td><td>You become a <b>data processor</b> the moment you touch client personal data</td><td>You need a written data processing agreement, purpose limitation, deletion timelines, and breach reporting. Penalties to ₹250 crore sit on the fiduciary — and they will push liability to you by contract.</td></tr>
+<tr><td><b>CERT-In directions (6h reporting)</b></td><td>Incident reporting within 6 hours; log retention obligations</td><td>Applies to your own firm too. Know it before a client asks.</td></tr>
+</table></div>
+
+<div class="good"><b>The entire legal question reduces to one sentence:</b> consent makes it legal, and the contract must specify the exact extent of the scan. Scanning with permission is lawful; scanning without it is an offence. Everything below is just how to prove consent existed.</div>
+
+<h3>Paperwork you must have before touching anything</h3>
+<ol>
+<li><b>MSA (Master Services Agreement)</b> — the commercial frame: payment terms, liability cap, IP, confidentiality, term.</li>
+<li><b>SOW / Scope document</b> — <b>the exact</b> domains, IPs, app URLs, API endpoints, app package names, cloud account IDs. Anything not listed does not exist.</li>
+<li><b>Rules of Engagement (RoE)</b> — test window (dates + hours), permitted techniques, explicitly excluded techniques (DoS, social engineering, physical), rate limits, emergency stop contact and phone number, out-of-band critical-finding notification within X hours.</li>
+<li><b>Written authorisation letter</b> — signed by someone who can bind the company and owns the assets (CTO/CEO/CISO, not a developer). Include: asset list, dates, your name/company, tester identities, source IPs, and an indemnity for authorised acts. <b>Keep it for 7 years.</b></li>
+<li><b>Third-party permission</b> where the asset isn't the client's: shared hosting, a SaaS the client only rents, a payment gateway, a partner API. Their contract with you is not permission to test someone else's box.</li>
+<li><b>Cloud provider terms</b> — AWS permits customer testing on a defined list (EC2, RDS, API Gateway, Lambda, S3 among them) and requires a Simulated Events form for covert adversarial simulations or C2 hosting. <b>DoS/DDoS simulation is prohibited on AWS and on Azure under all circumstances.</b></li>
+<li><b>NDA (mutual)</b> and <b>Data Processing Agreement</b> under DPDP.</li>
+<li><b>Insurance certificate</b> — PI cover; increasingly asked for by mid-size clients.</li>
+</ol>
+
+<h3 style="color:var(--bad)">What NOT to do — the list that keeps you out of court</h3>
+<div class="bad">
+<ol style="margin-bottom:0">
+<li><b>Never test without a signed authorisation naming the exact assets and dates.</b> Not "they said yes on a call." Not a WhatsApp thumbs-up. Signed.</li>
+<li><b>Never accept authorisation from someone who doesn't own the asset</b> — a dev, a project manager, a vendor. Ask "who can sign for this domain?"</li>
+<li><b>Never run DoS, DDoS, stress or load tests.</b> AWS and Azure prohibit it absolutely. Put it in your RoE as excluded, in writing.</li>
+<li><b>Never scan an asset to "demonstrate value" before you're hired.</b> Passive OSINT from public sources is fine; an active scan is a s.66 offence. This is the single most common way a well-meaning founder gets a legal notice.</li>
+<li><b>Never touch Indian government, UIDAI, or bank assets</b> in any form of unsolicited testing. There is no "responsible disclosure" defence worth the risk here.</li>
+<li><b>Never exfiltrate real personal data.</b> Prove access with a count, a masked sample, or a screenshot with redaction — never a database dump. Under DPDP that dump makes you the breach.</li>
+<li><b>Never keep client data after the retention window.</b> Delete evidence on schedule and send a written deletion confirmation. Make it a selling point.</li>
+<li><b>Never name a client or publish a finding without written consent</b> — not on LinkedIn, not in a case study, not as "a leading fintech." Ask, get it in email, then publish.</li>
+<li><b>Never run intrusive checks on production without a signed window</b> and confirmation the client has a recent backup.</li>
+<li><b>Never use cracked or pirated tools.</b></li>
+<li><b>Never social-engineer employees without explicit written sign-off from HR and legal</b>, and never impersonate a government body, bank or real brand.</li>
+<li><b>Never sit on a critical finding until report day.</b> Out-of-band notification within hours — it is both ethical and the best upsell you will ever make.</li>
+<li><b>Never accept unlimited liability.</b> Cap it at the fee value, exclude consequential loss, carry PI insurance.</li>
+<li><b>Never claim empanelment, certification, or a client you don't have.</b></li>
+<li><b>Never let an autonomous AI agent roam.</b> Scope guard on, target list explicit, audit log running.</li>
+</ol>
+</div>
+
+<h3>Registration checklist</h3>
+<div class="tw"><table>
+<tr><th>Step</th><th>Cost</th><th>When</th></tr>
+<tr><td>Sole proprietorship + current account</td><td>₹0–2,000</td><td>Day 1</td></tr>
+<tr><td>GST registration</td><td>Free (portal)</td><td>Before ₹20L turnover, or immediately if clients demand invoices with GST</td></tr>
+<tr><td>LUT (export of services without IGST)</td><td>Free</td><td>Before your first foreign client — this is how you bill in USD cleanly</td></tr>
+<tr><td>LLP or Pvt Ltd</td><td>₹8,000–15,000</td><td>Month 4–8, or when a client's procurement demands a company</td></tr>
+<tr><td>Professional indemnity insurance</td><td>₹8,000–30,000/yr</td><td>Before first paid engagement ideally; absolutely before your first ₹1L+ client</td></tr>
+<tr><td>CERT-In empanelment</td><td>Significant, organisational</td><td>Year 3, optional</td></tr>
+</table></div>
+
+<h2 id="trust">13 · Trust when nobody knows you</h2>
+
+<p>This is your real problem, not competition. A stranger is asking a company for credentials to their production system. Here is how unknown testers become trusted ones — in order of impact per hour spent.</p>
+
+<div class="grid g2">
+<div class="card"><h4 style="margin-top:0">1. Publish a redacted sample report</h4><p style="margin-bottom:0">The highest-converting asset you will ever make. Take a deliberately vulnerable app (DVWA, Juice Shop, a lab target), test it properly, and produce the real deliverable — exec summary, findings, evidence, remediation, compliance mapping. Link it on your homepage. Buyers cannot judge your skill; they can judge your report, and they will.</p></div>
+<div class="card"><h4 style="margin-top:0">2. Fixed prices, published</h4><p style="margin-bottom:0">Almost every Indian competitor hides pricing. Publishing "Web app audit — ₹55,000, 5 working days, retest included" removes the fear of being fleeced and pre-qualifies every lead who contacts you.</p></div>
+<div class="card"><h4 style="margin-top:0">3. Findings write-ups, twice a week</h4><p style="margin-bottom:0">Anonymised, technique-focused: "how an IDOR in a coupon endpoint let any user apply another user's discount." Not thought-leadership. Actual findings. This is what makes a CTO think <i>this person actually tests things</i>.</p></div>
+<div class="card"><h4 style="margin-top:0">4. A CVE or a public disclosure</h4><p style="margin-bottom:0">One acknowledged CVE, or a credited disclosure to a known product, outranks three certifications in a technical buyer's mind. Do it through proper vendor disclosure channels — never through unsolicited testing of an Indian company.</p></div>
+<div class="card"><h4 style="margin-top:0">5. The paid mini-audit</h4><p style="margin-bottom:0">₹10,000–15,000, 1 day, external surface + cloud config. Low enough to approve without a committee, real enough to prove quality, and it converts to a full engagement roughly a third of the time. <b>This is your single best trust mechanism.</b> Never do it free — free work is valued at what it costs.</p></div>
+<div class="card"><h4 style="margin-top:0">6. Insurance + contract as a sales asset</h4><p style="margin-bottom:0">Lead with it: "We carry ₹25 lakh professional indemnity, we sign a DPDP data processing agreement, and all evidence is deleted in 90 days with written confirmation." Freelancers can't say this. It is how you charge 3× a Fiverr tester.</p></div>
+<div class="card"><h4 style="margin-top:0">7. Show up at null / OWASP chapters</h4><p style="margin-bottom:0">India's security community meets monthly in Bangalore, Pune, Delhi, Hyderabad and more. Give one 20-minute talk. Every serious Indian security consultancy was built on these rooms, and a talk buys more trust than a year of cold email.</p></div>
+<div class="card"><h4 style="margin-top:0">8. Borrow trust from a partner</h4><p style="margin-bottom:0">A compliance consultant, dev agency or MSP introducing you transfers their credibility to you instantly. In year one, borrowed trust closes more deals than earned trust. See the next section.</p></div>
+</div>
+
+<h2 id="clients">14 · Finding clients — 11 channels, ranked</h2>
+
+<div class="tw"><table>
+<tr><th>#</th><th>Channel</th><th>Why it works</th><th>Effort</th><th>Yield</th></tr>
+<tr><td>1</td><td><b>Compliance consultants (ISO 27001 / SOC 2)</b></td><td>They sell the certificate, can't do the technical test, and their client has a deadline. Offer 15% referral. One good partner = 2–4 engagements/month, forever.</td><td>Low</td><td class="t-g">HIGHEST</td></tr>
+<tr><td>2</td><td><b>Web / app dev agencies</b></td><td>Their clients ask "is it secure?" and they have no answer. White-label for them; they mark it up. India has tens of thousands of these agencies.</td><td>Low</td><td class="t-g">VERY HIGH</td></tr>
+<tr><td>3</td><td><b>Startups stuck on a vendor security questionnaire</b></td><td>They are losing a deal <i>right now</i>. Fastest close in the business. Find them in founder communities, LinkedIn posts asking for pentest vendors, accelerator Slack groups.</td><td>Med</td><td class="t-g">VERY HIGH</td></tr>
+<tr><td>4</td><td><b>Accelerator / VC portfolios</b></td><td>One intro to a portfolio manager reaches 30–80 companies who all face the same enterprise-buyer requirement.</td><td>Med</td><td class="t-g">HIGH</td></tr>
+<tr><td>5</td><td><b>MSPs and cloud consultants</b></td><td>They manage the infra and get asked for security assurance they can't produce.</td><td>Low</td><td class="t-b">HIGH</td></tr>
+<tr><td>6</td><td><b>Cyber insurance brokers</b></td><td>2026 underwriting is evidence-based; brokers need clients to produce proof of controls to bind or renew cover.</td><td>Med</td><td class="t-b">HIGH</td></tr>
+<tr><td>7</td><td><b>LinkedIn findings content</b></td><td>Slow to start, compounds hard. Two technical posts a week for six months builds inbound that never stops.</td><td>Med</td><td class="t-b">MED→HIGH</td></tr>
+<tr><td>8</td><td><b>Upwork / Contra / foreign freelance</b></td><td>Escapes the Indian price war. $25–65/hr entry band, rising with proof. Also where your first testimonials come from.</td><td>Med</td><td class="t-b">MED</td></tr>
+<tr><td>9</td><td><b>null / OWASP / BSides talks</b></td><td>Peer credibility + direct hiring-manager access.</td><td>Med</td><td class="t-b">MED</td></tr>
+<tr><td>10</td><td><b>Big-4 and empanelled firm overflow</b></td><td>They reject ₹50k deals daily. Ask their consultants to pass those on for a referral fee.</td><td>Low</td><td class="t-b">MED</td></tr>
+<tr><td>11</td><td><b>Cold outreach on a trigger</b></td><td>Only works with a specific trigger: they just raised funding, just launched an app, just published an AI feature, just posted a security job. Generic cold email dies.</td><td>High</td><td class="t-y">LOW–MED</td></tr>
+</table></div>
+
+<h4>The outreach that works (and the legal line inside it)</h4>
+<div class="card">
+<p style="margin-top:0"><b>Subject:</b> Your Series A + the security questionnaire that's coming</p>
+<p style="font-style:italic;color:var(--dim)">Hi [name] — congratulations on the raise. When you start selling to enterprise buyers, the first thing procurement will send is a security questionnaire asking for a recent penetration test report. Most teams find out about it during the deal and lose 4–6 weeks.<br><br>
+We do fixed-price web app + API audits for startups: ₹55,000, five working days, report formatted for enterprise buyers and ISO/SOC 2 auditors, one free retest within 30 days. Here's a real sample report: [link].<br><br>
+Want the 1-day ₹12,000 external check first to see how we work? — [name], [company]</p>
+</div>
+<div class="warn"><b>The legal line inside outreach:</b> you may reference <b>publicly visible, passively obtained</b> information (an expired certificate, a missing DMARC record, an exposed admin panel found via search engines). You may <b>not</b> run an active scan against them to generate a lead. That is unsolicited testing under s.66. If you want to show findings, run your scans against your own lab and show <i>that</i> as the sample.</div>
+
+<h2 id="objections">15 · "We don't want anyone testing us" — objection playbook</h2>
+
+<p>This is the fear you asked about, and it is real. Companies resist testing because they are afraid of breakage, exposure, cost, and being made to look bad internally. Each fear has a specific answer.</p>
+
+<div class="tw"><table>
+<tr><th>What they say</th><th>What they mean</th><th>What you say</th></tr>
+<tr><td>"It might break our site."</td><td>Fear of downtime and blame</td><td>"We start read-only. Passive recon and cloud config review touch nothing. Anything intrusive runs only in a window you approve, with rate limits, and we stop on one phone call. I'll send you the exact list of excluded techniques before we start."</td></tr>
+<tr><td>"We have a firewall / Cloudflare."</td><td>They think perimeter = security</td><td>"A WAF blocks known payload patterns. It cannot see that user A can read user B's invoice by changing an ID, or that a coupon can be applied twice. Those are the findings that actually cost money, and they look like normal traffic."</td></tr>
+<tr><td>"Too expensive."</td><td>Can't justify the budget line</td><td>"Start with the ₹12,000 one-day external check. If it finds nothing meaningful, you've spent twelve thousand rupees and you have a report for your insurer. If it finds something, you'll know why the full audit is worth it."</td></tr>
+<tr><td>"We're too small to be a target."</td><td>Genuine belief</td><td>"Nobody is targeting you specifically — that's the point. Mass automated scanning doesn't check company size. Credential stuffing and exposed buckets are indiscriminate."</td></tr>
+<tr><td>"Our developers already checked."</td><td>Protecting the team's ego</td><td>"I'd expect them to have caught most things — good teams do. But your enterprise buyer, your auditor and your insurer all require it to be <i>independent</i>. This isn't about doubting your team, it's about producing evidence someone else will accept."</td></tr>
+<tr><td>"What if you steal our data?"</td><td>The real fear, rarely said out loud</td><td>"Fair question. Mutual NDA, a DPDP data processing agreement, ₹25 lakh professional indemnity insurance, we never extract real personal data — we prove access with masked samples — and all evidence is deleted in 90 days with written confirmation. Here's the certificate."</td></tr>
+<tr><td>"Send us a proposal, we'll get back."</td><td>No trigger, no urgency</td><td>Do not chase. Ask: "Is there a deadline driving this — an audit, a customer questionnaire, an insurance renewal?" If there's no date, there's no deal. Park them in a nurture list and go find someone with a date.</td></tr>
+<tr><td>"Are you CERT-In empanelled?"</td><td>They're regulated, or think they are</td><td>"No. If you're a SEBI/RBI-regulated entity, you legally need one for the statutory audit. What we do is the pre-audit testing and remediation so that audit passes first time — and that's usually a third of the cost."</td></tr>
+</table></div>
+
+<div class="good"><b>The single reframe that sells more than anything above:</b> stop selling security. Sell the <b>unblocked deal</b>, the <b>passed audit</b>, the <b>renewed insurance policy</b>, the <b>shipped app</b>. Nobody has a budget line for "feeling safe." Everybody has a budget line for "the thing blocking ₹40 lakh of revenue."</div>
+
+<h2 id="money">16 · Pricing, unit economics, path to ₹3 lakh/month</h2>
+
+<h4>Your published price sheet (copy this)</h4>
+<div class="tw"><table>
+<tr><th>Package</th><th>Price</th><th>Delivery</th><th>Your effort</th><th>Margin</th></tr>
+<tr><td>External surface check (lead magnet, paid)</td><td>₹12,000</td><td>1 day</td><td>2 hrs (mostly automated)</td><td>96%</td></tr>
+<tr><td>Cloud configuration review</td><td>₹45,000</td><td>2 days</td><td>6 hrs</td><td>93%</td></tr>
+<tr><td>Web app + API audit (standard)</td><td>₹55,000</td><td>5 days</td><td>3 days</td><td>90%</td></tr>
+<tr><td>Web app + API audit (complex / multi-role)</td><td>₹95,000</td><td>8 days</td><td>5 days</td><td>88%</td></tr>
+<tr><td>Mobile app (Android + iOS)</td><td>₹65,000</td><td>5 days</td><td>3 days</td><td>89%</td></tr>
+<tr><td>LLM / AI red team add-on</td><td>+₹40,000</td><td>+2 days</td><td>1 day</td><td>92%</td></tr>
+<tr><td>LLM / AI red team (standalone)</td><td>₹1,20,000</td><td>6 days</td><td>4 days</td><td>90%</td></tr>
+<tr><td>Continuous testing retainer</td><td>₹40,000/mo</td><td>ongoing</td><td>~3 days/mo</td><td>92%</td></tr>
+<tr><td>Fractional security lead (vCISO)</td><td>₹90,000/mo</td><td>ongoing</td><td>~5 days/mo</td><td>95%</td></tr>
+<tr><td>Foreign web app engagement</td><td>$3,000</td><td>7 days</td><td>4 days</td><td>93%</td></tr>
+</table></div>
+
+<h4>Fixed monthly costs</h4>
+<p>VPS ₹900 · domain/email ₹200 · LLM credits ₹1,500 · Burp amortised ₹3,300 · insurance amortised ₹1,200 · accounting ₹2,000 = <b>~₹9,000–10,000/month.</b> That is your entire cost base. Everything above it is yours.</p>
+
+<h4>Three routes to ₹2–3 lakh/month</h4>
+<div class="grid g3">
+<div class="card"><h4 style="margin-top:0">Route A — project mix</h4><p style="margin-bottom:0">3 web apps (₹55k) + 1 cloud review (₹45k) = <b>₹2.1L</b><br><span style="color:var(--dim)">~11 working days. Downside: starts from zero every month.</span></p></div>
+<div class="card"><h4 style="margin-top:0">Route B — retainer core <span class="tag t-g" style="float:none">best</span></h4><p style="margin-bottom:0">4 retainers (₹40k) + 1 project (₹55k) = <b>₹2.15L</b><br><span style="color:var(--dim)">~15 days but predictable, and month 13 starts at ₹1.6L instead of ₹0.</span></p></div>
+<div class="card"><h4 style="margin-top:0">Route C — foreign-weighted</h4><p style="margin-bottom:0">2 foreign engagements ($3,000) + 1 Indian retainer = <b>₹5.3L+</b><br><span style="color:var(--dim)">Hardest to start, highest ceiling. Aim here by month 9.</span></p></div>
+</div>
+
+<h4>Realistic 12-month ramp (be honest with yourself about this)</h4>
+<div class="tw"><table>
+<tr><th>Month</th><th>Revenue</th><th>What's actually happening</th></tr>
+<tr><td>1–2</td><td>₹0 – 30,000</td><td>Sample report, website, 3 partner conversations, first ₹12k mini-audits. Expect rejection.</td></tr>
+<tr><td>3–4</td><td>₹40,000 – 90,000</td><td>First 2 real engagements, usually via a partner. First testimonial.</td></tr>
+<tr><td>5–6</td><td>₹90,000 – 1,50,000</td><td>Partner channel producing. First retainer converts from a project client.</td></tr>
+<tr><td>7–9</td><td>₹1,50,000 – 2,50,000</td><td>2–3 retainers live. First foreign client. Automation now saving 40% of delivery time.</td></tr>
+<tr><td>10–12</td><td>₹2,50,000 – 4,00,000</td><td>4+ retainers, referrals inbound, deciding whether to hire the first analyst.</td></tr>
+</table></div>
+
+<div class="warn"><b>Payment terms — non-negotiable, especially with Indian SMBs:</b> 50% advance before testing starts, 50% before the report is released. Not after. The report is the leverage; once it's delivered you have none. Late fee clause in the MSA. This single policy prevents the most common failure mode of small Indian service businesses.</div>
+
+<h2 id="give">17 · What to give, what never to give</h2>
+
+<div class="grid g2">
+<div class="card" style="border-color:#14532d"><h4 style="margin-top:0;color:var(--good)">Give generously</h4>
+<ul style="margin-bottom:0">
+<li>Full findings with real reproduction steps</li>
+<li>Remediation with actual code/config snippets</li>
+<li>One free retest within 30 days, in writing</li>
+<li>A 30-minute walkthrough call with their developers</li>
+<li>The one-page attestation letter they can forward to buyers</li>
+<li>Compliance mapping (ISO / SOC 2 / PCI / DPDP)</li>
+<li>Immediate out-of-band alert on any critical finding</li>
+<li>Written confirmation that evidence was deleted</li>
+<li>Honest "we found nothing critical" when that's true</li>
+</ul></div>
+<div class="card" style="border-color:#5c1a1a"><h4 style="margin-top:0;color:var(--bad)">Never give</h4>
+<ul style="margin-bottom:0">
+<li>Raw scanner output as a report (that's a ₹95/month product)</li>
+<li>Your scripts, templates, or platform access</li>
+<li>Unlimited retests or open-ended support</li>
+<li>Fixing the code yourself for free — that's a separate paid engagement, and fixing what you audited compromises your independence</li>
+<li>Scope creep: "can you also check this other app?" = new SOW</li>
+<li>Work before the advance clears</li>
+<li>A discount for "we'll give you more work later"</li>
+<li>Testing outside the signed scope, ever, even as a favour</li>
+<li>Guarantees that they are "secure" or "unhackable" — you certify a point-in-time assessment, nothing more</li>
+<li>Free work to prove yourself — charge ₹12,000 instead</li>
+</ul></div>
+</div>
+
+<h2 id="product">18 · Should you build the testing suite as a product?</h2>
+
+<div class="card"><h3 style="margin-top:0">Selling your automation as a SaaS <span class="score" style="border-color:var(--warn);color:var(--warn);background:#1c1503">5.5 / 10</span></h3>
+<p><b>Against it:</b> Astra ($1,999–5,999/yr per target, AI-augmented but human-led), Intruder ($299–499/mo, AI web app pentests from $3,500), Pentest-Tools ($95–190/mo), plus Cobalt, HackerOne, Detectify and a dozen funded PTaaS platforms. They have years of engineering, security researchers, integrations, and marketing budgets. A solo-built scanner competes on nothing.</p>
+<p><b>For it, narrowly:</b> none of them is priced or positioned for the <b>Indian SMB at ₹5,000–8,000/month</b> with local support, INR billing, GST invoicing and compliance mapping to Indian frameworks. That is a real gap — but it is a gap worth entering only <b>after</b> your services business is producing ₹2L+/month and has taught you exactly which 6 features clients ask for.</p>
+<p style="margin-bottom:0"><b>Verdict:</b> build the platform as your internal delivery engine (9.0/10). Sell it as a product only in year 2, and even then sell it as <b>"managed continuous testing"</b> — software plus a human — not as raw software. The human is the moat; the software is the margin.</p></div>
+
+<h2 id="swot">19 · SWOT</h2>
+<div class="grid g2">
+<div class="card" style="border-color:#14532d"><h4 style="margin-top:0;color:var(--good)">Strengths</h4><ul style="margin-bottom:0">
+<li>Skill already exists — no learning curve to monetise</li>
+<li>₹0 software cost; entire stack is open source</li>
+<li>85–92% gross margin, near-zero fixed costs</li>
+<li>No licence, no approval, no inventory, no space</li>
+<li>Advance payment model — no receivables risk if enforced</li>
+<li>Automation compounds: every engagement makes the next cheaper</li>
+<li>Foreign clients reachable from day one</li>
+</ul></div>
+<div class="card" style="border-color:#5c1a1a"><h4 style="margin-top:0;color:var(--bad)">Weaknesses</h4><ul style="margin-bottom:0">
+<li>Unknown brand in a trust-driven market — the core problem of year 1</li>
+<li>Solo = capacity ceiling ~5 engagements/month</li>
+<li>No CERT-In empanelment closes the highest-paying Indian segments</li>
+<li>Revenue lumpy until retainers exist</li>
+<li>You are the product; illness or burnout stops income</li>
+<li>Sales skill required, and it is not the same skill as testing</li>
+</ul></div>
+<div class="card" style="border-color:#134e5a"><h4 style="margin-top:0;color:var(--acc2)">Opportunities</h4><ul style="margin-bottom:0">
+<li>DPDP full compliance 13 May 2027 — a countdown selling for you</li>
+<li>800k–1M professional shortage = structurally unmet demand</li>
+<li><b>LLM/AI red teaming is genuinely open in India right now</b></li>
+<li>Evidence-based cyber insurance underwriting creates a new buyer</li>
+<li>Compliance consultants need a technical partner and can't find one</li>
+<li>18% CAGR market; 22.6% CAGR in PTaaS specifically</li>
+<li>USD arbitrage: $25–65/hr entry vs $200–300/hr Western incumbents</li>
+</ul></div>
+<div class="card" style="border-color:#5b4508"><h4 style="margin-top:0;color:var(--warn)">Threats</h4><ul style="margin-bottom:0">
+<li>Commoditisation of the checkbox pentest from both directions</li>
+<li>AI tooling compressing prices at the low end year over year</li>
+<li>Funded PTaaS platforms moving down-market into SMB</li>
+<li>One catastrophic engagement (breaking prod, leaking data) ends the business</li>
+<li>Legal exposure if paperwork discipline ever slips</li>
+<li>Client payment delays if you drop the advance policy</li>
+<li>Regulators extending empanelment requirements to more sectors</li>
+</ul></div>
+</div>
+
+<h2 id="risk">20 · How this business dies — the five failure modes</h2>
+<ol>
+<li><b>You build the platform for nine months and never sell anything.</b> By far the most likely death for a technical founder. Antidote: first ten engagements delivered with scripts and a template, no exceptions.</li>
+<li><b>You take a job without proper authorisation and something goes wrong.</b> One s.43/s.66 notice and you are finished, insured or not. Antidote: signed scope + RoE + authorisation, every single time, no favours for friends.</li>
+<li><b>You break production during a test.</b> Antidote: RoE with excluded techniques, approved windows, rate limits, confirmed backups, a stop-phone-number, and read-only-first sequencing.</li>
+<li><b>You compete on price and land at ₹25,000 per app forever.</b> Antidote: never be the cheapest; be the fastest and the clearest. Publish prices and hold them.</li>
+<li><b>You stay a project shop and restart at zero every month.</b> Antidote: every project engagement ends with a retainer offer, made on the walkthrough call while they still feel the risk.</li>
+</ol>
+
+<h2 id="plan">21 · 90-day and 12-month plan</h2>
+
+<h4>Days 1–14 — become sellable</h4>
+<ul>
+<li>Domain, one-page site with <b>published fixed prices</b>, business email</li>
+<li>Test a deliberately vulnerable app; produce the <b>redacted sample report</b> and link it publicly</li>
+<li>Write MSA + SOW + RoE + authorisation letter + NDA + DPA templates</li>
+<li>Spin up scanning VPS; script the recon+scan chain end to end; install DefectDojo</li>
+<li>Sole proprietorship + current account; get PI insurance quotes</li>
+</ul>
+
+<h4>Days 15–45 — first money</h4>
+<ul>
+<li>Contact <b>15 compliance consultants</b> and <b>20 dev agencies</b> with a partner offer (15% referral)</li>
+<li>Launch the ₹12,000 one-day external check as the entry product</li>
+<li>Two LinkedIn findings posts per week, without fail</li>
+<li>Create one Upwork/Contra profile with the sample report attached</li>
+<li>Target: <b>3 paid mini-audits</b></li>
+</ul>
+
+<h4>Days 46–90 — first real engagements</h4>
+<ul>
+<li>Convert 2 mini-audits into full ₹55k engagements</li>
+<li>Build the report generator (findings DB → PDF). This is the automation with the best payback.</li>
+<li>Add the <b>LLM red team add-on</b> to your price sheet and post one write-up about testing an AI chatbot</li>
+<li>Speak at a null/OWASP chapter meet</li>
+<li>Buy Burp Pro from client #3's payment; incorporate LLP if procurement demands it</li>
+<li>Target: <b>₹1,50,000 cumulative revenue and one retainer signed</b></li>
+</ul>
+
+<h4>Months 4–12</h4>
+<ul>
+<li><b>M4–6:</b> retainer engine — scheduling, diffing, monthly posture email. Convert every project client to a retainer at the walkthrough call. First foreign client via Upwork.</li>
+<li><b>M7–9:</b> pick a vertical (healthtech / fintech-adjacent non-regulated / SaaS) and rebuild the site around it. Client portal if you have 5 retainers. LLM red teaming becomes a named service line, not an add-on.</li>
+<li><b>M10–12:</b> hire the first analyst for triage and report drafting (₹35–50k/month) so you only do exploitation and client calls. Decide on the year-3 empanelment question with real numbers in hand.</li>
+</ul>
+
+<h2 id="faq">22 · FAQ — 32 questions</h2>
+
+<div class="card">
+<div class="faq"><div class="q">Do I need a licence or certificate to sell security testing in India?</div>No. It is not a licensed profession. Business registration and GST like any service. Only CERT-In empanelment matters, and only for regulated buyers.</div>
+<div class="faq"><div class="q">Can I really start under ₹20,000?</div>Yes — ₹6,000–12,000 realistically. The whole tool stack is free; you're paying for a VPS, a domain and email.</div>
+<div class="faq"><div class="q">Do I need Burp Suite?</div>Not to start. Caido Community + ZAP + Nuclei cover you. Buy Burp Pro (~₹40k/yr) from your third client's payment, mainly for extensions like Autorize and for the trust signal.</div>
+<div class="faq"><div class="q">Can I just use Strix or another open-source AI agent?</div>Use it — for the fast breadth pass. Never as the deliverable. It costs LLM tokens ($5–50 per deep run), it hallucinates, and it misses business logic entirely. Human-validate everything before it enters a report.</div>
+<div class="faq"><div class="q">Can the whole engagement be automatic — link, creds, done?</div>About 55–65% of a web app engagement, and up to 80% of a cloud review. The remaining part — business logic, IDOR across roles, chaining, impact judgement — is the part clients are paying for. Automation is your margin, not your product.</div>
+<div class="faq"><div class="q">Is there real money in this?</div>Yes. India cybersecurity $6.56B in 2026 → $15.06B by 2031 at 18.07% CAGR, PTaaS growing 22.6% CAGR globally, and India short 800k–1M professionals. ₹2–3 lakh/month is a realistic month 7–12 target for one person.</div>
+<div class="faq"><div class="q">Is there competition?</div>Yes, substantial. Hundreds of Indian audit shops, funded global PTaaS platforms, thousands of freelancers. The soft spots are speed, price transparency, included retests, LLM/AI testing, and vertical depth.</div>
+<div class="faq"><div class="q">Should I do hardware testing?</div>Not in year 1. Tiny Indian buyer pool, ₹1.5–4 lakh lab cost, needs physical space, cannot be automated, devices must be shipped to you, and the compliance money routes through accredited labs (TEC/MTCTE/IC3S), not consultants. Sell "IoT ecosystem testing" — app + cloud + update mechanism — instead.</div>
+<div class="faq"><div class="q">Should I offer general QA testing too?</div>No. Different buyer, worse margins, and it destroys your positioning as a specialist.</div>
+<div class="faq"><div class="q">Is LLM red teaming actually a market or hype?</div>Both. Small buyer pool today, rising fast, almost nobody serving Indian mid-market, prompt injection is #1 on OWASP LLM Top 10 for the second year. Attach it as a ₹40k add-on now; make it a standalone line as demand grows.</div>
+<div class="faq"><div class="q">What if a client asks whether I'm CERT-In empanelled?</div>Say no, immediately and plainly. Then offer pre-audit remediation testing so their statutory audit passes first time. Never fake it — it's checkable in 30 seconds.</div>
+<div class="faq"><div class="q">Can I scan a company's website to show them their problems and win the deal?</div>No. Unsolicited active testing is an offence under IT Act s.66. Passive OSINT from public sources is fine. Show findings from your own lab instead.</div>
+<div class="faq"><div class="q">What paperwork must exist before I touch anything?</div>MSA, SOW with exact assets, Rules of Engagement, a signed authorisation letter from someone who can bind the company, mutual NDA, and a DPDP data processing agreement.</div>
+<div class="faq"><div class="q">Whose signature counts as authorisation?</div>Someone who owns the asset and can bind the company — CTO, CEO, CISO. Not a developer, not a project manager, not a vendor.</div>
+<div class="faq"><div class="q">Can I test a client's app hosted on shared hosting or a third-party SaaS?</div>Only with that provider's permission too. The client's consent covers the client's assets, not somebody else's infrastructure.</div>
+<div class="faq"><div class="q">Am I allowed to test things on AWS and Azure?</div>Yes for your client's own resources — AWS permits testing on a defined service list and requires a Simulated Events form for covert simulations or C2 hosting. <b>DoS/DDoS simulation is prohibited outright on both AWS and Azure.</b></div>
+<div class="faq"><div class="q">What is my biggest legal risk?</div>Testing outside scope, and holding client data. Scope guard in your tooling, signed asset lists, masked evidence only, 90-day deletion with written confirmation.</div>
+<div class="faq"><div class="q">Do I need insurance?</div>Not legally, but yes practically. ₹25L cover runs ₹8,000–18,000/yr; ₹50L for a freelance IT consultant ₹10,000–30,000/yr. It also doubles as a sales asset that freelancers can't match.</div>
+<div class="faq"><div class="q">Sole proprietorship or company?</div>Start as a proprietorship. Move to LLP or Pvt Ltd (₹8–15k) when procurement demands it or when you want liability separation — usually month 4–8.</div>
+<div class="faq"><div class="q">How do I bill foreign clients?</div>GST registration + LUT (both free) lets you export services without IGST. Get paid via Wise/Payoneer or a bank SWIFT arrangement; keep FIRC/FIRA records.</div>
+<div class="faq"><div class="q">How do I get trusted when nobody knows me?</div>Redacted sample report on your homepage, published fixed prices, twice-weekly findings write-ups, a paid ₹12,000 mini-audit as the entry point, insurance and contracts up front, and one partner who introduces you.</div>
+<div class="faq"><div class="q">What is the single best client channel?</div>Compliance consultants doing ISO 27001 and SOC 2. They sell the certificate, can't do the test, and their client is on a deadline. One good partner is worth more than a year of cold email.</div>
+<div class="faq"><div class="q">How do I handle "we don't want to be tested"?</div>Start read-only (cloud config, passive external), give them the excluded-techniques list in writing, and offer the ₹12,000 one-day check. Then find their real trigger — an audit, a customer questionnaire, an insurance renewal. No trigger, no deal.</div>
+<div class="faq"><div class="q">Should I do free work to get started?</div>No. Charge ₹12,000. Free work is valued at what it costs, and free clients are the most demanding ones you will ever have.</div>
+<div class="faq"><div class="q">What are my payment terms?</div>50% before testing, 50% before report release. Never after delivery — the report is your only leverage.</div>
+<div class="faq"><div class="q">What if I find nothing?</div>Say so clearly and explain what you tested and how. Then sell the retainer — "nothing today" is a point-in-time result, and they now understand that. Never invent findings to justify a fee; that reputation kills faster than an empty report.</div>
+<div class="faq"><div class="q">Should I build the SaaS product?</div>Not first. Internal tool 9.0/10, sold as SaaS 5.5/10 against Astra/Intruder/Pentest-Tools. If you ever sell it, sell "managed continuous testing" — software plus a human.</div>
+<div class="faq"><div class="q">Is OSCP worth it?</div>Real credibility, $1,699–2,749 (~₹1.5–2.4 lakh). Buy it from profits in year 2. Cheaper credibility first: BSCP, a published CVE, HTB/THM rank, and your own write-ups.</div>
+<div class="faq"><div class="q">How many engagements can one person handle?</div>4–6 per month with automation, if you protect two days a week for sales. Beyond that you need an analyst for triage and report drafting.</div>
+<div class="faq"><div class="q">When do I hire?</div>When you've turned down work two months running. First hire is a junior analyst for triage and report drafting (₹35–50k/month) — not another senior tester.</div>
+<div class="faq"><div class="q">What's the fastest path to my first ₹1 lakh?</div>Two partner conversations that produce three ₹12,000 mini-audits, one of which converts to a ₹55,000 full engagement, plus one ₹45,000 cloud review. Achievable in 45–60 days if you start outreach in week two.</div>
+<div class="faq"><div class="q">What would make me abandon this?</div>If after 90 days of real outreach — 35+ partner conversations, published sample report, weekly content — you have zero paid mini-audits, the problem is positioning or sales, not the market. Fix those before quitting, because the market data says the demand exists.</div>
+</div>
+
+<h2 id="sources">23 · Sources</h2>
+<div class="card src">
+<p><b>Market &amp; pricing:</b> Mordor Intelligence — India Cybersecurity Market · IMARC — India Cybersecurity Market · MarketsandMarkets — PTaaS Market ($0.72B 2026 → $1.98B 2031) · Persistence Market Research — PTaaS ($1.20B 2026 → $4.88B 2033) · CyberOps, TCSA, ECS Infotech, BM Infotrade, AB7 Solutions, Cybersecify — VAPT cost India 2026 · Astra — pentest cost guide · BlazeInfosec, BrightDefense, DeepStrike — 2026 pricing · SalaryExpert / ERI / Upwork — tester rates</p>
+<p><b>Competition:</b> Astra Security pricing (codeant.ai, Capterra, MakerStack) · Intruder pricing (G2, TrustRadius, SaaSworthy) · Pentest-Tools.com pricing · Synack, DeepStrike, Red Sentry — top pentest companies 2026 · Cybersecurity Dive — 2026 State of Pentesting</p>
+<p><b>Regulation:</b> SEBI CSCRF FAQs (sebi.gov.in, Jun 2025) · Eventus Security, Security Brigade, Indusface, vCISOdesk — CSCRF guides · Astra, SecureLayer7, api4soc2, Penetolabs — CERT-In empanelment · TEC MTCTE (tec.gov.in, eservices.dot.gov.in) · Aleph India / InstaCertify — ILAC extension to 30 Jun 2026</p>
+<p><b>Law:</b> IT Act 2000 ss.43, 66, 66C, 66D, 72, 72A · Boston Institute of Analytics — legal boundaries of ethical hacking in India · LexOrbis / Conventus Law — Cybersecurity Laws and Regulations India · ApniLaw — s.43 explainer · AWS Penetration Testing Policy (aws.amazon.com/security/penetration-testing) · Azure penetration testing rules of engagement</p>
+<p><b>Tools:</b> OWASP ZAP · Caido · Nuclei (26.9k stars) · Trivy (32.2k stars) · Prowler (600 AWS checks / 84 services / 44 frameworks) · ScoutSuite (~200 checks, unmaintained since May 2024) · MobSF · Semgrep · DefectDojo · Strix (usestrix/strix, ~36k stars; Help Net Security, 17 Nov 2025) · garak (NVIDIA) · PyRIT (Microsoft) · Promptfoo (MIT; acquired by OpenAI Mar 2026, ~$86M) · DeepTeam (Confident AI) · AppSecSanta — 64 open source AppSec tools · ToolRadar — Burp Suite pricing 2026</p>
+<p><b>Automation limits:</b> XHack — AI penetration testing agent comparison 2026 · FireCompass — agentic vs human pentesting · PGI — why AI won't replace human pentesters · Astra — autonomous AI agents for pentesting · StackHawk — AI pentesting tools</p>
+<p><b>Insurance &amp; trust:</b> Mitigata — PI insurance cost India 2026 · Ditto — professional indemnity cover &amp; cost · Cyber Advisors / Cyvatar / HUB Tech — 2026 cyber insurance controls and evidence-based underwriting</p>
+</div>
+
+<footer>
+Compiled 22 August 2026 · Prices, deadlines and tool versions verified at time of writing · Regulatory dates change — re-verify DPDP, SEBI and EU AI Act timelines before quoting them to a client.
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,170 @@
+---
+import { site } from '../data/site';
+
+const year = new Date().getFullYear();
+
+const columns = [
+  {
+    heading: 'Services',
+    links: [
+      { href: '/services/web-application-and-api', label: 'Web application and API' },
+      { href: '/services/cloud-security-review', label: 'Cloud security review' },
+      { href: '/services/mobile-application', label: 'Mobile application' },
+      { href: '/services/llm-and-ai-red-teaming', label: 'LLM and AI red teaming' },
+      { href: '/services/compliance-testing', label: 'Compliance-attached testing' },
+      { href: '/services/continuous-testing', label: 'Continuous testing' },
+    ],
+  },
+  {
+    heading: 'Evidence',
+    links: [
+      { href: '/sample-report', label: 'Sample report' },
+      { href: '/how-we-work', label: 'Methodology and safety controls' },
+      { href: '/pricing', label: 'Pricing (INR)' },
+      { href: '/pricing/usd', label: 'Pricing (USD)' },
+      { href: '/insights', label: 'Insights' },
+    ],
+  },
+  {
+    heading: 'Legal',
+    links: [
+      { href: '/legal/privacy', label: 'Privacy notice' },
+      { href: '/legal/terms', label: 'Terms of use' },
+      { href: '/legal/responsible-disclosure', label: 'Responsible disclosure' },
+      { href: '/.well-known/security.txt', label: 'security.txt' },
+    ],
+  },
+];
+---
+
+<footer class="site-footer">
+  <div class="page">
+    <div class="footer-grid">
+      <div class="footer-identity">
+        <p class="footer-wordmark">{site.wordmark}</p>
+        <p class="footer-line">
+          Independent security assessment. We do not build or operate the systems we test.
+        </p>
+        <p class="footer-line">
+          <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>
+        </p>
+        <p class="footer-line">
+          Overlap with US Eastern {site.overlapHours.usEastern}, with the UK {site.overlapHours.unitedKingdom}.
+        </p>
+      </div>
+
+      {
+        columns.map((column) => (
+          <nav aria-label={column.heading}>
+            <h2>{column.heading}</h2>
+            <ul>
+              {column.links.map((link) => (
+                <li>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))
+      }
+    </div>
+
+    <p class="footer-note">
+      {site.brandName} is not empanelled by CERT-In. Entities regulated by the RBI, SEBI or IRDAI
+      need an empanelled auditor for their statutory audits; we do the pre-audit testing and the
+      remediation verification so that audit passes first time.
+    </p>
+
+    <p class="footer-legal">
+      © {year}{' '}
+      {site.legalEntity.awaitingOwner ? site.brandName : site.legalEntity.name}. All rights reserved.
+      {
+        site.legalEntity.awaitingOwner && (
+          <span class="footer-pending"> Registered entity details to be published on incorporation.</span>
+        )
+      }
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--rule);
+    margin-top: var(--space-2xl);
+    padding-block: var(--space-xl) var(--space-l);
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+  }
+
+  .footer-grid {
+    display: grid;
+    gap: var(--space-l) var(--space-xl);
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 60rem) {
+    .footer-grid {
+      grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    }
+  }
+
+  .footer-wordmark {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: var(--space-2xs);
+  }
+
+  .footer-line {
+    margin: 0 0 var(--space-2xs);
+    max-width: 30ch;
+  }
+
+  h2 {
+    font-family: var(--font-body);
+    font-size: var(--step--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: var(--space-2xs);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li {
+    margin-bottom: 0.3rem;
+    max-width: none;
+  }
+
+  a {
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  .footer-note {
+    margin-top: var(--space-l);
+    padding-top: var(--space-s);
+    border-top: 1px solid var(--rule);
+    max-width: 62ch;
+  }
+
+  .footer-legal {
+    margin: var(--space-s) 0 0;
+    color: var(--ink-faint);
+    max-width: none;
+  }
+
+  .footer-pending {
+    font-style: italic;
+  }
+</style>

@@ -1,0 +1,79 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/base-layout.astro';
+import CommandPalette from '../../components/command-palette.astro';
+
+export async function getStaticPaths() {
+  const pages = await getCollection('legal');
+  return pages.map((page) => ({ params: { slug: page.id }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const { Content } = await render(page);
+
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+---
+
+<BaseLayout title={page.data.title} description={page.data.summary} path={`/legal/${page.id}`}>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Legal</p>
+      <h1>{page.data.title}</h1>
+      <p class="updated">Last updated {dateFormat.format(page.data.updatedAt)}</p>
+
+      {
+        !page.data.lawyerReviewed && (
+          <div class="draft-notice">
+            <p>
+              <strong>Draft.</strong> This text has not yet been reviewed by a qualified lawyer and
+              placeholders in square brackets are not yet filled. It is published so you can see the
+              position we intend to take. The version that governs any engagement is the one in the
+              executed engagement documents.
+            </p>
+          </div>
+        )
+      }
+
+      <div class="prose legal-body">
+        <Content />
+      </div>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 22ch;
+  }
+
+  .updated {
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .legal-body {
+    margin-top: var(--space-l);
+  }
+
+  .legal-body :global(h2) {
+    font-size: var(--step-1);
+    margin-top: var(--space-xl);
+    padding-top: var(--space-s);
+    border-top: 1px solid var(--rule);
+  }
+
+  .legal-body :global(h3) {
+    font-size: var(--step-0);
+    font-family: var(--font-body);
+    margin-top: var(--space-l);
+  }
+</style>

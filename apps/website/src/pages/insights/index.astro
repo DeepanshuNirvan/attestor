@@ -1,0 +1,178 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/base-layout.astro';
+import CommandPalette from '../../components/command-palette.astro';
+import { readingMinutes } from '../../data/reading-time';
+
+const posts = (await getCollection('insights', ({ data }) => data.published)).sort(
+  (a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime(),
+);
+
+const tags = [...new Set(posts.flatMap((post) => post.data.tags))].sort();
+
+const dateFormat = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+---
+
+<BaseLayout
+  title="Insights"
+  description="Write-ups from real engagements: what actually finds bugs, how findings chain, and what auditors and enterprise buyers reject."
+  path="/insights"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Insights</p>
+      <h1>Write-ups, not thought leadership</h1>
+      <p class="lede">
+        Findings we keep seeing, techniques that earn their time, and the parts of this work that are
+        less settled than people pretend. No predictions, no statistics without a source.
+      </p>
+
+      <div class="filters" data-insight-filters>
+        <button type="button" class="filter is-active" data-tag="">All</button>
+        {tags.map((tag) => <button type="button" class="filter" data-tag={tag}>{tag}</button>)}
+      </div>
+
+      <ul class="post-list" data-insight-list>
+        {
+          posts.map((post) => (
+            <li data-tags={post.data.tags.join(' ')}>
+              <p class="post-meta">
+                <time datetime={post.data.publishedAt.toISOString()}>
+                  {dateFormat.format(post.data.publishedAt)}
+                </time>
+                <span aria-hidden="true"> · </span>
+                <span>{readingMinutes(post.body ?? '')} min read</span>
+              </p>
+              <h2><a href={`/insights/${post.id}`}>{post.data.title}</a></h2>
+              <p>{post.data.summary}</p>
+              <p class="post-tags">
+                {post.data.tags.map((tag) => (
+                  <span class="tag">{tag}</span>
+                ))}
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="empty" data-insight-empty hidden>No write-ups with that tag yet.</p>
+
+      <p class="feed"><a href="/rss.xml">RSS feed</a></p>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<script>
+  const filters = document.querySelector<HTMLElement>('[data-insight-filters]');
+  const list = document.querySelector<HTMLElement>('[data-insight-list]');
+  const empty = document.querySelector<HTMLElement>('[data-insight-empty]');
+
+  if (filters && list) {
+    filters.addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-tag]');
+      if (!button) return;
+
+      for (const other of filters.querySelectorAll('.filter')) other.classList.remove('is-active');
+      button.classList.add('is-active');
+
+      const tag = button.dataset.tag ?? '';
+      let shown = 0;
+      for (const item of list.querySelectorAll<HTMLElement>('li')) {
+        const matches = !tag || (item.dataset.tags ?? '').split(' ').includes(tag);
+        item.hidden = !matches;
+        if (matches) shown += 1;
+      }
+      if (empty) empty.hidden = shown > 0;
+    });
+  }
+</script>
+
+<style>
+  h1 {
+    max-width: 18ch;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: var(--space-l) 0 0;
+    padding-bottom: var(--space-s);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .filter {
+    background: none;
+    border: 1px solid var(--rule);
+    color: var(--ink-muted);
+    font-size: var(--step--1);
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+  }
+
+  .filter:hover {
+    border-color: var(--rule-strong);
+    color: var(--ink);
+  }
+
+  .filter.is-active {
+    background: var(--accent-wash);
+    border-color: var(--accent);
+    color: var(--accent-deep);
+    font-weight: 600;
+  }
+
+  .post-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .post-list > li {
+    border-bottom: 1px solid var(--rule);
+    padding-block: var(--space-l);
+    max-width: none;
+  }
+
+  .post-meta {
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 0.3rem;
+  }
+
+  .post-list h2 {
+    font-size: var(--step-2);
+    margin-bottom: 0.4rem;
+  }
+
+  .post-list h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .post-list h2 a:hover {
+    color: var(--accent);
+  }
+
+  .post-tags {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .feed {
+    margin-top: var(--space-l);
+    font-size: var(--step--1);
+  }
+</style>

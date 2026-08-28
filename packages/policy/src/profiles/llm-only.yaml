@@ -1,0 +1,34 @@
+description: >-
+  Standalone LLM and AI red teaming. No web scanning of any kind: the only target is the model
+  endpoint or the application in front of it.
+modules: [llm]
+intensity: thorough
+phases:
+  preLogin: true
+  postLogin: true
+readOnlyMode: false
+accessControlMatrix:
+  enabled: false
+rateLimits:
+  globalRequestsPerSecond: 4
+  perTargetRequestsPerSecond: 2
+  concurrency: 2
+  jitterMs: 250
+llm:
+  targetType: chatUi
+  probePacks: [attestor-core, garak-broad, promptfoo-owasp, deepteam-owasp, pyrit-multiturn]
+  attemptsPerProbe: 30
+  budget:
+    maxSpendUsd: 25
+    maxTokens: 2000000
+    clientAcknowledgedCostTesting: false
+  teardown:
+    enabled: true
+    verifyRemoval: true
+evidence:
+  capture: [transcript, request, response, screenshot]
+  retentionDays: 90
+report:
+  templateId: attestor-standard-v1
+  cvssVersion: '4.0'
+  complianceFrameworks: [iso27001, soc2]

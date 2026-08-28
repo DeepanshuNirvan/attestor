@@ -1,0 +1,329 @@
+---
+import {
+  checkCatalogue,
+  CATEGORY_LABELS,
+  AUTOMATION_LABELS,
+  type Check,
+} from '@attestor/findings/catalogue';
+
+/**
+ * The coverage explorer publishes the platform's actual check catalogue. It imports the same
+ * module the report's coverage matrix is generated from, so this page cannot drift from what is
+ * really tested — if a check is removed from the catalogue it disappears from here on the next
+ * build.
+ *
+ * Everything renders server-side. The filters hide and show rows; with JavaScript off the visitor
+ * gets the whole list, which is the honest fallback.
+ */
+
+interface Props {
+  /** Restrict to one module, for use inside a service page. */
+  module?: string;
+  headingLevel?: 'h2' | 'h3';
+}
+
+const { module, headingLevel = 'h2' } = Astro.props;
+
+const checks: Check[] = module
+  ? checkCatalogue.filter((check) => check.modules.includes(module as Check['modules'][number]))
+  : checkCatalogue;
+
+const categories = [...new Set(checks.map((check) => check.category))].sort((a, b) =>
+  CATEGORY_LABELS[a].localeCompare(CATEGORY_LABELS[b]),
+);
+
+const modules = [...new Set(checks.flatMap((check) => check.modules))].sort();
+
+const byCategory = categories.map((category) => ({
+  category,
+  label: CATEGORY_LABELS[category],
+  checks: checks.filter((check) => check.category === category),
+}));
+
+function standardBadges(check: Check): string[] {
+  const badges: string[] = [];
+  for (const id of check.standards.wstg ?? []) badges.push(id);
+  for (const id of check.standards.owaspTop10 ?? []) badges.push(id);
+  for (const id of check.standards.apiTop10 ?? []) badges.push(id);
+  for (const id of check.standards.masvs ?? []) badges.push(id);
+  for (const id of check.standards.llmTop10 ?? []) badges.push(id);
+  for (const id of check.standards.asvs ?? []) badges.push(`ASVS ${id.replace('v5.0.0-', '')}`);
+  for (const id of check.standards.cwe ?? []) badges.push(`CWE-${id}`);
+  return badges;
+}
+
+const Heading = headingLevel;
+---
+
+<section class="coverage" data-coverage aria-labelledby="coverage-heading">
+  <Heading id="coverage-heading">What we test</Heading>
+  <p class="lede">
+    {checks.length} checks across {categories.length} categories, each mapped to the standard it satisfies.
+    This is the catalogue the platform runs from and the one the coverage matrix in your report is
+    generated against.
+  </p>
+
+  <form class="coverage-controls" data-coverage-controls role="search" aria-label="Filter checks">
+    <div class="control">
+      <label for="coverage-search">Search</label>
+      <input
+        id="coverage-search"
+        type="search"
+        name="query"
+        placeholder="idor, prompt injection, s3, jwt…"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="control">
+      <label for="coverage-category">Category</label>
+      <select id="coverage-category" name="category">
+        <option value="">All categories</option>
+        {categories.map((category) => <option value={category}>{CATEGORY_LABELS[category]}</option>)}
+      </select>
+    </div>
+
+    {
+      !module && (
+        <div class="control">
+          <label for="coverage-module">Service</label>
+          <select id="coverage-module" name="module">
+            <option value="">All services</option>
+            {modules.map((name) => (
+              <option value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+      )
+    }
+
+    <div class="control">
+      <label for="coverage-automation">How it is done</label>
+      <select id="coverage-automation" name="automation">
+        <option value="">Any</option>
+        <option value="automated">Automated</option>
+        <option value="assisted">Tool-assisted, human-judged</option>
+        <option value="manual">Manual</option>
+      </select>
+    </div>
+
+    <p class="coverage-count" data-coverage-count aria-live="polite">{checks.length} checks shown</p>
+  </form>
+
+  <div class="coverage-groups">
+    {
+      byCategory.map((group) => (
+        <section class="coverage-group" data-coverage-group={group.category}>
+          <h3>{group.label}</h3>
+          <ul class="rule-list">
+            {group.checks.map((check) => (
+              <li
+                class="coverage-item"
+                data-check
+                data-category={check.category}
+                data-modules={check.modules.join(' ')}
+                data-automation={check.automation}
+                data-text={`${check.title} ${check.description} ${check.example} ${standardBadges(check).join(' ')}`.toLowerCase()}
+              >
+                <div class="coverage-item-head">
+                  <h4>{check.title}</h4>
+                  <span class={`automation automation-${check.automation}`}>
+                    {AUTOMATION_LABELS[check.automation]}
+                  </span>
+                </div>
+                <p class="coverage-description">{check.description}</p>
+                <p class="coverage-example">
+                  <span class="coverage-example-label">Finds</span> {check.example}
+                </p>
+                <p class="coverage-standards">
+                  {standardBadges(check).map((badge) => (
+                    <span class="tag">{badge}</span>
+                  ))}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </div>
+
+  <p class="coverage-empty" data-coverage-empty hidden>
+    Nothing matches that filter. Clear the search to see the whole catalogue.
+  </p>
+</section>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-coverage]');
+  const controls = root?.querySelector<HTMLFormElement>('[data-coverage-controls]');
+  if (root && controls) {
+    const items = [...root.querySelectorAll<HTMLElement>('[data-check]')];
+    const groups = [...root.querySelectorAll<HTMLElement>('[data-coverage-group]')];
+    const countEl = root.querySelector<HTMLElement>('[data-coverage-count]');
+    const emptyEl = root.querySelector<HTMLElement>('[data-coverage-empty]');
+
+    function value(name: string): string {
+      const field = controls!.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | null;
+      return field?.value.trim().toLowerCase() ?? '';
+    }
+
+    function apply(): void {
+      const query = value('query');
+      const category = value('category');
+      const moduleName = value('module');
+      const automation = value('automation');
+
+      let shown = 0;
+      for (const item of items) {
+        const matches =
+          (!category || item.dataset.category?.toLowerCase() === category) &&
+          (!moduleName || (item.dataset.modules ?? '').toLowerCase().split(' ').includes(moduleName)) &&
+          (!automation || item.dataset.automation === automation) &&
+          (!query || (item.dataset.text ?? '').includes(query));
+        item.hidden = !matches;
+        if (matches) shown += 1;
+      }
+
+      for (const group of groups) {
+        const visible = [...group.querySelectorAll<HTMLElement>('[data-check]')].some(
+          (item) => !item.hidden,
+        );
+        group.hidden = !visible;
+      }
+
+      if (countEl) countEl.textContent = `${shown} check${shown === 1 ? '' : 's'} shown`;
+      if (emptyEl) emptyEl.hidden = shown > 0;
+    }
+
+    controls.addEventListener('input', apply);
+    controls.addEventListener('change', apply);
+    controls.addEventListener('submit', (event) => event.preventDefault());
+  }
+</script>
+
+<style>
+  .coverage-controls {
+    display: grid;
+    gap: var(--space-s) var(--space-m);
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    align-items: end;
+    padding: var(--space-m);
+    border: 1px solid var(--rule);
+    background: var(--ground-raised);
+    margin-block: var(--space-l);
+    position: sticky;
+    top: 4.4rem;
+    z-index: 5;
+  }
+
+  @media (max-width: 62rem) {
+    .coverage-controls {
+      position: static;
+    }
+  }
+
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .control label {
+    font-size: var(--step--1);
+    font-weight: 600;
+  }
+
+  input,
+  select {
+    border: 1px solid var(--rule-strong);
+    background: var(--ground);
+    padding: 0.45rem 0.6rem;
+    font-size: var(--step--1);
+    width: 100%;
+  }
+
+  .coverage-count {
+    margin: 0;
+    font-size: var(--step--1);
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .coverage-group {
+    margin-bottom: var(--space-xl);
+  }
+
+  .coverage-group h3 {
+    font-size: var(--step-1);
+    padding-bottom: var(--space-2xs);
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .coverage-item {
+    padding-block: var(--space-m);
+  }
+
+  .coverage-item-head {
+    display: flex;
+    gap: var(--space-s);
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .coverage-item h4 {
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .automation {
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  .automation-manual {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .coverage-description {
+    margin: 0.4rem 0 0;
+    color: var(--ink-muted);
+    font-size: var(--step--1);
+  }
+
+  .coverage-example {
+    margin: 0.5rem 0 0;
+    font-size: var(--step--1);
+    border-left: 2px solid var(--rule-strong);
+    padding-left: var(--space-s);
+  }
+
+  .coverage-example-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: 0.35rem;
+  }
+
+  .coverage-standards {
+    margin: 0.6rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    max-width: none;
+  }
+
+  .coverage-empty {
+    padding: var(--space-m);
+    border: 1px solid var(--rule);
+    background: var(--ground-sunk);
+  }
+</style>

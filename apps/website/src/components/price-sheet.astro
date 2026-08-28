@@ -1,0 +1,158 @@
+---
+import { packages, formatMoney, type Currency } from '../data/pricing';
+import { site } from '../data/site';
+
+interface Props {
+  currency: Currency;
+}
+
+const { currency } = Astro.props;
+
+const oneOff = packages.filter((item) => !item.recurring && !item.addOn);
+const addOns = packages.filter((item) => item.addOn);
+const recurring = packages.filter((item) => item.recurring);
+---
+
+<div class="price-sheet">
+  <table>
+    <caption>Engagements</caption>
+    <thead>
+      <tr>
+        <th scope="col">Engagement</th>
+        <th scope="col">Price</th>
+        <th scope="col">Working days</th>
+        <th scope="col">Retest included</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        oneOff.map((item) => (
+          <tr>
+            <th scope="row">
+              <span class="price-name">{item.name}</span>
+              <span class="price-summary">{item.summary}</span>
+            </th>
+            <td class="numeric">{formatMoney(item.price[currency], currency)}</td>
+            <td class="numeric">{item.turnaroundDays}</td>
+            <td>{item.id === 'external-surface-check' ? 'No' : `Yes, within ${site.freeRetestWindowDays} days`}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+
+  <table>
+    <caption>Add-ons</caption>
+    <thead>
+      <tr>
+        <th scope="col">Add-on</th>
+        <th scope="col">Price</th>
+        <th scope="col">Additional days</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        addOns.map((item) => (
+          <tr>
+            <th scope="row">
+              <span class="price-name">{item.name}</span>
+              <span class="price-summary">{item.summary}</span>
+            </th>
+            <td class="numeric">+{formatMoney(item.price[currency], currency)}</td>
+            <td class="numeric">+{item.turnaroundDays}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+
+  <table>
+    <caption>Ongoing</caption>
+    <thead>
+      <tr>
+        <th scope="col">Programme</th>
+        <th scope="col">Monthly</th>
+        <th scope="col">Minimum term</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        recurring.map((item) => (
+          <tr>
+            <th scope="row">
+              <span class="price-name">{item.name}</span>
+              <span class="price-summary">{item.summary}</span>
+            </th>
+            <td class="numeric">{formatMoney(item.price[currency], currency)}</td>
+            <td>Three months, then monthly</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .price-sheet table {
+    margin-bottom: var(--space-xl);
+  }
+
+  caption {
+    text-align: left;
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+    padding-bottom: var(--space-2xs);
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 0.4rem;
+  }
+
+  th[scope='row'] {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--step-0);
+    color: var(--ink);
+    width: 46%;
+    padding-right: var(--space-m);
+  }
+
+  .price-name {
+    display: block;
+    font-weight: 600;
+  }
+
+  .price-summary {
+    display: block;
+    font-weight: 400;
+    font-size: var(--step--1);
+    color: var(--ink-muted);
+    margin-top: 0.2rem;
+    max-width: 52ch;
+  }
+
+  td {
+    vertical-align: top;
+    font-size: var(--step-0);
+  }
+
+  @media (max-width: 46rem) {
+    thead {
+      display: none;
+    }
+    tr {
+      display: block;
+      border-bottom: 1px solid var(--rule);
+      padding-block: var(--space-s);
+    }
+    th[scope='row'],
+    td {
+      display: block;
+      width: auto;
+      border: 0;
+      padding: 0.15rem 0;
+    }
+    td::before {
+      content: attr(data-label);
+    }
+  }
+</style>

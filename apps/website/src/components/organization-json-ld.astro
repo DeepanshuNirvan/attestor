@@ -1,0 +1,66 @@
+---
+import { site } from '../data/site';
+import { packages } from '../data/pricing';
+
+/**
+ * Structured data. Only facts that are true are emitted: no fabricated review counts, no aggregate
+ * ratings, no employee numbers. The legal entity block appears only once the owner has filled it in.
+ *
+ * The inline block is hashed at build time by the CSP integration, so no `unsafe-inline` is needed.
+ */
+
+interface Props {
+  includeServices?: boolean;
+}
+
+const { includeServices = true } = Astro.props;
+
+const organization: Record<string, unknown> = {
+  '@type': 'ProfessionalService',
+  '@id': `${site.origin}/#organization`,
+  name: site.brandName,
+  url: site.origin,
+  email: site.contactEmail,
+  description: site.description,
+  areaServed: ['IN', 'US', 'GB', 'EU', 'AE', 'SG'],
+  knowsAbout: [
+    'Penetration testing',
+    'Web application security',
+    'API security',
+    'Cloud security posture',
+    'Mobile application security',
+    'LLM red teaming',
+    'ISO 27001',
+    'SOC 2',
+    'PCI DSS',
+    'Digital Personal Data Protection Act',
+  ],
+};
+
+if (!site.legalEntity.awaitingOwner) {
+  organization.legalName = site.legalEntity.name;
+  organization.address = {
+    '@type': 'PostalAddress',
+    streetAddress: site.legalEntity.registeredAddress,
+    addressCountry: site.legalEntity.country,
+  };
+}
+
+const services = packages.map((item) => ({
+  '@type': 'Service',
+  name: item.name,
+  description: item.summary,
+  provider: { '@id': `${site.origin}/#organization` },
+  offers: {
+    '@type': 'Offer',
+    price: item.price.INR,
+    priceCurrency: 'INR',
+    ...(item.recurring ? { priceSpecification: { '@type': 'UnitPriceSpecification', billingDuration: 1, billingIncrement: 1, unitCode: 'MON' } } : {}),
+  },
+}));
+
+const graph = includeServices ? [organization, ...services] : [organization];
+const payload = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+---
+
+<script is:inline type="application/ld+json" set:html={payload} />

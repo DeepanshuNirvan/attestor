@@ -1,0 +1,31 @@
+description: >-
+  The default web application engagement: recon, unauthenticated and authenticated web testing, the
+  API behind it, and the cross-role access control matrix. Five working days.
+modules: [recon, web, api]
+intensity: standard
+phases:
+  preLogin: true
+  postLogin: true
+readOnlyMode: false
+checks:
+  nucleiSeverities: [critical, high, medium, low]
+rateLimits:
+  globalRequestsPerSecond: 10
+  perTargetRequestsPerSecond: 4
+  concurrency: 4
+  jitterMs: 150
+accessControlMatrix:
+  enabled: true
+  testUnauthenticated: true
+  responseSimilarityThreshold: 0.9
+  maxReplayRequests: 1500
+evidence:
+  capture: [request, response, screenshot, terminal]
+  retentionDays: 90
+report:
+  templateId: attestor-standard-v1
+  cvssVersion: '4.0'
+  complianceFrameworks: [iso27001, soc2]
+notifications:
+  testerSeverityThreshold: high
+  outOfBandOnCritical: true

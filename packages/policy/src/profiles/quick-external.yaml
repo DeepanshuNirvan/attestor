@@ -1,0 +1,24 @@
+description: >-
+  External surface check. Unauthenticated only, no state-changing requests, and gentle enough to run
+  against production without a conversation. This is the one-day lead-in engagement.
+modules: [recon]
+intensity: safe
+phases:
+  preLogin: true
+  postLogin: false
+readOnlyMode: true
+checks:
+  nucleiSeverities: [critical, high, medium]
+rateLimits:
+  globalRequestsPerSecond: 5
+  perTargetRequestsPerSecond: 2
+  concurrency: 3
+  politeMode: true
+accessControlMatrix:
+  enabled: false
+evidence:
+  capture: [request, response, terminal]
+  retentionDays: 90
+report:
+  templateId: attestor-short-v1
+  complianceFrameworks: []

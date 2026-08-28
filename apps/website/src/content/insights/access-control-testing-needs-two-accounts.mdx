@@ -1,0 +1,78 @@
+---
+title: Access control testing needs two accounts per role, and almost nobody provides them
+publishedAt: 2026-06-18
+summary: >-
+  The single most common reason an assessment misses the finding that mattered is that the client
+  supplied one account per role. Here is what that costs, and what the replay matrix actually looks
+  like when you have the accounts.
+tags:
+  - access control
+  - methodology
+  - IDOR
+---
+
+Broken access control has been number one on the OWASP Top 10 since 2021 and it stayed there in the
+2025 edition. It is also the class that automated scanning is worst at, for a reason that is
+structural rather than a gap somebody will close: a scanner cannot know that order 1042 belongs to a
+different customer than the one whose session it is holding.
+
+A tester can know that, but only if there are two customers.
+
+## The two directions
+
+Access control fails in two directions and they need different setups.
+
+**Vertical** is one role reaching another role's functionality. Support reaching the admin export.
+A customer reaching the support console. This one needs one account per role and most clients do
+provide it.
+
+**Horizontal** is one user reaching another user's data inside the same role. Customer A reading
+customer B's invoices. This is the one that produces the finding your enterprise buyer cares about,
+because it is the one that means "any of your customers can read any other customer's data", and it
+is impossible to test with one account per role.
+
+You cannot substitute. Testing horizontal access control by guessing identifiers with a single
+account gives you either a 404 you cannot interpret or a 200 you cannot prove was somebody else's
+data. With two accounts you have ground truth: this identifier belongs to B, A requested it, A got
+it, here is the screenshot of both sides.
+
+## What the replay matrix actually does
+
+During authenticated crawling we record every request each role makes, with the identifiers that
+appeared in each response. Then, for every recorded request from role A:
+
+- replay it with role B's session
+- replay it with an unauthenticated session
+- replay it with identifier fields mutated to values captured from the other account
+- replay it with identifiers of adjacent shape, so sequential enumeration is visible
+
+Then compare. Not for exact equality — no two responses are byte-identical when there is a timestamp
+and a CSRF token in them — but structurally: status, length band, shape of the JSON, presence of the
+key fields. Anything where a lower privilege receives substantially the same content as a higher one
+is a candidate.
+
+**Candidate**, not finding. The comparison heuristic produces false positives, particularly on
+endpoints that legitimately return the same public data to everyone. A human confirms each one and,
+more importantly, writes what it means. "The endpoint returns another user's record" is a technical
+statement. "Any registered customer can retrieve the delivery address and phone number of any other
+customer by counting upwards" is the sentence that gets the fix prioritised.
+
+## The multi-tenant case is worse
+
+If you sell to businesses, the accounts you need are in two separate customer organisations, not two
+users in one. Tenant scoping is usually applied in the main read path and forgotten in three others:
+the search index, the export, and the webhook. Those three are written at different times by
+different people and each one is a fresh chance to filter after retrieval rather than during it.
+
+Testing that needs an account in tenant one and an account in tenant two. There is no way around it,
+and if you cannot provide it, the report will say the tenant isolation check was not performed and
+why. That sentence in the coverage matrix is worse for you than the cost of creating two accounts.
+
+## What we ask for now
+
+Two accounts per role, disposable, created for the engagement. For a typical application with
+customer, admin and support roles that is six accounts. If it is multi-tenant, two organisations with
+two accounts each in the roles that matter.
+
+It takes about ten minutes to create. It is the difference between a report that says "we tested
+access control" and one that says which customer could read which other customer's data.

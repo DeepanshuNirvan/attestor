@@ -1,0 +1,72 @@
+---
+title: LLM and AI red teaming
+navLabel: LLM and AI
+order: 4
+audience: For anyone who shipped a chatbot, a RAG assistant or an agent with tool access.
+summary: >-
+  Prompt injection, direct and indirect. Jailbreak matrices with a measured success rate. System
+  prompt extraction, RAG poisoning, tool abuse, excessive agency and cost abuse under a hard spend
+  ceiling. Mapped to the OWASP Top 10 for LLM Applications.
+packageIds:
+  - llm-standalone
+  - llm-addon
+coverageCategories:
+  - llmSpecific
+standards:
+  - OWASP Top 10 for LLM Applications 2025
+  - OWASP Top 10:2025
+  - NIST SP 800-115
+seoDescription: >-
+  Independent LLM and AI red teaming: prompt injection, jailbreaks, RAG poisoning, tool abuse and
+  excessive agency, mapped to the OWASP Top 10 for LLM Applications with measured success rates.
+---
+
+Almost every company shipped something with a model in it during 2025 and 2026. Almost none of them
+tested it, and the ones that did usually ran a prompt-injection list from 2024 against a system that
+has different failure modes.
+
+Prompt injection has been number one on the OWASP LLM list for two editions running, and an agent
+with tool access is a remote code execution surface with a friendly interface. This is the newest
+part of your attack surface and the least understood.
+
+## This runs standalone
+
+You do not need a web application assessment to buy this. If what you have is a chat endpoint, a
+retrieval assistant or an agent, we test that and nothing else. It also attaches to a web, API or
+mobile engagement as an add-on when the model is part of a larger product.
+
+## What we test that a probe suite does not
+
+Open-source probe suites are genuinely good and we run several of them — they give breadth cheaply.
+What they do not do is the part that produces findings worth reporting:
+
+**Indirect injection through your actual ingestion path.** Not a payload in the chat box: a payload
+in a document your system retrieves, a web page your agent reads, a filename, an image alt attribute,
+an API response. This is the highest-impact class for retrieval and agent systems and it is specific
+to how your system is wired.
+
+**Chained tool abuse.** Individually safe tools that compose into something neither permits alone. A
+read-only file tool plus an email tool is exfiltration. No generic suite finds that, because it
+requires knowing what your tools do.
+
+**Cross-tenant retrieval.** With accounts in two separate customer organisations, whether your
+retrieval filter applies on every path — including summarisation, citation and follow-up questions,
+which are frequently three different code paths.
+
+**Measured success rate.** A jailbreak that works once in fifty is a different finding from one that
+works thirty-four times in fifty, and reporting them the same way is useless to you. Every bypass is
+repeated and reported as a rate, with the full conversation transcript as evidence.
+
+## Cost abuse, carefully
+
+Unbounded output, recursive prompting and expensive tool loops are a real risk and the finding is
+denominated in currency, not in severity words. We measure it under a spend ceiling you set before
+the run and acknowledge in writing, and we stop well before any figure that matters. The point is to
+tell you what an attacker could cost you, not to demonstrate it.
+
+## Teardown
+
+Anything we inject — a poisoned document, a memory entry, a record — is tracked and removed at the
+end of the engagement, and removal is verified by querying for it again. Leaving a planted document
+in a production corpus would be leaving a live vulnerability behind, and that is not a thing a
+security firm gets to do.

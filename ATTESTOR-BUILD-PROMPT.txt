@@ -1,0 +1,2129 @@
+================================================================================
+ATTESTOR SECURITY — MASTER BUILD PROMPT
+Two deliverables: (A) the public website, (B) the internal audit platform.
+Written 22 August 2026. Target build date: from today forward.
+================================================================================
+
+HOW TO USE THIS FILE
+--------------------
+You are being handed this file as your complete brief. Read all of it before
+writing a single line of code. Then follow PART F (build order) top to bottom.
+
+You will also be given a file named `security-audit-agency-2026.html`. That file
+is the business research behind this product — market, pricing, service lines,
+legal constraints, tool stack, report requirements, client workflow. READ IT
+FULLY before building. Every product decision in this prompt traces back to it.
+Where this prompt and that file disagree, this prompt wins.
+
+When something is genuinely ambiguous, STOP and ask. PART E lists the questions
+you are expected to ask. Do not silently guess on anything in that list. For
+everything else, make the sensible senior-engineer decision and note it in
+`DECISIONS.md` with one line of reasoning.
+
+Work in one continuous pass through the milestones. Do not stop after phase 1
+and ask "should I continue" — build the whole system as specified.
+
+
+================================================================================
+1. WHAT THE BUSINESS IS
+================================================================================
+
+Attestor Security is a security audit firm operating out of India, serving both
+Indian and international clients. Solo founder to start, 2–3 people within a
+year. It sells:
+
+  - Web application and API security assessments
+  - Cloud configuration and posture reviews (AWS, Azure, GCP)
+  - Mobile application assessments (Android, iOS)
+  - LLM / AI application red teaming
+  - Compliance-attached testing (ISO 27001 A.8.8, SOC 2, PCI DSS 11.4, DPDP)
+  - Continuous testing retainers and fractional security leadership
+
+The product the client actually buys is a REPORT: independent, evidence-backed,
+methodology-named, acceptable to an ISO/SOC 2 auditor and to an enterprise
+buyer's procurement team. Everything you build exists to produce that report
+faster and more consistently, and to sell it.
+
+Business rules that constrain the software:
+
+  - Attestor is NOT CERT-In empanelled. The software must never state, imply
+    or template any claim of empanelment, accreditation or certification the
+    firm does not hold.
+  - Testing without signed, scoped, in-window authorisation is a criminal
+    offence in India (IT Act s.66) and similar elsewhere. The platform must
+    make unauthorised testing structurally impossible, not merely discouraged.
+  - The firm holds client credentials and client data. It is a data processor
+    under India's DPDP Act. Evidence retention, deletion and access control are
+    product features, not nice-to-haves.
+  - Money is tight. Every component must be free or open source, self-hosted
+    where sensible, and must run on a single modest VPS at the start.
+
+
+================================================================================
+2. NON-NEGOTIABLE ENGINEERING RULES (APPLY TO EVERY MODULE, BOTH DELIVERABLES)
+================================================================================
+
+Write code the way a senior engineer with fifteen years of production experience
+writes it when they are tired and want it to still work in three years.
+
+CODE STYLE
+
+  - Do not write code that looks machine-generated. No ceremonial wrappers, no
+    "helper" files containing one function, no interfaces with a single
+    implementation, no factories for one product, no config objects for values
+    that never change, no defensive try/catch that swallows and logs.
+  - Simple beats clever. If it can be done with the standard library, an
+    already-installed dependency, or ten lines, do that. Never add a dependency
+    for something a few lines cover.
+  - No redundant code. Before writing a function, check whether one already
+    exists in the repo. Reuse it. Duplication is the most common failure of
+    generated code — do not commit it.
+  - Comments: short, meaningful, and only where the code cannot explain itself
+    (a non-obvious protocol detail, a legal constraint, a deliberate shortcut,
+    a known ceiling). Never write a comment that restates the line below it.
+    Never write banner comments or section-divider comment art.
+  - Naming: camelCase for variables and functions, PascalCase for types and
+    classes, SCREAMING_SNAKE for true constants. Human-readable words. No
+    leading underscores anywhere, ever. No Hungarian notation, no `data2`,
+    no `mgr`, no `utils` dumping ground, no clever abbreviations. A name should
+    read as English: `runScanForEngagement`, not `execScanEng`.
+  - File names: kebab-case. One clear responsibility per file.
+  - No `any` in TypeScript. Strict mode on. No `@ts-ignore` without a comment
+    naming the exact reason.
+  - Errors: fail loudly and early at trust boundaries. Validate all external
+    input (HTTP bodies, YAML policies, tool output) with a schema at the edge,
+    then trust it internally.
+  - Deliberate simplifications get a one-line comment naming the ceiling and
+    the upgrade path, e.g. `// single worker process; shard by engagement if
+    concurrency exceeds ~20`.
+
+TESTING
+
+  - Everything with logic gets a test. Not a test suite per function — the
+    smallest runnable check that fails if the logic breaks.
+  - The scope guard (B6) gets property-based/fuzz tests. It is the one
+    component whose failure is a criminal exposure. Test it like it matters.
+  - Scanner integration tests run against locally hosted deliberately
+    vulnerable applications in Docker (OWASP Juice Shop, DVWA, WebGoat, VAmPI,
+    crAPI, and a purpose-built vulnerable LLM app you write). NEVER against any
+    internet host, in CI or otherwise.
+  - Report rendering gets golden-file tests: fixed findings fixture in, byte-
+    stable HTML out, plus one PDF smoke test.
+  - CI runs lint, typecheck, unit, integration. Green before merge.
+
+RESEARCH
+
+  - Today is August 2026 and your training data may be stale. Search the web
+    before you pin any tool version, CLI flag, output schema, API shape, cloud
+    provider testing policy, pricing figure, or standard version number.
+  - Sources worth reading: official tool documentation and GitHub repos, OWASP
+    project pages (WSTG, ASVS, MASVS, Top 10, LLM Top 10, API Top 10), the
+    OWASP Cheat Sheet Series, PortSwigger Web Security Academy, NIST SP 800-115,
+    FIRST CVSS specification, HackerOne/Bugcrowd public disclosure reports,
+    r/netsec, r/AskNetsec, r/cybersecurity for practitioner sentiment on what
+    actually finds bugs versus what wastes hours, and published sample pentest
+    reports from established firms to calibrate report quality.
+  - Verify current versions before pinning. As of writing: OWASP ASVS 5.0
+    (May 2025, ~350 requirements, 17 chapters), OWASP Top 10:2025 (Broken Access
+    Control still #1, expanded supply chain coverage), OWASP WSTG (check current
+    stable), MASVS 2.x, OWASP LLM Top 10 (prompt injection #1), CVSS 4.0 from
+    FIRST — note that many 2026 report templates in the wild still use CVSS 3.1,
+    so support BOTH and let the user choose per engagement.
+  - When you learn something non-obvious from research, record it in
+    `RESEARCH-NOTES.md` with the source URL and date. That file is a deliverable.
+
+WHAT TO NEVER DO
+
+  - Never write code that scans, probes or connects to a target that has not
+    passed the scope guard.
+  - Never implement denial-of-service, stress, flood or volumetric testing.
+    AWS and Azure prohibit it outright. There must be no code path that can do
+    it, not even behind a flag.
+  - Never implement destructive payloads: no DROP/DELETE/UPDATE without WHERE in
+    SQLi verification, no file deletion, no account deletion, no password
+    changes, no mass data extraction, no shell persistence.
+  - Never store raw client personal data as evidence. Masking is applied at
+    capture time, not at report time.
+  - Never log credentials, session tokens, API keys or authorisation headers —
+    not at debug level, not in error traces, not in tool stdout that gets
+    persisted. Build a redaction filter and route every persisted log through it.
+  - Never ship a hardcoded secret, key, token or password.
+  - Never send client data to a third-party AI provider unless that engagement
+    has an explicit `aiAssistEnabled` flag set true by a human, and even then
+    only redacted findings text, never raw evidence.
+  - Never auto-publish, auto-email or auto-share a report. A human releases it.
+  - Never invent a finding, a CVE, a CVSS vector, a reference URL or a client
+    quote. If the AI-assist layer cannot ground a sentence in captured evidence,
+    it must leave the field empty for the human.
+  - Never include cracked, pirated or licence-violating tools.
+
+
+================================================================================
+3. REPOSITORY LAYOUT
+================================================================================
+
+One pnpm monorepo. Node 22 LTS, TypeScript strict everywhere. Single language
+across both deliverables so there is one toolchain, one lint config, one naming
+convention — camelCase applies natively and there is no Python/JS style split
+to reconcile. Third-party security tools are Python or Go, but we run them as
+pinned Docker containers and never author code in those languages.
+
+  attestor/
+    apps/
+      website/            Astro static site (PART A)
+      console/            Next.js internal app + client portal (PART B14)
+      api/                Fastify API + BullMQ workers (PART B)
+    packages/
+      core/               domain model, engagement lifecycle, scope guard
+      scanners/           one adapter per tool: run, parse, normalise
+      findings/           normalisation, dedupe, correlation, scoring
+      report/             HTML templates, renderer, PDF pipeline
+      policy/             YAML policy schema, validation, resolution
+      shared/             types, logging with redaction, config loading
+    infra/
+      docker-compose.yml
+      docker-compose.test.yml   vulnerable targets for integration tests
+      migrations/
+    docs/
+      DECISIONS.md
+      RESEARCH-NOTES.md
+      RUNBOOK.md
+      THREAT-MODEL.md
+
+
+================================================================================
+PART A — THE PUBLIC WEBSITE (attestorsecurity.com)
+================================================================================
+
+A1. PURPOSE AND AUDIENCE
+
+Three readers, in order of value:
+
+  1. An Indian startup CTO or founder who has just been sent an enterprise
+     security questionnaire and needs a pentest report fast.
+  2. A compliance consultant (ISO 27001 / SOC 2) looking for a technical
+     partner to hand engagements to.
+  3. A US/EU/Gulf buyer evaluating whether an Indian firm is credible enough
+     to hand production credentials to.
+
+The site must convert reader 1 without a sales call, earn a partnership email
+from reader 2, and remove the "offshore vendor" doubt from reader 3.
+
+A2. TECH STACK
+
+  - Astro 5.x, static output. No SSR, no server, no database, no admin panel,
+    no CMS, no login. Content lives in the repo as MDX/Markdown and typed
+    content collections. The owner edits a file and redeploys.
+  - Islands only where interactivity is genuinely needed (the estimator, the
+    coverage explorer, the report viewer, command-K search). Everything else
+    ships zero JavaScript.
+  - Styling: plain CSS with custom properties and a small design-token file.
+    You may use Tailwind ONLY if you configure a bespoke token scale and never
+    ship default-palette utility soup. Default Tailwind colours and shadows are
+    the exact "AI-generated" look that is banned. Plain CSS is preferred.
+  - Fonts: self-hosted WOFF2, subset. No Google Fonts CDN, no external requests.
+  - Hosting: Cloudflare Pages free tier. Forms via a Pages Function or
+    Web3Forms/Formspree free tier + Cloudflare Turnstile. Booking via Cal.com
+    free tier, embedded or linked.
+  - Search: Pagefind (static, no server) for the insights section.
+  - Analytics: Cloudflare Web Analytics or self-hosted Plausible. Never Google
+    Analytics — it is indefensible on a site selling data hygiene.
+
+A3. DESIGN DIRECTION — READ THIS TWICE
+
+Light theme. Editorial, precise, confident. It should read like the website of
+a specialist professional firm — think a boutique audit practice or a serious
+technical publication — not like a SaaS landing page and not like a template.
+
+BANNED, because they are the visual signature of generated design:
+
+  - Purple/indigo/violet gradients. Any gradient used as a background.
+  - Neon accents, glow effects, glassmorphism, frosted panels.
+  - Big rounded cards with heavy drop shadows arranged in a 3-column grid.
+  - Bento grids.
+  - Inter as the only typeface. Generic system-font-stack-only typography.
+  - Emoji as icons. Rocket ships. Shield-with-checkmark clipart.
+  - Hero sections that say "Secure your business in the age of AI" or any
+    sentence beginning "In today's digital landscape".
+  - Gradient text, animated gradient borders, animated blob backgrounds,
+    particle canvases, cursor followers, parallax scrolling.
+  - Auto-playing carousels or testimonial sliders.
+  - Fake dashboard screenshots, fake logos, fake testimonials, fake metrics,
+    stock photos of hooded figures or glowing padlocks.
+  - "Trusted by" logo strips containing companies that are not clients.
+
+REQUIRED:
+
+  - Palette: warm off-white ground (around #FBFAF8), near-black ink (around
+    #14161A), one restrained accent — deep green (#1F5F47) or deep navy
+    (#17324D) — plus a functional severity palette used only in data contexts
+    (critical / high / medium / low / info). Two accents maximum on the page.
+  - Type: a serif for headings with real character (Source Serif 4, Newsreader,
+    Literata, or similar) paired with a neutral grotesk for body (Public Sans,
+    IBM Plex Sans, or similar), and a mono for code and evidence (IBM Plex Mono
+    or JetBrains Mono). Verify licences before self-hosting.
+  - Typographic scale with real hierarchy — a proper measure (65–75 characters),
+    generous line height on body copy, tight headings, hanging punctuation where
+    it helps. Type does the work, not decoration.
+  - Structure over ornament: rules and whitespace to separate sections, not
+    boxes and shadows. Where a card is genuinely right, use a 1px border and no
+    shadow.
+  - Iconography: a small set of custom line icons or none at all. Never an icon
+    library dropped in wholesale.
+  - Motion: subtle and purposeful only — a 150–250ms fade/rise on section entry,
+    a considered hover state, a smooth scroll-spy indicator. All motion must
+    respect `prefers-reduced-motion: reduce` and disable entirely.
+  - Accessibility is part of the design, not a checklist: WCAG 2.2 AA contrast,
+    visible focus rings, full keyboard operability, semantic landmarks, correct
+    heading order, labelled form controls, aria-live for async results.
+
+A4. INTERACTIVITY — THE SITE MUST NOT FEEL LIKE A BROCHURE
+
+Build these as real, working components. Each must be genuinely useful, not
+decoration:
+
+  1. SCOPE & PRICE ESTIMATOR (the centrepiece)
+     Inputs: asset type (web app / API / mobile / cloud / LLM app), approximate
+     endpoint or screen count, number of user roles, authentication complexity,
+     environments, whether a retest is needed, currency (INR / USD).
+     Output: a real price band, a working-day estimate, what the engagement
+     includes, and what the deliverables will be — then a "book the scoping
+     call" action that carries the selections into the booking form.
+     Pricing rules live in one typed data file so the owner edits numbers in
+     one place. Never produce a fake "contact us for pricing" dead end.
+
+  2. WHAT WE TEST — COVERAGE EXPLORER
+     An interactive, filterable map of test coverage by category (access
+     control, authentication, session management, input validation, business
+     logic, configuration, cryptography, API-specific, mobile-specific,
+     cloud-specific, LLM-specific). Each entry: a plain-language description of
+     the check, an example of what it finds, and the standard it maps to
+     (WSTG ID / ASVS requirement / OWASP Top 10 category / LLM Top 10 / MASVS).
+     Data lives in a content collection so it stays in sync with the platform's
+     actual check catalogue.
+
+  3. SAMPLE REPORT VIEWER
+     The redacted sample report rendered inline as HTML — scrollable, with a
+     section navigator, deep-linkable headings, and a download-PDF action.
+     A visitor must be able to judge report quality without downloading
+     anything. This is the highest-converting asset on the site.
+
+  4. ENGAGEMENT TIMELINE
+     A horizontal, scroll-linked walkthrough of the 10 steps from scoping call
+     to evidence deletion, with what the client does and what Attestor does at
+     each step, and the artefacts produced. Shows professionalism better than
+     any copy.
+
+  5. STICKY SECTION NAVIGATION with scroll-spy on long pages.
+
+  6. COMMAND-K SEARCH over services, insights and the coverage explorer,
+     powered by Pagefind. Keyboard-first, because the audience is technical.
+
+  7. INSIGHTS INDEX with tag filtering and reading time — the findings
+     write-ups that build credibility over time.
+
+A5. SITEMAP AND PAGE-BY-PAGE CONTENT
+
+  /                    Home
+  /services            Overview, links to each service
+  /services/web-application-and-api
+  /services/cloud-security-review
+  /services/mobile-application
+  /services/llm-and-ai-red-teaming
+  /services/compliance-testing        (ISO 27001, SOC 2, PCI DSS, DPDP)
+  /services/continuous-testing        (retainer + fractional security lead)
+  /pricing             India (INR)
+  /pricing/usd         International (USD) — a separate page, not a converter
+  /sample-report       Inline viewer + PDF download
+  /how-we-work         Methodology, engagement timeline, safety controls
+  /about               Who Attestor is, credentials, independence, insurance
+  /insights            Index
+  /insights/[slug]     Write-ups
+  /contact             Booking + minimal form
+  /legal/privacy       DPDP-aware privacy notice
+  /legal/terms
+  /legal/responsible-disclosure
+  /.well-known/security.txt
+  /sitemap.xml  /robots.txt  /rss.xml
+
+CONTENT THAT MUST APPEAR SOMEWHERE PROMINENT:
+
+  - Fixed prices with turnaround days. Do not hide pricing behind a form.
+  - "One free retest within 30 days" stated as a commitment.
+  - Named methodology: OWASP WSTG, OWASP ASVS 5.0, OWASP Top 10:2025, OWASP API
+    Top 10, MASVS for mobile, OWASP LLM Top 10 for AI, NIST SP 800-115, PTES.
+  - Independence statement — Attestor does not build or operate the systems it
+    tests, which is what ISO 27001 Clause 7.2 competence and AICPA independence
+    expectations require of the evidence.
+  - Professional indemnity insurance cover stated.
+  - Data handling: what is collected, masking, 90-day evidence deletion with
+    written confirmation, DPDP data processing agreement offered.
+  - Safety controls: read-only first, approved test windows, rate limiting,
+    excluded techniques listed explicitly (no DoS, no destructive payloads, no
+    social engineering without separate written sign-off), a stop-the-test
+    contact path.
+  - An honest empanelment paragraph: Attestor is not CERT-In empanelled;
+    entities regulated by RBI, SEBI or IRDAI require an empanelled auditor for
+    statutory audits; Attestor provides pre-audit testing and remediation
+    verification so that audit passes first time.
+  - Timezone overlap line for international buyers (state the actual overlap
+    hours with US Eastern and UK). No city, no "India-based" framing, no
+    "Global" in the name or copy.
+  - What Attestor will not do: guarantee security, certify a system as
+    unhackable, test assets the client does not own without third-party
+    permission, or work without signed authorisation.
+
+TONE OF COPY
+
+Specific, plain, unhurried. Short sentences. No hype adjectives, no fear
+selling, no statistics without a source, no "cutting-edge", "next-gen",
+"empower", "unlock", "leverage", "seamless", "robust". Write like an engineer
+explaining to another engineer what will happen and what it costs.
+
+A6. FORMS, SECURITY AND HYGIENE
+
+  - Booking link first (Cal.com), minimal form second. A security buyer prefers
+    to book a call than to fill a form.
+  - Form fields: name, work email, company, message. Nothing else.
+  - NO FILE UPLOADS ANYWHERE on the site. Not for RFPs, not for scope docs.
+  - Turnstile on the form. Honeypot field. Server-side (edge function)
+    validation. Submissions go to an inbox, never to a database.
+  - Security headers, strict: Content-Security-Policy (no unsafe-inline; hash
+    or nonce the few inline bits), Strict-Transport-Security with preload,
+    X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
+    Cross-Origin-Opener-Policy. Target an A+ on securityheaders.com and put
+    that in the repo README as a check.
+  - `/.well-known/security.txt` with a contact, a policy link and an expiry.
+  - SPF, DKIM and DMARC records documented in `docs/RUNBOOK.md` with DMARC at
+    enforcement. A firm that sells security cannot run `p=none`.
+  - SEO: real titles and meta descriptions per page, Organization and Service
+    JSON-LD, canonical URLs, OG images generated at build time from a template
+    (typographic, no stock art).
+  - Performance budget: Lighthouse ≥95 on all four categories, LCP under 1.5s
+    on a mid-tier mobile connection, zero third-party requests at runtime other
+    than the form endpoint and Cal.com on the contact page only.
+
+A7. WEBSITE ACCEPTANCE CRITERIA
+
+  - Every page renders correctly with JavaScript disabled, except the four
+    interactive islands, which degrade to readable static content.
+  - No console errors, no layout shift, no horizontal scroll at 320px width.
+  - The estimator returns a number for every valid input combination.
+  - The sample report viewer is fully keyboard navigable.
+  - `prefers-reduced-motion` removes all motion.
+  - Content is editable by changing one Markdown/YAML file and redeploying.
+  - Nothing on the site claims a certification, empanelment, client or metric
+    that has not been supplied by the owner in writing.
+
+
+================================================================================
+PART B — THE INTERNAL PLATFORM ("ATTESTOR CONSOLE")
+================================================================================
+
+B1. WHAT IT IS AND WHAT IT IS NOT
+
+It IS: a single-tenant-per-deployment engagement orchestration system that
+takes a signed scope, runs the right tools automatically, normalises and
+deduplicates findings, supports the human tester's manual work, and produces a
+professional-grade report, retest report and attestation letter — then keeps
+retainer clients continuously monitored.
+
+It IS NOT: an autonomous hacker, a product sold to customers in v1, a
+replacement for the tester's judgement, or a general-purpose vulnerability
+management platform. Business logic flaws, access-control chains and impact
+judgement are human work; the platform's job is to make everything around that
+work take minutes instead of days.
+
+Design principle to hold throughout: AUTOMATION IS THE MARGIN, NOT THE PRODUCT.
+
+B2. ARCHITECTURE
+
+  Console (Next.js)  ──►  API (Fastify)  ──►  Postgres
+                                │
+                                ├──►  Redis + BullMQ  ──►  Workers
+                                │                            │
+                                │                            ├─► Docker: tool containers
+                                │                            └─► MinIO: evidence objects
+                                │
+                                └──►  Report renderer (Playwright → PDF)
+
+  - Workers execute one job per tool run, in a pinned Docker container, with a
+    per-engagement network namespace and a fixed egress IP.
+  - All tool output is written to MinIO raw, then parsed by an adapter into the
+    normalised finding model. Raw output is retained for defensibility.
+  - Everything is queue-driven and resumable. A crashed worker must not lose an
+    engagement's progress; jobs are idempotent and re-runnable.
+
+B3. TECH STACK (ALL FREE / OPEN SOURCE)
+
+  Runtime            Node 22 LTS, TypeScript 5.x strict
+  API                Fastify + zod for schema validation
+  Queue              BullMQ on Redis 7
+  Database           PostgreSQL 16, Drizzle ORM, SQL migrations checked in
+  Object store       MinIO (S3-compatible), lifecycle rules for auto-deletion
+  Container control  dockerode, images pinned by digest
+  Console + portal   Next.js 15 App Router, React 19, same design tokens as the
+                     website but a denser application UI (this is a tool, not a
+                     brochure — data density is correct here)
+  Charts             A small library or hand-rolled SVG. No heavyweight
+                     dashboard framework.
+  Auth (staff)       Session cookies + argon2id + mandatory TOTP MFA
+  Auth (clients)     Magic-link or invite + password + optional TOTP, scoped
+                     strictly to their own engagements
+  Report render      HTML + print CSS → Playwright (Chromium) → PDF/A-friendly
+                     output. No paid PDF service.
+  Email              SMTP or Resend free tier; templates in repo
+  Tests              Vitest (unit/integration), Playwright (console e2e),
+                     fast-check (property tests for the scope guard)
+  Lint/format        ESLint + Prettier, strict rule set, CI-enforced
+  Local dev          docker compose up brings the whole stack plus the
+                     vulnerable test targets
+
+SECURITY TOOLS TO INTEGRATE (all free / open source, all containerised, all
+pinned — verify current versions and output schemas by searching before wiring
+each one):
+
+  Recon / attack surface   subfinder, amass, dnsx, httpx, naabu, tlsx, katana,
+                           gau, waybackurls, whatweb, cloud bucket enumeration
+  Web DAST                 OWASP ZAP (baseline, full, and API scan modes;
+                           automation framework YAML), nuclei (+ community and
+                           custom template sets), nikto, testssl.sh
+  Injection / fuzzing      sqlmap (read-only, non-destructive flags only), ffuf,
+                           dalfox, arjun, commix (guarded)
+  API                      schemathesis (OpenAPI-driven), kiterunner,
+                           mitmproxy for capture
+  Authenticated browsing   Playwright for login flows, session capture,
+                           screenshotting and DOM evidence
+  Code / supply chain      semgrep, gitleaks, trufflehog, trivy (deps,
+                           containers, IaC, SBOM), syft, grype, checkov
+  Cloud                    prowler (AWS/Azure/GCP, hundreds of checks mapped to
+                           many frameworks), cloudsplaining, kube-bench,
+                           kubescape
+  Mobile                   MobSF (static + dynamic), apktool, jadx, frida +
+                           objection for runtime, Android emulator
+  Network                  nmap with safe script categories only
+  LLM / AI                 garak, promptfoo, PyRIT, deepteam, plus a custom
+                           probe corpus (see B8.8)
+  Agentic (optional)       Strix or equivalent open-source AI pentest agent,
+                           behind hard guardrails (see B8.9)
+
+Cost discipline: everything above is free. The only recurring spend is the VPS,
+the domain, and metered LLM tokens. Build a token budget ceiling per engagement
+(B17) and make the whole AI layer optional and switchable off.
+
+B4. DATA MODEL (minimum; extend as needed, keep it flat and obvious)
+
+  client              id, name, legalName, country, contacts, billingDetails,
+                      dataProcessingAgreementSignedAt, notes
+  engagement          id, clientId, type, title, status, startsAt, endsAt,
+                      timezone, currency, quotedAmount, invoiceState,
+                      methodologyVersions, aiAssistEnabled, reportTemplateId
+  authorisation       id, engagementId, signedBy, signerRole, signerEmail,
+                      signedAt, documentObjectKey, assetList, validFrom,
+                      validUntil, revokedAt
+  scopeItem           id, engagementId, kind (domain|wildcard|ip|cidr|url|
+                      repo|cloudAccount|mobilePackage|llmEndpoint),
+                      value, included (bool), notes
+  credentialSet       id, engagementId, label, roleName, authType, secretRef,
+                      expiresAt, lastVerifiedAt, revokedAt
+  policy              id, engagementId|clientId|global, yamlSource, resolved
+  scanRun             id, engagementId, module, toolName, toolVersionDigest,
+                      policySnapshot, startedAt, finishedAt, exitCode,
+                      rawOutputKey, stats, abortReason
+  finding             id, engagementId, source (tool|manual|ai), toolFindingRef,
+                      title, description, severity, cvssVersion, cvssVector,
+                      cvssScore, cweId, owaspCategory, wstgId, asvsRequirement,
+                      affectedAssets[], businessImpact, likelihood,
+                      reproductionSteps, remediation, references[],
+                      status (open|fixed|riskAccepted|falsePositive|duplicate),
+                      firstSeenAt, lastSeenAt, fixedAt, retestedAt, dedupeKey
+  evidence            id, findingId, kind (request|response|screenshot|log|
+                      terminal|file), objectKey, capturedAt, redactionApplied,
+                      sha256
+  falsePositiveMemo   id, clientId, dedupeKey, reason, createdBy, createdAt
+  report              id, engagementId, kind (assessment|retest|attestation),
+                      version, templateId, renderedHtmlKey, pdfKey,
+                      releasedAt, releasedBy, recipientList
+  auditLog            id, actorId, action, subjectType, subjectId, ipAddress,
+                      metadata, createdAt        (append-only, never editable)
+  retainerSchedule    id, clientId, cadence, modules[], windowRule, nextRunAt
+  notification        id, engagementId, channel, severityThreshold, sentAt
+
+B5. ENGAGEMENT LIFECYCLE (state machine — enforce it, do not allow shortcuts)
+
+  draft
+    → scoped              scope items entered
+    → authorised          signed authorisation uploaded, signer recorded,
+                          validity window set        [GATE: no scanning before]
+    → advancePaid         50% received (manual flag)  [GATE: configurable]
+    → readyToRun          credentials verified, safety checklist ticked
+    → running             jobs executing
+    → triage              automated results in, human validating
+    → manualTesting       human-led phase, manual findings entered
+    → reportDraft         report generated, human editing
+    → reportReview        internal review checklist complete
+    → released            final payment flagged, report released to client
+    → retestPending       within 30 days
+    → retestComplete      retest report + attestation issued
+    → closed              evidence purged, deletion confirmation sent
+
+Every transition writes to auditLog with actor, timestamp and reason. Backwards
+transitions are allowed but must carry a reason string.
+
+B6. SCOPE GUARD AND AUTHORISATION — THE MOST IMPORTANT COMPONENT
+
+This is the component that keeps the founder out of court. Build it first, test
+it hardest.
+
+Rules:
+
+  - No tool container may be launched except through `runToolForEngagement`,
+    which calls the scope guard first. There must be no second path. Enforce it
+    with a single choke point and a lint rule or architectural test that fails
+    the build if `docker run` / dockerode is called anywhere else.
+  - The guard checks, for every target string and every resolved IP:
+      1. an `authorisation` row exists for the engagement, is signed, not
+         revoked, and `now` is inside `validFrom..validUntil`
+      2. the engagement is in a state permitting execution
+      3. the target matches an `included` scopeItem
+      4. the target matches NO `excluded` scopeItem
+      5. after DNS resolution, the resolved IPs are still in scope — this
+         defeats a scoped hostname that resolves to a third party's
+         infrastructure or a shared host
+      6. the target is not in the global never-touch list: RFC1918 ranges the
+         firm does not own, localhost, cloud metadata endpoints (169.254.169.254
+         and equivalents), known government/regulator/bank domains, the firm's
+         own infrastructure, and any address supplied by the owner as banned
+      7. the current time is inside an allowed testing window from the policy
+      8. redirects and discovered links are re-checked before being followed —
+         crawling must not walk out of scope
+  - Failure returns a typed refusal with the exact rule that failed, writes to
+    auditLog, and aborts the run. It never "warns and continues".
+  - Wildcard scope (`*.example.com`) must be handled explicitly and must never
+    silently match `exampleXcom` or a suffix trick. Write the fuzz tests.
+  - A `panicStop` control halts every running job for an engagement, or for the
+    entire platform, within seconds. Expose it as a prominent console button
+    and a CLI command. Log who pressed it.
+  - Authorisation upload flow: PDF stored in MinIO, signer name/role/email
+    recorded, asset list parsed and diffed against entered scope items with any
+    mismatch surfaced for human resolution before the state can advance.
+  - Third-party asset warning: if a scope item resolves to shared hosting, a
+    SaaS provider or a CDN, surface a blocking prompt that the client's consent
+    may not cover that infrastructure and require an explicit acknowledgement
+    with a note.
+  - Cloud provider policy check: before cloud or infrastructure runs, show the
+    provider's current testing policy summary and require acknowledgement. AWS
+    permits customer testing on a defined service list and requires a Simulated
+    Events form for covert simulations or C2; DoS/DDoS simulation is prohibited
+    on AWS and Azure under all circumstances. Search for the current policy text
+    and store the acknowledgement.
+
+B7. CREDENTIALS AND AUTHENTICATION PROFILES
+
+This is the part the owner asked about specifically: how the client's
+credentials get into the system, and how pre-login versus post-login testing is
+controlled.
+
+HOW CREDENTIALS ARRIVE
+
+  - The console generates a one-time, expiring intake link for the engagement.
+    The client opens it and submits credentials directly into the vault. The
+    credentials never travel through email, WhatsApp or a ticket.
+  - Values are encrypted at rest with libsodium secretbox (or age); the key
+    comes from the environment/KMS and is never in the database or the repo.
+    Decryption happens only inside a worker, in memory, at run time.
+  - Every credential set carries a role name, an expiry, and a
+    `lastVerifiedAt`. Expired sets block the run with a clear message.
+  - A redaction filter sits on every log sink. Credential values, tokens,
+    cookies and Authorization headers are replaced before anything is persisted
+    or shown in the console.
+  - On engagement close, credential rows are cryptographically shredded (key
+    material for that engagement destroyed) and the client is told, in the
+    closure email, to rotate the accounts anyway.
+
+AUTHENTICATION PROFILE TYPES (the system must support all of these)
+
+  none                unauthenticated / pre-login testing only
+  formLogin           username + password on an HTML form
+  scriptedLogin       a Playwright script recorded/authored for complex flows
+                      (multi-step, captcha-exempt test account, device trust
+                      prompts, tenant selection)
+  otpAssisted         a login requiring an OTP — support a manual "tester
+                      supplies the code" pause, and a shared-secret TOTP option
+                      when the client provides one for a test account
+  oauth2              client credentials, authorization code with a static test
+                      account, refresh token handling
+  apiKey              header, query or custom scheme
+  bearerJwt           static token, or a token minted by a token endpoint,
+                      with automatic refresh before expiry
+  sessionCookie       raw cookie jar import for awkward legacy apps
+  mtls                client certificate
+
+Each profile stores: how to authenticate, how to DETECT that the session is
+still valid (a logged-in indicator: a selector, a URL, a response header, a
+JSON field), and how to re-authenticate when it is not. Session death mid-scan
+is the single most common cause of a worthless authenticated scan — detect it,
+re-auth, and mark the affected requests for re-run.
+
+PRE-LOGIN VS POST-LOGIN TESTING
+
+The policy selects one or both phases explicitly:
+
+  phases:
+    preLogin:   run unauthenticated recon, discovery, and all checks that do
+                not require a session. Establishes what an anonymous attacker
+                sees. Always run this first.
+    postLogin:  run authenticated crawling and checks per role.
+
+  For postLogin, the system must:
+    - crawl separately per role, keeping per-role site maps
+    - maintain one browser context per role so sessions never leak
+    - exclude dangerous actions from the crawl: logout, delete account, change
+      password, change email, payment submission, mass-delete, invite-user, and
+      any path the policy lists under `forbiddenActions`. Default this list
+      conservatively and let the policy extend it.
+    - respect a `readOnlyMode` that suppresses every state-changing request
+      (used for the first pass on production systems)
+
+AUTHORISATION / ACCESS-CONTROL MATRIX TESTING (high-value, automatable)
+
+Build this properly — it is where real findings live and it is the part of
+IDOR hunting that machines can genuinely do:
+
+  - Record the request corpus per role during authenticated crawling.
+  - For each recorded request from role A, replay it with role B's session,
+    with an unauthenticated session, and with the identifier fields mutated
+    (adjacent IDs, other tenants' IDs captured during the crawl, UUID swaps).
+  - Compare responses using a similarity heuristic (status, length, structure,
+    key fields) rather than exact match, and flag any case where a lower
+    privilege receives substantially the same content as a higher one.
+  - Present these as CANDIDATES in a human review queue, never as confirmed
+    findings. The human confirms and writes the impact.
+  - Support vertical (role A vs role B) and horizontal (user 1 vs user 2 in the
+    same role) checks, which means the client must supply at least two accounts
+    per role — make that explicit in the intake form.
+
+RATE LIMITING AND ABUSE-CONTROL TESTING
+
+Two separate things, do not conflate them:
+
+  1. Testing the TARGET's rate limiting (a security check):
+     - measure requests accepted before throttling on: login, OTP request,
+       password reset, signup, search, and any endpoint the policy marks
+       `rateLimitSensitive`
+     - detect header-based bypasses (X-Forwarded-For, X-Real-IP), method
+       variation, case/path variation, and per-account versus per-IP scoping
+     - HARD LIMITS: bounded attempt counts (default 20), a strict ceiling on
+       requests per second, immediate stop on first throttle response, and an
+       absolute ban on anything that could look like a flood. This check must
+       never become a DoS. Enforce the ceiling in code, not in configuration
+       alone.
+     - never lock out real accounts: only run credential-adjacent rate checks
+       against accounts the client has designated disposable
+
+  2. OUR OWN outbound rate limiting (a safety control):
+     - global and per-target requests-per-second caps, concurrency caps, and a
+       jitter/backoff policy, all set in policy with safe defaults
+     - adaptive throttling: watch target latency and 5xx rate; if either
+       degrades past a threshold, back off automatically, and if it degrades
+       further, abort the run and alert the tester
+     - blackout windows (e.g. business hours) enforced by the scheduler
+     - a `politeMode` for production targets that halves every limit
+
+B8. SCAN MODULES
+
+Every module follows the same contract: it declares its inputs, reads the
+resolved policy, runs one or more pinned tool containers through the scope
+guard, writes raw output to MinIO, parses to normalised findings, and reports
+progress to the console. Adding a new tool must mean writing one adapter file,
+nothing else.
+
+B8.1 RECON AND ATTACK SURFACE
+  Inputs: domains, wildcards, IPs, cloud accounts.
+  Work: subdomain enumeration (passive and, if policy allows, active), DNS
+  records, certificate transparency, HTTP probing and fingerprinting, port and
+  service enumeration, TLS configuration, technology identification, exposed
+  storage buckets, JavaScript endpoint and secret extraction, historical URLs,
+  virtual host discovery.
+  Output: an asset inventory that everything else consumes, plus findings for
+  exposure issues (stale subdomains, expired certificates, exposed admin
+  interfaces, missing DMARC/SPF/DKIM, information disclosure).
+
+B8.2 WEB APPLICATION (UNAUTHENTICATED AND AUTHENTICATED)
+  Work: crawling (browser-based, so SPAs are covered), ZAP baseline/full scans
+  driven by the automation framework, nuclei template sets selected by the
+  policy, TLS and header checks, cookie and CORS configuration, client-side
+  issues, injection probing with non-destructive settings, file upload handling,
+  and the access-control matrix from B7.
+  Coverage must be expressible in WSTG identifiers so the report's coverage
+  matrix is real and not decorative.
+
+B8.3 API
+  Work: OpenAPI/Swagger/Postman collection import; if none exists, build a spec
+  from observed traffic. Schema-driven fuzzing, authentication and authorisation
+  checks per endpoint, mass assignment, excessive data exposure, BOLA/BFLA
+  probing, rate limiting, versioning and deprecated endpoint discovery, GraphQL
+  introspection and query-depth abuse, JWT weaknesses (algorithm confusion,
+  weak secrets against a wordlist, expiry and audience validation).
+  Map to the OWASP API Security Top 10.
+
+B8.4 MOBILE
+  Work: MobSF static analysis of APK/IPA, manifest and permission review,
+  hardcoded secrets, insecure storage, certificate pinning presence and bypass
+  assessment, exported component review, runtime analysis via Frida/objection on
+  an emulator, and traffic interception feeding the API module. Map to MASVS.
+  Also produce a Play Store / App Store data-safety consistency check: does the
+  declared data collection match what the binary actually does.
+
+B8.5 CLOUD
+  Work: read-only role assumption, prowler across the account with framework
+  mappings, IAM privilege analysis, public exposure detection (storage, disks,
+  snapshots, databases), logging and monitoring gaps, encryption at rest and in
+  transit, network exposure, key rotation, and a cost-safe posture summary.
+  Kubernetes: kube-bench and kubescape where a cluster is in scope.
+  Cloud runs are read-only by construction — no write API call is ever made.
+
+B8.6 CODE AND SUPPLY CHAIN (when the client grants repository access)
+  Work: semgrep with curated rule packs, secret scanning across history, SBOM
+  generation, dependency vulnerability analysis, IaC misconfiguration scanning,
+  CI/CD configuration review, and a check for exposed pipeline secrets.
+
+B8.7 NETWORK
+  Work: nmap with safe script categories, service version identification, CVE
+  correlation, default-credential checks against a conservative list, and
+  exposure summarisation. No exploitation, no brute force beyond a tiny
+  documented set, no DoS scripts — ever.
+
+B8.8 LLM / AI RED TEAMING MODULE (build this to be genuinely excellent)
+
+This is Attestor's differentiator. Treat it as a first-class module, not an
+add-on. It must be runnable STANDALONE — the owner must be able to run only the
+LLM tests against only an LLM endpoint, with no web scan at all — and also as
+an add-on to a web engagement.
+
+  TARGET TYPES the module must support:
+    - a raw model endpoint (OpenAI-compatible, Anthropic, Bedrock, Vertex,
+      Azure OpenAI, self-hosted vLLM/Ollama)
+    - a chat application behind a web UI (drive it with Playwright)
+    - a RAG application with a document ingestion path
+    - an agentic system with tool/function calling
+    - a customer-facing bot embedded in a product (WhatsApp/web widget)
+
+  CONFIGURATION the user provides:
+    endpoint, auth (key/bearer/cookie/session), request and response shape
+    (JSON path to the prompt field and the answer field), system prompt if
+    known, declared guardrails, declared tools/functions, the intended purpose
+    and the topics the bot is supposed to refuse, per-request cost estimate,
+    and a hard token/spend budget for the whole run.
+
+  TEST CATEGORIES (map every finding to the OWASP LLM Top 10 and record the
+  mapping in the report):
+    - Direct prompt injection: instruction override, role reassignment,
+      delimiter and encoding attacks, multilingual and obfuscated payloads
+    - Indirect prompt injection: payloads planted in documents, web pages,
+      emails, file names, image alt text and API responses the model ingests —
+      this is the highest-impact class for RAG and agent systems
+    - Jailbreaks: single-turn, multi-turn escalation (Crescendo-style),
+      tree-of-attacks-style adaptive refinement, persona and hypothetical
+      framing, and encoded payloads
+    - System prompt extraction and configuration leakage
+    - Sensitive information disclosure: training data extraction, PII leakage,
+      other users' data leakage, internal document leakage from RAG
+    - Insecure output handling: model output rendered into HTML (XSS), into SQL,
+      into shell, into a URL fetch (SSRF), into a file path
+    - Excessive agency: can the model call a tool it should not, with arguments
+      it should not, without confirmation; chained tool abuse; privilege
+      escalation through tool composition
+    - RAG-specific: document poisoning, retrieval manipulation, citation
+      fabrication, cross-tenant retrieval leakage
+    - Supply chain: model provenance, plugin/extension trust, unpinned model
+      versions
+    - Denial of wallet / cost abuse: unbounded output length, recursive
+      prompting, expensive tool loops — measure the cost impact and report it in
+      currency, but stop well before causing real spend damage and cap it hard
+    - Guardrail bypass: does the declared filter actually hold under the above
+    - Hallucination and misinformation in a business-critical path (where the
+      answer is used for a decision — pricing, eligibility, medical, legal)
+    - Bias and toxicity where relevant to the client's risk posture
+    - Agent-specific: goal hijacking, memory poisoning, inter-agent trust abuse,
+      unsafe autonomous action
+
+  TOOLING: orchestrate garak (broad probe sweep), promptfoo (YAML-defined
+  adversarial suites and graded assertions in CI), PyRIT (multi-turn adaptive
+  campaigns), deepteam (OWASP-LLM-mapped vulnerability coverage), plus a custom
+  probe corpus stored in the repo as versioned YAML so Attestor can add its own
+  payloads over time. Search for each tool's current interface before wiring.
+
+  SCORING: an LLM finding needs a different treatment from a CVE. Record attack
+  success rate over N attempts, reproducibility, the exact conversation
+  transcript as evidence, the business impact of the successful bypass, and a
+  severity that reflects real exploitability rather than a scanner's opinion.
+  Keep full transcripts as evidence objects.
+
+  SAFETY: never run cost-abuse tests without an explicit budget ceiling and
+  client acknowledgement. Never leave a poisoned document in a client's
+  production RAG corpus — track every artefact injected and remove it in a
+  teardown step, then verify removal.
+
+B8.9 AI-ASSISTED AND AGENTIC TESTING (optional, guarded, off by default)
+
+  Two separate capabilities, never conflated:
+
+  1. AI ASSIST (report and triage help) — enabled per engagement:
+     - drafts finding descriptions, remediation text and executive summary
+       prose FROM captured evidence only
+     - proposes deduplication and correlation across tools
+     - suggests a CVSS vector with a written rationale
+     - explains a tool's raw output in plain language for the tester
+     HARD RULES: it may never assert a fact not present in the evidence; every
+     generated block is marked as draft in the UI and requires human approval
+     before it can enter a report; the model sees redacted content only; the
+     prompt and model version used are recorded with the finding for
+     defensibility.
+
+  2. AGENTIC TESTING (an autonomous agent like Strix) — off unless explicitly
+     enabled per engagement:
+     - runs only inside the scope guard, in an isolated container with egress
+       restricted to in-scope resolved IPs
+     - hard token/spend budget and wall-clock limit, both enforced by the runner
+     - forbidden action list enforced at the proxy layer, not by asking the
+       model nicely: no destructive HTTP methods on flagged endpoints, no
+       out-of-scope hosts, no DoS patterns, no credential changes
+     - every action logged to auditLog with the full request
+     - all output enters the human review queue as CANDIDATES, never as
+       findings
+     Rationale for the tester: agents are good at breadth on day one and are
+     structurally unable to find multi-role business-logic flaws. Budget them
+     accordingly.
+
+B9. CUSTOMISATION MODEL — POLICY AS CODE
+
+Everything the owner asked to be customisable is expressed in a single YAML
+policy, validated with a schema, resolvable in layers: global defaults →
+client override → engagement override → single-run override from the console.
+The console has a form for the common knobs and a raw YAML editor with schema
+validation and a diff view for everything else.
+
+The policy must be able to express, at minimum:
+
+  modules:            which modules run (recon, web, api, mobile, cloud, code,
+                      network, llm, agentic) — any subset, including "llm only"
+  checks:             include/exclude individual checks by id, by WSTG id, by
+                      ASVS requirement, by nuclei tag/severity, by OWASP
+                      category. Both allowlist and denylist styles.
+  intensity:          safe | standard | thorough — controls crawl depth,
+                      payload sets, fuzz iterations, timeouts
+  phases:             preLogin, postLogin, or both
+  authProfiles:       which credential sets map to which roles
+  accessControlMatrix: which role pairs to test, which id fields to mutate
+  rateLimits:         global rps, per-target rps, concurrency, backoff,
+                      politeMode, adaptive-abort thresholds
+  windows:            allowed test windows in the client's timezone, blackouts
+  readOnlyMode:       suppress all state-changing requests
+  forbiddenActions:   url patterns and form actions never to touch
+  exclusions:         paths, parameters, hosts, file types
+  llm:                target config, probe packs, attempt counts, budget cap,
+                      teardown behaviour
+  ai:                 aiAssistEnabled, agenticEnabled, model, token ceiling
+  evidence:           what to capture, masking rules, retention days
+  report:             template id, branding, cvss version, compliance mappings
+                      to include, sections to include or omit, tone
+  notifications:      severity thresholds, channels, out-of-band alert rules
+
+Ship 5 ready-made profiles: `quick-external`, `standard-web-app`,
+`deep-web-app`, `cloud-review`, `llm-only`. The owner should be able to run a
+complete engagement by picking a profile and changing two lines.
+
+B10. SAFETY CONTROLS (collected, because they must be reviewable in one place)
+
+  - Pre-flight checklist enforced before `running`: authorisation valid, window
+    open, credentials verified, client emergency contact recorded, backup
+    confirmation received for intrusive runs, WAF allowlisting confirmed or
+    consciously skipped, production-versus-staging acknowledged.
+  - Global and per-engagement kill switch.
+  - Adaptive abort on target degradation.
+  - Absolute prohibition on DoS-shaped traffic, enforced in the request layer.
+  - Destructive-method guard: DELETE/PUT/PATCH on unknown endpoints require the
+    policy to opt in, and are blocked entirely in readOnlyMode.
+  - A dry-run mode that shows exactly which targets and checks WOULD run,
+    without sending a packet. The owner should use this on every new engagement.
+
+B11. FINDINGS PIPELINE
+
+  - One adapter per tool converts raw output into the normalised finding model.
+    Adapters are pure functions over a fixture file — that is what makes them
+    testable.
+  - Deduplication by a stable `dedupeKey` (rule id + normalised asset +
+    normalised location + parameter), surviving across runs and across tools
+    that find the same thing.
+  - Correlation: group related findings into one reportable issue where the
+    root cause is shared (one missing header across 40 endpoints is ONE finding
+    with 40 affected assets, not 40 findings — this single behaviour is what
+    separates a professional report from scanner output).
+  - Severity: CVSS 4.0 and 3.1 both supported, chosen per engagement. Always
+    store the vector string, not just the number. Allow a human severity
+    override with a mandatory written justification — auditors ask for it.
+  - False-positive memory per client: marking a finding false-positive
+    suppresses that dedupeKey in future runs for that client, with the reason
+    recorded and visible.
+  - Manual findings: a first-class editor with the same fields, evidence
+    attachment, and markdown support. The human's findings are the valuable
+    ones; the UI must make entering them fast, not an afterthought.
+  - Review queue: everything from scanners and agents lands as `candidate` and
+    requires human confirmation before it can appear in a report. Bulk triage
+    with keyboard shortcuts.
+  - Status tracking across the retest cycle: open → fixed → riskAccepted, with
+    dates, so the retest report writes itself.
+
+B12. EVIDENCE HANDLING
+
+  - Capture: HTTP request/response pairs, screenshots, terminal output, DOM
+    snapshots, LLM conversation transcripts, tool raw output. Each object gets
+    a sha256 for integrity.
+  - Masking at capture time: configurable regex and field rules for emails,
+    phone numbers, PAN/Aadhaar-shaped strings, card numbers, tokens, and any
+    client-specified pattern. Store masked; never store the raw personal data.
+  - Encryption at rest in MinIO; access only through signed short-lived URLs
+    issued by the API after an authorisation check.
+  - Retention: per-engagement retention days (default 90). A scheduled job
+    purges expired evidence, writes the purge to auditLog, and generates a
+    signed deletion confirmation PDF for the client.
+  - Legal hold flag that suspends purging when an engagement is disputed.
+
+B13. THE REPORT — SPECIFICATION
+
+The report is the product. It must look like a document produced by a senior
+consultant at a firm charging a serious fee, not like a tool export and not
+like AI output. Study several published sample reports from established firms
+before designing the template.
+
+DELIVERABLES
+
+  1. Full assessment report (PDF + HTML)
+  2. Retest report (PDF) showing fixed / open / accepted with dates
+  3. One-page attestation letter (PDF) — the artefact the client forwards to
+     their enterprise buyer or auditor
+  4. Optional executive one-pager for a board
+
+SECTION ORDER FOR THE FULL REPORT
+
+  1.  Cover — client name, engagement title, report version, date range,
+      classification (CONFIDENTIAL), Attestor wordmark, document reference id
+  2.  Document control — version history, author, reviewer, distribution list,
+      handling instructions, confidentiality statement
+  3.  Executive summary (2–4 pages, no jargon) — what was tested, why, the
+      headline risks in business terms, the overall posture rating, the count
+      by severity, what changed since the previous assessment if there was one,
+      and the three things to do first
+  4.  Risk overview — severity distribution, findings by category, findings by
+      asset, and a remediation-priority view. Charts must be legible in
+      greyscale print.
+  5.  Scope — assets in scope, assets explicitly out of scope, environments,
+      test dates and times, roles and accounts used, test type (black/grey/
+      white box), any client-imposed constraints
+  6.  Methodology — named standards (OWASP WSTG, ASVS 5.0, Top 10:2025, API
+      Top 10, MASVS, LLM Top 10, NIST SP 800-115, PTES), the phase structure,
+      the tools used with versions, and the severity model with the CVSS
+      version used
+  7.  Coverage matrix — every methodology category, marked tested / partially
+      tested / not tested, with a reason for anything not fully tested. This
+      section is what protects the firm when something is missed, and what
+      auditors look for. It must be generated from what actually ran, never
+      hand-waved.
+  8.  Attack narrative — a written walkthrough of the most significant chain:
+      how a low-severity information disclosure plus a weak access control
+      became a critical outcome. This section is the single biggest quality
+      differentiator between a cheap report and an expensive one. Support it
+      with a step diagram.
+  9.  Detailed findings — one per issue, ordered by severity then by asset:
+        finding id (stable, quotable, e.g. ATT-2026-014-003)
+        title (specific: "Order history of any user retrievable by changing
+               orderId", not "IDOR vulnerability")
+        severity + CVSS vector string + score + version
+        CWE id, OWASP category, WSTG id, ASVS requirement
+        affected assets / endpoints / parameters
+        business impact in plain language, quantified where possible
+        likelihood and attacker prerequisites
+        technical description
+        reproduction steps, numbered, precise enough for a developer to repeat
+        evidence: request/response excerpts (masked), screenshots, transcripts
+        remediation: specific to the client's stack, with code or configuration
+                     the developer can apply — never "sanitise all input"
+        references: OWASP cheat sheet, vendor docs, CVE where applicable
+        status and retest result
+  10. Positive observations — controls found to be working. Real ones. This
+      builds credibility and is standard in senior reports.
+  11. Strategic recommendations — a prioritised 30 / 60 / 90 day roadmap,
+      grouped by root cause rather than by finding
+  12. Compliance mapping appendix — findings mapped to ISO 27001:2022 A.8.8 and
+      related controls, SOC 2 Trust Services Criteria, PCI DSS 4.0 req. 11.4,
+      DPDP reasonable security safeguards, and OWASP ASVS levels. Configurable
+      per engagement.
+  13. Appendices — tool inventory with versions, full port/service tables, the
+      complete asset inventory, out-of-scope notes, glossary, and the
+      limitations and disclaimer statement
+  14. Limitations and disclaimer — use the drafted text in PART G1 verbatim.
+      Point-in-time, scope-limited, no guarantee of the absence of
+      vulnerabilities, no certification, no third-party reliance, liability
+      capped at fees. It appears on every assessment and retest report, is
+      version-pinned per issued document, and must not be removable by the UI.
+      The cover classification statement is PART G2 and the retest scope
+      statement is PART G4.
+
+VISUAL DESIGN OF THE REPORT
+
+  - Print-first CSS. A4 and US Letter. Correct page breaks — a finding never
+    splits awkwardly across a page boundary; evidence blocks stay with their
+    finding.
+  - Running header with client name and classification; running footer with
+    "Page X of Y", document reference and version.
+  - Serif for body text, grotesk for headings and tables, mono for evidence.
+    Consistent severity colours used sparingly, and distinguishable in
+    greyscale.
+  - Tables with real typography — aligned numerals, no zebra stripes, thin
+    rules.
+  - A generated table of contents with page numbers, and bookmarks in the PDF.
+  - No emoji, no icon clipart, no gradients, no stock imagery.
+  - Client logo optional, Attestor wordmark always.
+
+WRITING RULES (enforce in the AI-assist prompts and in the review checklist)
+
+  - No filler openings, no "In today's threat landscape", no "it is important
+    to note that", no exclamation marks, no marketing adjectives.
+  - Every claim traceable to evidence in the report.
+  - Active voice, past tense for what was done, present tense for what is true.
+  - Consistent terminology — one term per concept throughout.
+  - British or American spelling chosen once and enforced.
+  - Numbers, versions and endpoints exact. Never approximate a technical detail.
+
+REPORT TEMPLATING
+
+  - Templates are HTML + CSS in the repo, versioned, with a template id stored
+    on each report so an old report can be re-rendered exactly.
+  - Content comes from the findings database; prose blocks are editable in the
+    console with markdown, and edits are stored, not regenerated.
+  - A pre-release review checklist blocks release until: every finding has
+    evidence, every finding has remediation, no placeholder text remains, the
+    coverage matrix is complete, the disclaimer is present, the client name
+    appears correctly everywhere, and a human has ticked "I have read every
+    line of this report".
+
+B14. CLIENT PORTAL — SHIPS IN V1, NOT DEFERRED
+
+The portal is part of the first release. It is the difference between handing
+over a PDF and running a service: it is where the client watches remediation
+progress, requests the retest, and renews the retainer. Build it properly.
+
+It is also the ONLY publicly reachable surface of the platform, so it is a
+separate deployment with its own hardened, minimal, read-mostly API. It must
+never share a process, a port or a database role with the internal console.
+
+B14.1 ACCESS AND ACCOUNTS
+
+  - Client users are created by invitation from the console only. No public
+    signup, no password reset that can enumerate accounts, no open registration
+    endpoint of any kind.
+  - Invitation flow: tester invites an email address and assigns a role; the
+    invitee receives a single-use, expiring link (48 hours); they set a password
+    (argon2id) and are required to enrol TOTP MFA before first access. MFA is
+    mandatory for every client user without exception — this account can see
+    unfixed vulnerabilities in their production systems.
+  - Client roles:
+      clientOwner    sees everything for their organisation, manages their own
+                     users, downloads reports
+      clientMember   sees assigned engagements, can update finding status and
+                     comment, cannot manage users
+      clientViewer   read-only, cannot download reports
+  - Scoping is enforced server-side on every single route by clientId derived
+    from the session, never from a request parameter. Write an integration test
+    per route that asserts client A cannot read client B's data by id
+    substitution. This is the exact bug class Attestor sells testing for; the
+    portal must not have it.
+  - Sessions: short-lived, rotated on privilege change, invalidated on password
+    change, with a visible active-session list and a "sign out everywhere"
+    action.
+  - Access revocation is immediate: when a tester deactivates a client user or
+    an engagement is closed, existing sessions and any outstanding signed URLs
+    are invalidated in the same transaction.
+
+B14.2 PAGES AND FUNCTIONALITY
+
+  Dashboard
+    - Current posture: open findings by severity, trend since last assessment,
+      oldest unresolved critical, next scheduled scan (retainer clients).
+    - Active engagement status with the lifecycle stage shown in plain language
+      ("testing in progress", "report in preparation", "awaiting your retest
+      request") — never internal state names.
+    - Outstanding actions for the client, listed explicitly.
+
+  Engagements
+    - List of their engagements with type, dates, status, deliverables.
+    - Engagement detail: scope summary, methodology and standards used, test
+      window, roles tested, and the deliverable downloads.
+
+  Findings
+    - Filter and sort by severity, status, asset, category, first-seen date.
+    - Finding detail: everything in the report finding block — description,
+      business impact, reproduction steps, evidence, remediation, references,
+      CVSS vector and score, standard mappings.
+    - Evidence rendered inline as INERT TEXT and images. Captured HTTP bodies
+      and LLM transcripts are never rendered as live HTML. Sandbox the viewer
+      (iframe with a restrictive sandbox attribute plus CSP) — an XSS here would
+      be an XSS delivered by the security vendor.
+    - Client-settable status: acknowledged, in progress, fixed (pending
+      verification), risk accepted. Risk accepted requires a written
+      justification and records who accepted it and when — that record is
+      itself an audit artefact the client will need later.
+    - Comment thread per finding, threaded between client and tester, with
+      email notification to the other party. Markdown supported, sanitised on
+      render, no file attachments from the client side in v1.
+    - "Mark all fixed and request retest" bulk action.
+
+  Retest
+    - A single prominent action: "Request retest". It creates a retest job in
+      the console, records the requested date, and shows the client which
+      findings will be re-verified.
+    - Retest eligibility and remaining free-retest window shown clearly
+      (one free retest within 30 days of report release; after that it is a
+      paid engagement — state this, do not let it become a dispute).
+    - Retest results appear as a diff: verified fixed, still open, regressed.
+
+  Reports and documents
+    - Assessment report, retest report, attestation letter, and the evidence
+      deletion confirmation, each with version and release date.
+    - Downloads are watermarked per download with the recipient's name, email,
+      organisation and UTC timestamp on every page. Watermarking happens at
+      download time, server-side, not at render time.
+    - Downloads are served through short-lived signed URLs (5 minutes,
+      single-use), and every download is written to auditLog with user, IP and
+      user agent.
+    - clientViewer role cannot download, only read in the browser.
+    - An HTML view of the report inside the portal so a client can read it
+      without downloading anything.
+
+  Assets and coverage
+    - What was in scope, what was explicitly out of scope, and the coverage
+      matrix from the report. Clients ask "did you test X?" constantly; answer
+      it once, in the product.
+
+  Continuous monitoring (retainer clients)
+    - Timeline of scheduled runs, new findings since last run, resolved
+      findings, and regressions flagged prominently.
+    - Attack-surface changes: new subdomains, new open ports, certificate
+      expiries approaching, exposed secrets detected.
+    - Monthly posture summaries, downloadable.
+
+  Security questionnaire helper
+    - A library of standard, reusable answers describing Attestor's testing
+      process, methodology, tester independence, data handling and retention —
+      written so the client can paste them into their own buyer questionnaires.
+    - Copy-to-clipboard per answer, and an export of the whole set.
+    - This is a small feature that generates a disproportionate amount of
+      goodwill and referrals. Do not skip it.
+
+  Account
+    - Profile, password change, MFA management, active sessions, notification
+      preferences, and their organisation's user list (clientOwner only).
+
+B14.3 NOTIFICATIONS TO CLIENTS
+
+  - Email on: report released, retest complete, comment reply, new critical or
+    high finding from a continuous run, scheduled scan starting (retainer),
+    and evidence deletion completed.
+  - Every client-facing email is queued for human review and release in v1.
+    Nothing is auto-sent. The only exception the owner may later enable is the
+    scheduled-scan-starting notice.
+  - Notification preferences per user, with severity threshold.
+  - Emails contain no findings detail — a link to the portal only. Never put a
+    vulnerability description in an email body.
+
+B14.4 PORTAL SECURITY REQUIREMENTS
+
+  - Separate deployment, separate container, separate database credentials with
+    a least-privilege role that cannot read other clients' rows, cannot read the
+    credential vault at all, and has no write access to auditLog beyond append.
+  - The portal API exposes only the routes it needs. It must not import the
+    console's route modules.
+  - Strict CSP, CSRF protection on all state-changing routes, HSTS with
+    preload, secure/httpOnly/sameSite cookies, and rate limiting on
+    authentication routes with account lockout backoff that does not enumerate
+    users.
+  - No credential vault access, no scan control, no policy editing, no ability
+    to trigger a tool run from the portal. The retest request creates a request
+    record only; a human starts the job.
+  - All uploads disabled. Clients cannot upload files in v1.
+  - Every action written to auditLog with actor, IP, user agent, and subject.
+  - Include the portal in the platform's own ASVS 5.0 self-assessment at M13,
+    and treat any finding in it as a release blocker.
+
+B14.5 PORTAL ACCEPTANCE CRITERIA
+
+  - A client user can log in, read every finding, update status, comment,
+    request a retest, and download a watermarked report — without the tester
+    doing anything manually.
+  - Client A cannot reach any object belonging to client B by any id, filter,
+    export or signed URL. Automated tests prove it per route.
+  - Revoking a user kills their session and their outstanding signed URLs
+    immediately.
+  - Evidence rendering cannot execute script under any captured payload,
+    including stored XSS payloads found during the engagement. Test this with a
+    real payload corpus.
+  - The portal works with JavaScript-heavy interactions on mobile, since
+    founders read these on phones.
+
+B15. CONTINUOUS / RETAINER ENGINE
+
+  - Repeatable scheduled runs per client, per module, honouring test windows.
+  - Diff engine: new findings, resolved findings, regressions (a previously
+    fixed dedupeKey reappearing — flag these loudly, they signal a broken
+    deployment process and they sell the retainer better than anything).
+  - Attack-surface monitoring: new subdomains, new open ports, new services,
+    certificate expiry, DNS changes, exposed secrets appearing in public
+    repositories.
+  - Monthly one-page posture summary generated and queued for human review
+    before sending.
+  - SLA timers on open critical and high findings, with escalation reminders.
+
+B16. NOTIFICATIONS AND INTEGRATIONS
+
+  - Out-of-band critical alert: when a critical finding is confirmed, notify
+    the tester immediately and prepare a pre-written client notification for
+    human sending. Never auto-send to the client.
+  - Email (SMTP/Resend), and optional Slack/Teams webhooks for the tester.
+  - Export formats: JSON, CSV, SARIF, and a DefectDojo-compatible import so a
+    client with existing tooling can ingest results.
+  - Optional Jira/Linear issue creation from a confirmed finding, with the
+    remediation text and evidence link.
+  - Invoicing stays outside the system — record amounts and payment state only,
+    and export a CSV for the accountant. Do not build accounting.
+
+B17. COST CONTROL
+
+  - Single VPS to start: 4 vCPU / 8–16GB RAM / 160GB SSD is sufficient for the
+    full stack plus tool containers. Document the sizing in the runbook.
+  - Per-client scanning VPS with a fixed egress IP is a deployment option, not
+    a code change — the runner takes an egress profile.
+  - Tool images cached locally and pinned by digest; never pull latest at run
+    time.
+  - LLM spend: hard per-engagement token budget, a cheaper model for bulk
+    triage and a stronger one only for report prose, prompt caching where the
+    provider supports it, and a running cost display in the console. The whole
+    AI layer must be switchable off with one config flag and the system must
+    remain fully functional without it.
+  - No paid SaaS anywhere in the critical path. Everything self-hosted or free
+    tier, with the swap-in point documented if the firm later pays for
+    something.
+
+B18. SECURITY OF THE PLATFORM ITSELF
+
+This system holds client credentials and evidence of client vulnerabilities. It
+is the highest-value target the firm will ever operate. Treat it accordingly and
+write `docs/THREAT-MODEL.md` covering all of this:
+
+  - Console and internal API never exposed to the public internet: bind to a
+    private interface and reach them over WireGuard/Tailscale. The client
+    portal (B14) is the ONLY public surface, ships in v1, and is a separate
+    deployment with a minimal, read-mostly API and its own least-privilege
+    database role. Everything in B14.4 is mandatory, not aspirational.
+  - Mandatory TOTP MFA for staff accounts. Argon2id password hashing. Short
+    sessions, rotation on privilege change.
+  - Strict role separation: owner, tester, client. Least privilege enforced
+    server-side on every route, never in the UI only.
+  - Append-only audit log; nothing in the app can edit or delete it.
+  - Encrypted backups, off-box, restore-tested, with the restore procedure in
+    the runbook.
+  - All tool containers run non-root, read-only root filesystem where possible,
+    dropped capabilities, no host network, per-run network namespace, resource
+    limits, and a wall-clock timeout.
+  - Dependencies pinned with a lockfile; CI runs a vulnerability scan on the
+    platform's own dependencies and container images.
+  - Secrets from environment/KMS only; a pre-commit hook and CI check that
+    blocks committed secrets.
+  - The platform's own security headers, CSRF protection, and strict input
+    validation — an XSS in a findings viewer that renders attacker-controlled
+    response bodies is a real and obvious risk. Sanitise and sandbox all
+    rendered evidence; render captured HTTP bodies as inert text, never as
+    live HTML.
+
+B19. TESTING STRATEGY
+
+  - Unit: policy resolution, dedupe keys, CVSS parsing, severity mapping,
+    redaction filter, masking rules, adapter parsers against fixture files.
+  - Property/fuzz: scope guard (wildcards, unicode domains, suffix tricks,
+    DNS rebinding shapes, IPv6, redirect chains). This suite must be thorough.
+  - Integration: full engagement run against the local vulnerable stack
+    (Juice Shop, DVWA, WebGoat, VAmPI, crAPI, plus a purpose-built vulnerable
+    LLM app you write for the LLM module). Assert that known-planted issues are
+    found and that no request ever leaves the test network.
+  - Golden-file: report HTML rendering from a fixed findings fixture.
+  - E2E: Playwright through the console — create engagement, upload
+    authorisation, add scope, add credentials, run, triage, generate report,
+    release.
+  - Negative tests: attempts to run without authorisation, outside the window,
+    against an excluded host, after revocation — all must fail closed.
+  - CI must never make an outbound connection to a real target.
+
+B20. DEPLOYMENT AND OPERATIONS
+
+  - `docker compose up` brings up the entire stack locally including test
+    targets, with seeded demo data and a demo engagement so the owner can see
+    the whole flow in five minutes.
+  - Production compose file with resource limits, restart policies, log
+    rotation and healthchecks.
+  - Migrations run on deploy, reversible, checked in.
+  - `docs/RUNBOOK.md`: VPS provisioning, DNS and egress IP setup, backup and
+    restore, key rotation, adding a new tool adapter, adding a report template,
+    the panic-stop procedure, and the client-onboarding checklist.
+  - Structured JSON logs through the redaction filter; simple metrics
+    (jobs queued/running/failed, run duration, findings per run, token spend).
+
+B21. PLATFORM ACCEPTANCE CRITERIA
+
+  - A complete engagement can be run end to end from the console without
+    touching a terminal.
+  - "LLM only" and "cloud only" engagements run with no web scanning at all.
+  - Attempting any action against an unauthorised, excluded or out-of-window
+    target fails closed, logs, and explains which rule stopped it.
+  - Credentials never appear in any log, any UI surface, any report or any
+    exported file.
+  - A report generated from the demo data is genuinely presentable to a paying
+    client without editing anything except the client-specific prose.
+  - Turning off the AI layer entirely leaves the system fully functional.
+  - Every module is configurable from the policy without a code change.
+  - Test suite green; scope guard property tests included.
+
+
+================================================================================
+PART C — RESEARCH THE AGENT MUST DO BEFORE AND DURING THE BUILD
+================================================================================
+
+Search the web for current, August-2026-accurate information on each of these
+before implementing the related part. Record findings with URLs and dates in
+`docs/RESEARCH-NOTES.md`.
+
+  1. Current stable versions, CLI flags and JSON output schemas for every tool
+     in B3. Output formats change; do not code against remembered shapes.
+  2. OWASP WSTG current version and its full test-id list, for the coverage
+     matrix. ASVS 5.0 requirement structure. OWASP Top 10:2025 categories.
+     OWASP API Security Top 10 current edition. MASVS current version.
+     OWASP LLM Top 10 current edition.
+  3. CVSS 4.0 specification from FIRST — vector string grammar, scoring, and
+     how it differs from 3.1. Support both.
+  4. AWS, Azure and GCP customer penetration testing policies as they stand
+     now: permitted services, prohibited activities, whether any form or
+     notification is required. Store the summary text the platform shows.
+  5. Published sample penetration test reports from several established firms,
+     to calibrate structure, tone, section depth and finding presentation.
+     Study at least five before designing the template.
+  6. Practitioner discussion (r/netsec, r/AskNetsec, r/cybersecurity, security
+     blogs, conference talks) on: which automated checks actually produce real
+     findings versus noise, how experienced testers handle authenticated
+     scanning and session death, how they structure access-control testing, and
+     what makes a report get rejected by a client or an auditor.
+  7. Current guidance on LLM red teaming methodology and the state of prompt
+     injection defences, so the LLM module tests what matters in 2026 rather
+     than 2024's payload lists.
+  8. ZAP automation framework configuration, nuclei template organisation and
+     tagging, prowler check and compliance-framework mapping, MobSF API,
+     semgrep rule pack selection, schemathesis configuration.
+  9. Playwright patterns for authenticated crawling: session persistence,
+     storage state reuse, detecting logout, handling SPA route discovery.
+ 10. Anything else you find yourself guessing about. Guessing is not permitted
+     where a search would settle it.
+
+
+================================================================================
+PART D — HARD BANS (BOTH DELIVERABLES)
+================================================================================
+
+  - No scanning path that bypasses the scope guard.
+  - No DoS, stress, flood, or volumetric capability, in any form, behind any
+    flag.
+  - No destructive payloads or state-destroying actions.
+  - No storing raw client personal data as evidence.
+  - No credentials in logs, UI, reports, exports or error traces.
+  - No hardcoded secrets.
+  - No client data to third-party AI without an explicit per-engagement flag.
+  - No auto-sending anything to a client.
+  - No fabricated findings, CVEs, CVSS vectors, references, metrics,
+    testimonials, client names or logos.
+  - No claim of CERT-In empanelment, CREST accreditation, or any certification
+    the firm does not hold, anywhere in code, copy, templates or reports.
+  - No guarantee of security, "unhackable", "100% secure", or "fully compliant"
+    language in any template.
+  - No paid or licence-restricted tools. No cracked software.
+  - No admin panel, CMS, login or database on the marketing website.
+  - No file uploads on the marketing website.
+  - No purple gradients, neon, glassmorphism, bento grids, emoji icons or
+    generic AI-template design on the website.
+  - No dependency added where a few lines of standard library would do.
+  - No leading-underscore names. No `any`. No dead code. No commented-out code
+    left in the repo.
+
+
+================================================================================
+PART E — QUESTIONS TO ASK THE OWNER BEFORE OR DURING THE BUILD
+================================================================================
+
+Ask these. Do not guess. Batch them so the owner answers in one sitting, and
+proceed with everything that does not depend on the answer while waiting.
+
+WEBSITE
+  1. Confirm the exact price list and turnaround days for each service, in INR,
+     and the USD price list for the international page. (Draft figures exist in
+     `security-audit-agency-2026.html` — confirm or correct each one.)
+  2. Wordmark/logo: does one exist, or should the site use a typographic
+     wordmark you set in the design tokens?
+  3. Which accent colour: deep green or deep navy?
+  4. The exact insurance cover amount to state, once the policy is bought.
+  5. Founder name and any credentials to publish on the About page. Any CVEs,
+     talks or write-ups to reference?
+  6. The exact timezone overlap hours to advertise.
+  7. The legal entity name and jurisdiction for the footer and terms, once
+     registered.
+  8. PART G contains drafted text for the report disclaimer, attestation
+     letter, authorisation to test, privacy notice, terms of use, responsible
+     disclosure policy, portal terms and deletion confirmation. Confirm when
+     each has been reviewed by a lawyer, and supply any changes. Until a block
+     is marked reviewed, the console shows an unreviewed banner and the website
+     legal pages carry a draft notice. See PART G12 for the specific points the
+     lawyer must rule on.
+  9. Cal.com or a different booking tool?
+ 10. Which vulnerable app should the public sample report be based on, and is
+     the redaction approach acceptable?
+
+PLATFORM
+ 11. The client portal ships in v1 (B14) — confirm the public hostname for it
+     (portal.attestorsecurity.com assumed) and whether clientViewer accounts
+     should exist at launch or only clientOwner and clientMember.
+ 12. Default evidence retention days — 90 assumed, confirm.
+ 13. Which LLM provider and what monthly ceiling for the AI-assist layer? Should
+     the AI layer be off by default? (Recommend: off by default, on per
+     engagement.)
+ 14. Is agentic testing (Strix-style) allowed at all in v1? (Recommend: build
+     the integration, ship it disabled.)
+ 15. Where will this be hosted — which VPS provider and region, and will
+     per-client egress IPs be used from the start?
+ 16. Confirm the never-touch global blocklist: which domains, IP ranges and
+     organisations must the platform refuse to target under any circumstances?
+ 17. CVSS 4.0 or 3.1 as the default for reports?
+ 18. Report spelling convention: British or American?
+ 19. How many staff accounts initially, and should client users be able to
+     download reports themselves or only view them?
+ 20. Should the platform enforce the "advance payment received" gate before
+     scanning, or only warn?
+
+Anything else that is genuinely ambiguous: ask. Anything that has an obvious
+professional default: take it, and write one line in `DECISIONS.md`.
+
+
+================================================================================
+PART F — BUILD ORDER
+================================================================================
+
+Work through these in order. Each milestone ends with tests passing, a working
+demo, and the docs updated. Do not skip ahead; do not stop early.
+
+  M0  Repo, tooling, CI, design tokens, docs skeleton, decisions log.
+  M1  Website: full static build, all pages, all four interactive islands,
+      security headers, SEO, performance budget met. This ships first because
+      it is what earns the first client.
+  M2  Platform core: data model, migrations, engagement lifecycle, SCOPE GUARD
+      with property tests, authorisation upload, audit log, panic stop.
+  M3  Runner: Docker execution, policy resolution, MinIO evidence storage,
+      redaction filter, job queue, dry-run mode, rate limiting and adaptive
+      abort.
+  M4  Recon module + web module (unauthenticated), adapters, normalisation,
+      dedupe, correlation, review queue, console triage UI.
+  M5  Credential vault, authentication profiles, authenticated crawling,
+      session-death detection, access-control matrix testing, rate-limit
+      testing.
+  M6  Report engine: templates, renderer, PDF pipeline, coverage matrix,
+      attack narrative support, compliance mappings, attestation letter,
+      retest report, evidence deletion confirmation, all legal text blocks
+      from PART G wired in, pre-release checklist, golden-file tests.
+  M7  CLIENT PORTAL (B14) — separate hardened deployment, invitation flow,
+      MFA, findings, comments, status updates, retest request, watermarked
+      downloads, questionnaire helper, per-route cross-tenant tests.
+      It ships here, not at the end, because it is client-visible and it is
+      what makes the first retainer sellable.
+  M8  Cloud module. Code/supply-chain module. Network module.
+  M9  Mobile module.
+  M10 LLM / AI red teaming module, including the custom probe corpus and the
+      purpose-built vulnerable LLM app for testing it.
+  M11 AI-assist layer (off by default) and guarded agentic integration
+      (shipped disabled).
+  M12 Continuous/retainer engine: scheduling, diffing, regression detection,
+      attack-surface monitoring, monthly summaries, SLA timers, and the
+      portal's continuous-monitoring views.
+  M13 Hardening pass: threat model document, platform's own dependency and
+      container scan, backup/restore rehearsal, runbook completion, full e2e
+      run against the vulnerable stack, an XSS payload corpus fired at the
+      portal's evidence viewer, and a self-assessment of both the platform and
+      the portal against OWASP ASVS 5.0.
+
+Deliver at the end: a working monorepo, a deployed static website, a running
+platform on one VPS, a demo engagement with a generated report that could be
+sent to a paying client, and complete documentation.
+
+
+================================================================================
+PART G — STANDARD LEGAL AND BOILERPLATE TEXT
+             (DRAFT — TO BE REVIEWED BY A LAWYER BEFORE FIRST USE)
+================================================================================
+
+G0. HOW TO USE THIS PART
+
+Every block below is drafting-quality text written to be reviewed and adjusted
+by a qualified lawyer in the relevant jurisdiction. It is NOT legal advice and
+must not be published or sent to a client until reviewed.
+
+Implementation rules for the agent:
+
+  - Store each block as a versioned template file under `packages/report/legal/`
+    with a template id and a version number. Never hardcode legal text inside a
+    component.
+  - The report disclaimer (G2), the confidentiality statement (G3) and the
+    reliance statement (G4) are MANDATORY on every assessment and retest report.
+    The console must not offer a way to remove them. They may be replaced with a
+    newer approved version, never deleted.
+  - Placeholders are written as [SQUARE BRACKETS] and must be filled from
+    engagement data at render time. A report containing an unfilled placeholder
+    must fail the pre-release checklist.
+  - Record which legal template version was used on each issued document, so an
+    old report can be re-rendered exactly as it was sent.
+  - Surface a banner in the console until the owner marks each block as
+    "lawyer reviewed" with a date, so nothing goes out unreviewed by accident.
+
+Global placeholders used throughout:
+  [LEGAL ENTITY NAME]     the registered name once incorporated
+  [BRAND NAME]            Attestor Security
+  [JURISDICTION]          e.g. the courts at [CITY], India
+  [CITY]  [COUNTRY]  [REGISTERED ADDRESS]  [CONTACT EMAIL]
+  [CLIENT LEGAL NAME]  [ENGAGEMENT TITLE]  [REPORT REFERENCE]
+  [TEST START DATE]  [TEST END DATE]  [REPORT DATE]  [REPORT VERSION]
+  [SCOPE SUMMARY]  [METHODOLOGY LIST]  [FEE AMOUNT]  [RETENTION DAYS]
+
+
+G1. REPORT — LIMITATIONS AND DISCLAIMER  (mandatory, final section of every
+    assessment and retest report)
+
+--------------------------------------------------------------------------------
+LIMITATIONS AND DISCLAIMER
+
+Nature of this assessment. This report presents the results of a
+point-in-time security assessment carried out by [LEGAL ENTITY NAME], trading
+as [BRAND NAME], for [CLIENT LEGAL NAME] between [TEST START DATE] and
+[TEST END DATE], against the scope recorded in the Scope section of this
+report. The findings describe the state of the tested assets as observed
+during that period only. Systems change; a result that was accurate during the
+test window may cease to be accurate immediately afterwards as a consequence of
+code changes, configuration changes, dependency updates, infrastructure changes
+or newly disclosed vulnerabilities.
+
+Scope limitation. Only the assets, environments, interfaces and user roles
+listed in the Scope section were assessed. Assets that were excluded from
+scope, that were unavailable during the test window, or for which access or
+credentials were not provided, were not assessed and no statement is made about
+them. The Coverage Matrix in this report records what was tested, what was
+partially tested and what was not tested, together with the reason in each
+case.
+
+No warranty of completeness. Security assessment is a sampling exercise
+performed under time and scope constraints. No assessment, however thorough,
+can identify every vulnerability in a system, and the absence of a finding in
+this report must not be interpreted as evidence that a vulnerability does not
+exist. [LEGAL ENTITY NAME] does not warrant that the tested assets are free
+from vulnerabilities, secure against all attacks, or fit for any particular
+purpose.
+
+Not a certification. This report is not a certificate, accreditation,
+attestation of compliance, or guarantee of compliance with any law, standard,
+framework or contractual obligation. Where findings are mapped to a standard
+such as ISO/IEC 27001, SOC 2, PCI DSS or India's Digital Personal Data
+Protection Act, that mapping is provided for the client's convenience in
+evidencing its own programme and does not constitute a compliance opinion, an
+audit opinion, or certification of any kind. [LEGAL ENTITY NAME] is not
+empanelled by CERT-In and this report is not a CERT-In audit report.
+
+Methodology. The assessment followed [METHODOLOGY LIST]. Automated tooling was
+used to obtain coverage and all reported findings were reviewed and validated
+by a human tester before inclusion. Findings arising solely from automated
+output and not validated by a tester are not included in this report.
+
+Client responsibilities. [CLIENT LEGAL NAME] confirmed, prior to testing, that
+it owns or is otherwise entitled to authorise testing of the assets in scope,
+that any necessary permissions from third parties including hosting, cloud and
+service providers had been obtained, and that current backups existed. The
+accuracy of information supplied by [CLIENT LEGAL NAME], including asset
+inventories, architecture descriptions and credentials, has been relied upon
+and has not been independently verified except where stated.
+
+Remediation. Remediation guidance in this report is provided in good faith and
+should be reviewed, adapted to the client's environment and tested by
+[CLIENT LEGAL NAME] before deployment. [LEGAL ENTITY NAME] is not responsible
+for the implementation of remediation, nor for any effect of implementing it.
+Findings recorded as resolved were re-verified only where a retest was
+performed and only to the extent recorded in the retest results.
+
+Reliance and distribution. This report is prepared solely for
+[CLIENT LEGAL NAME] and for the internal purposes described in the engagement
+documents. It may be shared with the client's auditors, insurers, regulators
+and prospective customers where necessary for assurance purposes, on the basis
+that no duty of care is owed by [LEGAL ENTITY NAME] to any such recipient and
+no such recipient may rely on this report. It must not be published, quoted in
+part, or used in marketing without the prior written consent of
+[LEGAL ENTITY NAME] and [CLIENT LEGAL NAME].
+
+Confidentiality. This report contains information about unresolved security
+weaknesses. Disclosure to unauthorised parties may materially increase the risk
+to [CLIENT LEGAL NAME]. It must be handled as confidential and distributed on
+a need-to-know basis.
+
+Liability. Except in respect of liability which cannot lawfully be limited,
+the total aggregate liability of [LEGAL ENTITY NAME] arising out of or in
+connection with this engagement, whether in contract, tort including
+negligence, or otherwise, is limited to the fees actually paid by
+[CLIENT LEGAL NAME] for this engagement. [LEGAL ENTITY NAME] is not liable for
+indirect, special or consequential loss, nor for loss of profit, revenue,
+goodwill, data or anticipated savings. Nothing in this report varies the terms
+of the executed engagement documents, which prevail in the event of conflict.
+
+Governing law. This report and the engagement to which it relates are governed
+by the laws of [COUNTRY] and subject to the exclusive jurisdiction of
+[JURISDICTION], unless the executed engagement documents provide otherwise.
+--------------------------------------------------------------------------------
+
+
+G2. REPORT COVER — CLASSIFICATION AND HANDLING STATEMENT
+    (printed on the cover and repeated in the running footer)
+
+--------------------------------------------------------------------------------
+CONFIDENTIAL — CONTAINS UNRESOLVED SECURITY FINDINGS
+
+Prepared for [CLIENT LEGAL NAME] by [LEGAL ENTITY NAME] trading as
+[BRAND NAME]. Report reference [REPORT REFERENCE], version [REPORT VERSION],
+issued [REPORT DATE].
+
+Distribute on a need-to-know basis only. Do not forward, publish or store this
+document in an unrestricted location. If you have received this document in
+error, please notify [CONTACT EMAIL] and delete all copies.
+--------------------------------------------------------------------------------
+
+
+G3. ATTESTATION LETTER  (one page, the artefact the client forwards to their
+    enterprise buyer, auditor or insurer — contains no vulnerability detail)
+
+--------------------------------------------------------------------------------
+[BRAND NAME] LETTERHEAD
+[REGISTERED ADDRESS] · [CONTACT EMAIL]
+
+[REPORT DATE]
+
+LETTER OF ATTESTATION — INDEPENDENT SECURITY ASSESSMENT
+
+To whom it may concern,
+
+[LEGAL ENTITY NAME], trading as [BRAND NAME], was engaged by
+[CLIENT LEGAL NAME] to perform an independent security assessment of
+[ENGAGEMENT TITLE].
+
+Assessment period:      [TEST START DATE] to [TEST END DATE]
+Scope:                  [SCOPE SUMMARY]
+Assessment type:        [black-box | grey-box | white-box]
+Methodology:            [METHODOLOGY LIST]
+Severity model:         CVSS [VERSION]
+Report reference:       [REPORT REFERENCE], version [REPORT VERSION]
+
+Findings identified:    [N] critical, [N] high, [N] medium, [N] low,
+                        [N] informational
+
+Remediation status as at [STATUS DATE]: [N] of [N] critical and high severity
+findings have been remediated and independently re-verified by
+[LEGAL ENTITY NAME]. [Remaining items and their status, or: All critical and
+high severity findings have been remediated and re-verified.]
+
+Independence: [LEGAL ENTITY NAME] did not design, develop, operate or maintain
+any of the systems assessed, and has no financial or operational interest in
+[CLIENT LEGAL NAME] beyond the fees for this engagement.
+
+Basis and limitations: this letter summarises a point-in-time assessment
+limited to the scope stated above and is subject in full to the limitations and
+disclaimer set out in the accompanying report. It is not a certification of
+compliance with any standard or law, and it does not warrant that the assessed
+systems are free from vulnerabilities. [LEGAL ENTITY NAME] is not empanelled by
+CERT-In. No duty of care is owed to any recipient of this letter other than
+[CLIENT LEGAL NAME], and no such recipient may rely upon it. The detailed
+report is available from [CLIENT LEGAL NAME] under their own confidentiality
+arrangements.
+
+Verification: the authenticity of this letter may be confirmed by writing to
+[CONTACT EMAIL] quoting reference [REPORT REFERENCE].
+
+Yours faithfully,
+
+[TESTER NAME]
+[TITLE], [LEGAL ENTITY NAME]
+--------------------------------------------------------------------------------
+
+
+G4. RETEST REPORT — SCOPE STATEMENT
+    (inserted at the top of every retest report, in addition to G1)
+
+--------------------------------------------------------------------------------
+BASIS OF THIS RETEST
+
+This retest was performed on [RETEST DATE] and was limited to re-verifying the
+findings listed in report [REPORT REFERENCE] version [REPORT VERSION]. No new
+assessment of the application, infrastructure or environment was performed and
+no search for new vulnerabilities was undertaken.
+
+A finding recorded as "verified fixed" means that the specific issue described
+in the original finding could no longer be reproduced using the original
+reproduction steps at the time of retest. It does not mean that the underlying
+class of weakness has been eliminated, that the fix is complete in all code
+paths, or that no related issue exists elsewhere in the system.
+
+Changes made to the environment after [RETEST DATE] are outside the scope of
+this retest. The limitations and disclaimer in the original report apply to
+this document in full.
+--------------------------------------------------------------------------------
+
+
+G5. EVIDENCE DELETION CONFIRMATION
+    (generated automatically when retention expires and the purge job completes)
+
+--------------------------------------------------------------------------------
+CONFIRMATION OF DATA DELETION
+
+[REPORT DATE]
+
+[CLIENT LEGAL NAME]
+
+Engagement:            [ENGAGEMENT TITLE]
+Report reference:      [REPORT REFERENCE]
+Assessment period:     [TEST START DATE] to [TEST END DATE]
+Retention period:      [RETENTION DAYS] days from report release
+
+This confirms that as at [DELETION DATE], [LEGAL ENTITY NAME] has deleted from
+its systems all testing evidence collected during the above engagement,
+including captured requests and responses, screenshots, logs, transcripts and
+raw tool output, together with all credentials supplied by [CLIENT LEGAL NAME]
+for the purpose of the engagement.
+
+Retained for record and defence purposes only: the issued report and
+attestation letter, the executed engagement documents and authorisation, and
+the immutable activity log recording what was executed and when. These are held
+in encrypted storage with access restricted to authorised personnel.
+
+We recommend that any test accounts created for this engagement are disabled
+and that credentials shared with us are rotated, if this has not already been
+done.
+
+[TESTER NAME]
+[TITLE], [LEGAL ENTITY NAME]
+--------------------------------------------------------------------------------
+
+
+G6. AUTHORISATION TO TEST  (the document the client signs; the platform stores
+    it against the engagement and the scope guard depends on it)
+
+--------------------------------------------------------------------------------
+AUTHORISATION FOR SECURITY TESTING
+
+Client:              [CLIENT LEGAL NAME], [REGISTERED ADDRESS]
+Service provider:    [LEGAL ENTITY NAME] trading as [BRAND NAME]
+Engagement:          [ENGAGEMENT TITLE]
+Engagement document: [SOW REFERENCE] dated [SOW DATE]
+
+1. Authorised assets. [CLIENT LEGAL NAME] authorises [LEGAL ENTITY NAME] to
+   perform security testing against, and only against, the following assets:
+
+   [ASSET LIST — exact domains, subdomains, IP addresses and ranges, URLs, API
+   base paths, mobile application package identifiers, cloud account
+   identifiers, repositories, and LLM or AI endpoints]
+
+   Explicitly excluded from this authorisation:
+   [EXCLUSION LIST]
+
+2. Testing window. Testing is authorised from [TEST START DATE AND TIME] to
+   [TEST END DATE AND TIME] ([TIMEZONE]), during the following hours:
+   [PERMITTED HOURS]. No testing is authorised outside this window.
+
+3. Source addresses. Testing will originate from the following addresses:
+   [SOURCE IP LIST]. [CLIENT LEGAL NAME] will allow these addresses where
+   necessary and will inform its hosting, cloud, WAF and managed security
+   providers as required.
+
+4. Authority and ownership. The signatory confirms that they are authorised to
+   bind [CLIENT LEGAL NAME]; that [CLIENT LEGAL NAME] owns or otherwise
+   controls the assets listed in clause 1; and that where any asset is hosted,
+   operated or provided by a third party, all permissions required from that
+   third party have been obtained. [CLIENT LEGAL NAME] will provide evidence of
+   such third-party permission on request.
+
+5. Permitted activity. Authorised techniques comprise reconnaissance,
+   enumeration, vulnerability identification, and controlled exploitation to
+   the minimum extent necessary to demonstrate impact, in accordance with the
+   agreed Rules of Engagement.
+
+6. Excluded activity. The following are not authorised and will not be
+   performed: denial-of-service, distributed denial-of-service, stress, load or
+   volumetric testing of any kind; destructive actions including deletion or
+   modification of data, accounts or configuration; extraction of production
+   personal data beyond the minimum masked sample required to evidence a
+   finding; social engineering or phishing of personnel; physical intrusion; and
+   testing of any asset not listed in clause 1.
+
+7. Preparation. [CLIENT LEGAL NAME] confirms that current, tested backups of
+   the assets in scope exist prior to the testing window, and has nominated the
+   following contact, available throughout the window, with authority to halt
+   testing immediately:
+   [EMERGENCY CONTACT NAME, ROLE, PHONE, EMAIL]
+
+8. Halting. Either party may halt testing at any time by contacting the other
+   at the nominated contact details. [LEGAL ENTITY NAME] will cease all
+   activity promptly upon such a request.
+
+9. Critical findings. Findings assessed as critical will be notified to
+   [CLIENT LEGAL NAME] as soon as practicable and in any event within
+   [N] hours of validation, ahead of the report.
+
+10. Data handling. Testing evidence will be stored encrypted, access-restricted
+    and masked where it would otherwise contain personal data, and will be
+    deleted [RETENTION DAYS] days after report release, with written
+    confirmation. Credentials supplied will be held in encrypted storage and
+    destroyed on closure. The parties' respective obligations as data fiduciary
+    and data processor are set out in the Data Processing Agreement dated
+    [DPA DATE].
+
+11. Legal effect. This authorisation is given for the purposes of, among
+    others, the Information Technology Act, 2000 and any equivalent law
+    applicable to the assets in scope, and constitutes the consent of
+    [CLIENT LEGAL NAME] to the access described. It does not authorise access
+    to any system not listed in clause 1.
+
+12. Revocation. This authorisation may be revoked in writing at any time and
+    expires automatically at the end of the testing window in clause 2.
+
+Signed for and on behalf of [CLIENT LEGAL NAME]
+
+Name: ____________________  Role: ____________________
+Email: ___________________  Date: ____________________
+Signature: _______________________________________
+--------------------------------------------------------------------------------
+
+
+G7. WEBSITE — PRIVACY NOTICE  (DPDP-aware; the site collects only form data)
+
+--------------------------------------------------------------------------------
+PRIVACY NOTICE
+
+Last updated [DATE].
+
+Who we are. [LEGAL ENTITY NAME], trading as [BRAND NAME], [REGISTERED ADDRESS].
+Contact for privacy matters: [CONTACT EMAIL].
+
+What this notice covers. This notice describes how we handle personal data
+collected through this website. Personal data we process while performing
+security assessments for our clients is governed separately by the Data
+Processing Agreement with the client concerned; in that context we act as a
+data processor on the client's instructions.
+
+What we collect. If you submit the contact form, we collect the name, work
+email address, company name and message you provide. If you book a call, our
+scheduling provider collects the details you enter. Our hosting and analytics
+providers process technical information such as approximate location, browser
+type and pages viewed, in aggregate. We do not use advertising trackers or
+cross-site profiling, and we do not sell or share personal data for advertising.
+
+Why we process it. To respond to your enquiry, to prepare a proposal, and to
+maintain records of business correspondence. The basis is your consent when you
+submit the form, and our legitimate interest in responding to enquiries about
+our services.
+
+Cookies. We use only what is necessary to operate the site. We do not set
+advertising or profiling cookies.
+
+Retention. Enquiry correspondence is retained for [ENQUIRY RETENTION PERIOD]
+and then deleted, unless it forms part of a client engagement record, which is
+retained in line with our contractual and statutory obligations.
+
+Sharing. We use service providers for hosting, form delivery, email and
+scheduling. They process data on our instructions and are bound by
+confidentiality. We do not otherwise disclose your data except where required
+by law.
+
+Your rights. You may request access to, correction of, or erasure of your
+personal data, withdraw consent, or nominate another person to exercise these
+rights on your behalf in the event of death or incapacity, in accordance with
+the Digital Personal Data Protection Act, 2023 and the rules made under it.
+Write to [CONTACT EMAIL]. If you are not satisfied with our response you may
+complain to the Data Protection Board of India. Where the General Data
+Protection Regulation applies to you, equivalent rights apply.
+
+Security. We apply access control, encryption in transit and at rest, and the
+principle of least privilege. No file uploads are accepted through this website.
+
+Changes. We will update this notice as needed and will change the date above.
+--------------------------------------------------------------------------------
+
+
+G8. WEBSITE — TERMS OF USE
+
+--------------------------------------------------------------------------------
+TERMS OF USE
+
+Last updated [DATE].
+
+This website is operated by [LEGAL ENTITY NAME], trading as [BRAND NAME].
+By using it you accept these terms.
+
+Information only. The content of this site, including descriptions of services,
+methodologies, indicative prices and published material, is provided for
+general information. It is not security advice, legal advice, or an offer
+capable of acceptance. Nothing on this site creates a client relationship. A
+client relationship arises only on execution of a written engagement document.
+
+Pricing. Indicative prices are shown to help you plan. Final fees depend on
+scope and are confirmed in a written proposal. Prices may change without notice.
+
+Sample material. Any sample report published on this site is produced against a
+deliberately vulnerable test application or is redacted with permission, and is
+provided to illustrate our reporting format only.
+
+No warranty. This site is provided as is. We do not warrant that it is
+error-free or uninterrupted. To the fullest extent permitted by law, we exclude
+liability for any loss arising from use of, or reliance on, this site.
+
+Intellectual property. All content is owned by [LEGAL ENTITY NAME] unless
+stated otherwise. You may quote short extracts with attribution and a link. You
+may not reproduce our reports, templates or sample material for commercial use
+without written permission.
+
+Acceptable use. You may not attempt to gain unauthorised access to this site or
+its infrastructure, disrupt its availability, or use it to transmit unlawful
+material. Security researchers should read our Responsible Disclosure Policy,
+which sets out how to report an issue safely and lawfully.
+
+Governing law. These terms are governed by the laws of [COUNTRY] and subject to
+the exclusive jurisdiction of [JURISDICTION].
+--------------------------------------------------------------------------------
+
+
+G9. RESPONSIBLE DISCLOSURE POLICY  (and the matching security.txt)
+
+--------------------------------------------------------------------------------
+RESPONSIBLE DISCLOSURE POLICY
+
+We welcome reports of security issues affecting our own systems.
+
+In scope: [attestorsecurity.com], [portal.attestorsecurity.com], and our
+published email infrastructure.
+
+Out of scope: any system belonging to our clients; any third-party service we
+use; findings that require physical access, social engineering of our staff, or
+a compromised end-user device; volumetric or denial-of-service testing; and
+automated scanner output submitted without validation.
+
+How to report. Email [SECURITY CONTACT EMAIL] with a description, the steps to
+reproduce, and any supporting evidence. Encrypt sensitive detail with the key
+published at [PGP KEY URL]. We will acknowledge within [N] business days and
+keep you informed until the issue is resolved.
+
+What we ask. Test only against your own accounts, use the minimum access needed
+to demonstrate the issue, do not access, modify or retain other people's data,
+do not degrade availability, and give us reasonable time to fix the issue
+before publishing. We ask that you do not run automated scans at a rate that
+affects service.
+
+What we offer. We do not currently operate a paid bug bounty. We will
+acknowledge your contribution publicly with your consent, and we will not
+pursue legal action in respect of good-faith research conducted in accordance
+with this policy.
+--------------------------------------------------------------------------------
+
+security.txt (served at /.well-known/security.txt):
+
+  Contact: mailto:[SECURITY CONTACT EMAIL]
+  Expires: [ISO 8601 DATE, refreshed annually]
+  Encryption: [PGP KEY URL]
+  Policy: https://[DOMAIN]/legal/responsible-disclosure
+  Preferred-Languages: en
+  Canonical: https://[DOMAIN]/.well-known/security.txt
+
+
+G10. CLIENT PORTAL — TERMS OF ACCESS  (accepted at first login, version-pinned,
+     re-accepted when the version changes)
+
+--------------------------------------------------------------------------------
+PORTAL TERMS OF ACCESS
+
+This portal contains confidential information about unresolved security
+weaknesses in your organisation's systems. By accessing it you agree that:
+
+  1. Your account is personal to you. You will not share your credentials or
+     your multi-factor authentication device with anyone.
+  2. You will access only information relating to your own organisation, and
+     will report any access you believe you should not have to
+     [CONTACT EMAIL] immediately.
+  3. Reports and findings downloaded from this portal are confidential, are
+     watermarked with your identity, and must be distributed only on a
+     need-to-know basis within your organisation and to your auditors,
+     insurers, regulators and prospective customers where necessary for
+     assurance purposes.
+  4. You will not publish, or use in marketing, any material obtained from this
+     portal without our prior written consent.
+  5. Marking a finding as remediated or risk accepted is your organisation's
+     decision and record. A finding is treated as verified only after we have
+     re-tested it and recorded the result.
+  6. Your activity in this portal, including views and downloads, is logged for
+     security and audit purposes.
+  7. Access may be suspended or withdrawn where these terms are breached or
+     where your engagement with us ends.
+
+Reports remain subject in full to the limitations and disclaimer set out within
+them.
+--------------------------------------------------------------------------------
+
+
+G11. EMAIL FOOTER — CONFIDENTIALITY
+
+--------------------------------------------------------------------------------
+This message and any attachment are confidential and intended solely for the
+named recipient. If you are not the intended recipient, please notify
+[CONTACT EMAIL] and delete this message. [LEGAL ENTITY NAME] does not send
+security findings by email; findings are made available through our client
+portal.
+--------------------------------------------------------------------------------
+
+
+G12. WHAT THE LAWYER MUST CHECK
+
+Flag these explicitly to the owner when the review is arranged:
+
+  1. Whether the liability cap at fees paid is enforceable as drafted in
+     [COUNTRY], and whether a higher cap is needed to satisfy the professional
+     indemnity insurer or larger clients.
+  2. The exclusion of third-party reliance in the report and attestation letter,
+     which is the clause that matters most when a client forwards the report to
+     an enterprise buyer.
+  3. Whether the Data Processing Agreement wording meets the DPDP Act, 2023 and
+     the rules made under it, including breach notification timelines, purpose
+     limitation, deletion obligations and processor duties.
+  4. Whether the CERT-In incident reporting directions impose obligations on
+     [LEGAL ENTITY NAME] as a service provider, including reporting timelines
+     and log retention, and how that interacts with the deletion promise in G5.
+  5. Whether a separate governing-law and dispute-resolution clause is required
+     for non-Indian clients, and whether an arbitration clause is preferable.
+  6. Whether the authorisation letter in G6 is sufficient as consent for the
+     purposes of the Information Technology Act, 2000, and whether any
+     additional wording is advisable for testing performed on assets located
+     outside India.
+  7. Whether the responsible disclosure policy's assurance against legal action
+     is worded safely.
+  8. The indemnity position where a client authorises testing of an asset it
+     turns out not to own — the current draft relies on the client's warranty in
+     clause 4 of G6; confirm that is sufficient.
+
+

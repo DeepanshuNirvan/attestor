@@ -1,0 +1,256 @@
+---
+import BaseLayout from '../layouts/base-layout.astro';
+import EngagementTimeline from '../components/engagement-timeline.astro';
+import SectionNav from '../components/section-nav.astro';
+import CommandPalette from '../components/command-palette.astro';
+import { site } from '../data/site';
+
+const sections = [
+  { id: 'methodology', label: 'Methodology' },
+  { id: 'timeline', label: 'The ten steps' },
+  { id: 'safety', label: 'Safety controls' },
+  { id: 'excluded', label: 'Excluded techniques' },
+  { id: 'data', label: 'Your data' },
+  { id: 'independence', label: 'Independence' },
+  { id: 'stop', label: 'Stopping the test' },
+];
+---
+
+<BaseLayout
+  title="How we work"
+  description="Methodology, engagement timeline, safety controls, excluded techniques and data handling. What actually happens during an Attestor Security assessment."
+  path="/how-we-work"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Method</p>
+      <h1>What happens, in the order it happens</h1>
+      <p class="lede">
+        Testing a production system is a controlled activity with legal weight behind it. This page
+        is the whole procedure, including the parts that constrain us.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="page split">
+      <SectionNav sections={sections} />
+
+      <div class="body">
+        <section id="methodology">
+          <h2>Methodology</h2>
+          <p>
+            We follow published standards rather than a house method, because your auditor and your
+            buyer's security team can check a published standard and cannot check ours.
+          </p>
+          <ul class="rule-list">
+            {
+              site.methodology.map((entry) => (
+                <li>
+                  <strong>{entry.name}</strong>
+                  {entry.version ? ` ${entry.version}` : ''}
+                </li>
+              ))
+            }
+          </ul>
+          <p>
+            Coverage is recorded against those standards as testing runs, and the report contains a
+            matrix marking every category as tested, partially tested or not tested, with a reason
+            in every case where it is not fully tested. That matrix is generated from what actually
+            executed. It is the section auditors read first and it is the section that protects both
+            of us when something is missed.
+          </p>
+          <p>
+            <a href="/what-we-test">The complete check catalogue is published</a>, with the standard
+            identifier each check maps to.
+          </p>
+        </section>
+
+        <section id="timeline">
+          <EngagementTimeline />
+        </section>
+
+        <section id="safety">
+          <h2>Safety controls</h2>
+          <p>
+            These are enforced by the platform, not by anyone's discipline. Each one is a code path
+            that refuses rather than a policy somebody remembers.
+          </p>
+          <ul class="rule-list">
+            <li>
+              <strong>Nothing runs without a signed authorisation.</strong> Every tool launch checks
+              that an authorisation exists for the engagement, is signed, is not revoked, and that
+              the current time is inside its validity window. There is one code path that starts a
+              tool and it makes that check first.
+            </li>
+            <li>
+              <strong>Scope is checked after DNS resolution, not before.</strong> A hostname you own
+              can resolve to shared infrastructure somebody else owns. The resolved addresses are
+              checked against scope too, and a mismatch stops the run and asks a human.
+            </li>
+            <li>
+              <strong>Crawling cannot walk out of scope.</strong> Redirects and discovered links are
+              re-checked before they are followed.
+            </li>
+            <li>
+              <strong>Rate limits are enforced in code.</strong> Global and per-target requests per
+              second, concurrency caps, and a polite mode that halves everything for production
+              targets. Configuration can lower these limits and cannot raise them past the ceiling.
+            </li>
+            <li>
+              <strong>Adaptive abort.</strong> Target latency and error rate are watched throughout.
+              Degradation backs the testing off automatically; further degradation aborts the run and
+              alerts the tester.
+            </li>
+            <li>
+              <strong>Dry run first.</strong> Every new engagement is run in dry-run mode, which
+              shows exactly which targets and which checks would run without sending a packet.
+            </li>
+            <li>
+              <strong>Read-only first pass.</strong> On production systems the first pass suppresses
+              every state-changing request.
+            </li>
+            <li>
+              <strong>Dangerous actions are excluded from crawling.</strong> Logout, delete account,
+              change password, change email, payment submission, mass delete and invite-user are on a
+              default exclusion list, and you can extend it.
+            </li>
+            <li>
+              <strong>A stop button that works.</strong> One control halts every running job for your
+              engagement within seconds. Who pressed it and when is recorded.
+            </li>
+          </ul>
+        </section>
+
+        <section id="excluded">
+          <h2>Techniques we exclude</h2>
+          <p>
+            These are not available on request. Some are excluded because they are prohibited by
+            cloud providers, some because they cause harm without producing evidence, and some
+            because they need a separate written agreement we are not going to fold into a testing
+            contract.
+          </p>
+          <ul class="rule-list">
+            <li>
+              <strong>Denial of service, in any form.</strong> No stress testing, no load testing, no
+              volumetric testing, no simulated DDoS. AWS and Azure prohibit it outright. There is no
+              flag in our platform that enables it, because we did not build one.
+            </li>
+            <li>
+              <strong>Destructive payloads.</strong> No statement that deletes or modifies data in
+              bulk, no file deletion, no account deletion, no password changes on real accounts, no
+              shell persistence.
+            </li>
+            <li>
+              <strong>Mass data extraction.</strong> Injection findings are confirmed on the schema
+              and on a minimal masked sample. We do not extract your customer table to prove a point.
+            </li>
+            <li>
+              <strong>Social engineering and phishing of your staff.</strong> Possible as a separate
+              engagement with its own written sign-off. Never bundled in.
+            </li>
+            <li>
+              <strong>Physical intrusion.</strong> Not a service we offer.
+            </li>
+            <li>
+              <strong>Anything outside the signed asset list.</strong> Including as a favour,
+              including if you ask nicely mid-engagement. A new asset is a new authorisation.
+            </li>
+          </ul>
+        </section>
+
+        <section id="data">
+          <h2>Your data and your credentials</h2>
+          <ul class="rule-list">
+            <li>
+              <strong>Credentials arrive through a one-time link</strong> into an encrypted vault.
+              Not by email, not by chat, not in a ticket. They carry an expiry and a role name, and
+              they are decrypted only inside the process that uses them, in memory, at run time.
+            </li>
+            <li>
+              <strong>Personal data is masked as evidence is captured</strong>, not when the report
+              is written. Email addresses, phone numbers, identity numbers and card numbers are
+              masked before anything reaches disk, and you can add patterns specific to your data.
+            </li>
+            <li>
+              <strong>Nothing that could be a secret reaches a log.</strong> Every log sink, every
+              stored tool output and every error trace passes through a redaction filter first.
+            </li>
+            <li>
+              <strong>Evidence is deleted {site.evidenceRetentionDays} days after report release</strong>,
+              and you receive a written deletion confirmation naming what was destroyed. We keep the
+              report, the signed engagement documents and the activity log, because those are our
+              defence if anything is ever disputed.
+            </li>
+            <li>
+              <strong>On closure your credentials are cryptographically destroyed</strong> and we
+              tell you to rotate the accounts anyway.
+            </li>
+            <li>
+              <strong>We act as a data processor under the DPDP Act</strong> and will sign a data
+              processing agreement. We bring one if you do not have your own.
+            </li>
+            <li>
+              <strong>Nothing goes to a third-party AI service</strong> unless you have specifically
+              enabled it for your engagement, and even then only redacted findings text — never raw
+              evidence, never credentials, never customer data.
+            </li>
+          </ul>
+        </section>
+
+        <section id="independence">
+          <h2>Independence</h2>
+          <p>
+            {site.brandName} does not design, build, operate or maintain the systems it assesses, and
+            holds no financial or operational interest in its clients beyond the fee for the
+            engagement. That is what makes the report usable as third-party evidence — ISO 27001
+            competence expectations and audit independence norms both depend on it.
+          </p>
+          <p>
+            It also means we will not fix the code we audited. If you want remediation help, we will
+            introduce you to someone; we will not audit our own work and then attest to it.
+          </p>
+          <p>
+            {site.brandName} is not empanelled by CERT-In and does not claim any certification it
+            does not hold. If an assessment needs an empanelled organisation, we will tell you on the
+            first call.
+          </p>
+        </section>
+
+        <section id="stop">
+          <h2>Stopping the test</h2>
+          <p>
+            Before testing starts you nominate a contact with the authority to halt it, reachable
+            throughout the window. One message stops everything. There is no approval chain on our
+            side and no argument about whether the concern is justified — we stop, then we talk.
+          </p>
+          <p>
+            If we find something critical, you hear about it as soon as it is validated, with the
+            reproduction steps, ahead of the report and by phone if that is faster. Waiting until
+            report day to mention a critical finding is a practice that exists to make reports look
+            impressive, and it is indefensible.
+          </p>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 18ch;
+  }
+
+  .body > section {
+    padding-bottom: var(--space-xl);
+    scroll-margin-top: 5.5rem;
+  }
+
+  .body h2 {
+    font-size: var(--step-2);
+    border-top: 2px solid var(--ink);
+    padding-top: var(--space-s);
+  }
+</style>

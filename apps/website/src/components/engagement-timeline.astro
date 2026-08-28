@@ -1,0 +1,183 @@
+---
+import { engagementTimeline } from '../data/engagement-timeline';
+
+/**
+ * The ten-step walkthrough. Horizontal and scroll-linked on a wide screen, a plain vertical list on
+ * a narrow one and with JavaScript off. The scroll indicator is progressive enhancement over an
+ * ordinary scroll container, so nothing is trapped behind script.
+ */
+
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+---
+
+<section class="timeline" data-timeline aria-labelledby="timeline-heading">
+  <div class="timeline-head">
+    <h2 id="timeline-heading">What actually happens, step by step</h2>
+    {
+      !compact && (
+        <p class="lede">
+          Ten steps from the first call to the deletion confirmation. Each one produces something you
+          can point at.
+        </p>
+      )
+    }
+  </div>
+
+  <ol class="timeline-track" data-timeline-track>
+    {
+      engagementTimeline.map((step) => (
+        <li class="timeline-step" id={`step-${step.number}`} data-timeline-step={step.number}>
+          <p class="step-number numeric">{String(step.number).padStart(2, '0')}</p>
+          <p class="step-when">{step.when}</p>
+          <h3>{step.title}</h3>
+          <dl>
+            <dt>You</dt>
+            <dd>{step.clientDoes}</dd>
+            <dt>We</dt>
+            <dd>{step.attestorDoes}</dd>
+            <dt>Artefact</dt>
+            <dd class="step-artefact">{step.artefact}</dd>
+          </dl>
+        </li>
+      ))
+    }
+  </ol>
+
+  <div class="timeline-progress" data-timeline-progress aria-hidden="true">
+    <div class="timeline-progress-bar" data-timeline-bar></div>
+  </div>
+</section>
+
+<script>
+  const track = document.querySelector<HTMLElement>('[data-timeline-track]');
+  const bar = document.querySelector<HTMLElement>('[data-timeline-bar]');
+
+  if (track && bar) {
+    const update = (): void => {
+      const scrollable = track.scrollWidth - track.clientWidth;
+      const ratio = scrollable <= 0 ? 1 : track.scrollLeft / scrollable;
+      bar.style.transform = `scaleX(${Math.max(0.04, Math.min(1, ratio))})`;
+    };
+    track.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+
+    // Arrow keys move the track when it has focus, so the walkthrough is keyboard-operable.
+    track.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      const step = track.querySelector<HTMLElement>('[data-timeline-step]');
+      if (!step) return;
+      event.preventDefault();
+      const delta = step.getBoundingClientRect().width + 24;
+      track.scrollBy({ left: event.key === 'ArrowRight' ? delta : -delta, behavior: 'smooth' });
+    });
+  }
+</script>
+
+<style>
+  .timeline {
+    padding-block: var(--space-xl);
+  }
+
+  .timeline-head {
+    margin-bottom: var(--space-l);
+  }
+
+  .timeline-track {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 var(--space-s);
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(19rem, 21rem);
+    gap: var(--space-m);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+
+  .timeline-track:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 4px;
+  }
+
+  .timeline-step {
+    scroll-snap-align: start;
+    border-top: 2px solid var(--ink);
+    padding-top: var(--space-s);
+    max-width: none;
+  }
+
+  .step-number {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--accent);
+    margin: 0;
+    letter-spacing: 0.08em;
+  }
+
+  .step-when {
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+    margin: 0.1rem 0 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .timeline-step h3 {
+    font-size: var(--step-1);
+    margin-bottom: var(--space-2xs);
+  }
+
+  dl {
+    margin: 0;
+    font-size: var(--step--1);
+  }
+
+  dt {
+    font-weight: 600;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-size: 0.7rem;
+    margin-top: var(--space-2xs);
+  }
+
+  dd {
+    margin: 0.15rem 0 0;
+    color: var(--ink-muted);
+  }
+
+  .step-artefact {
+    color: var(--ink);
+  }
+
+  .timeline-progress {
+    height: 2px;
+    background: var(--rule);
+    margin-top: var(--space-2xs);
+  }
+
+  .timeline-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    transform-origin: left center;
+    transform: scaleX(0.04);
+    transition: transform var(--motion-fast) linear;
+  }
+
+  @media (max-width: 60rem) {
+    .timeline-track {
+      grid-auto-flow: row;
+      grid-auto-columns: auto;
+      overflow-x: visible;
+    }
+    .timeline-progress {
+      display: none;
+    }
+  }
+</style>

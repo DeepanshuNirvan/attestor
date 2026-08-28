@@ -1,0 +1,141 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/base-layout.astro';
+import CommandPalette from '../../components/command-palette.astro';
+import { packageById, formatMoney } from '../../data/pricing';
+
+const services = (await getCollection('services')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout
+  title="Services"
+  description="Web and API assessments, cloud posture reviews, mobile assessments, LLM red teaming, compliance-attached testing and continuous testing retainers. Fixed prices and fixed dates."
+  path="/services"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Services</p>
+      <h1>Six engagements. Published prices. Fixed dates.</h1>
+      <p class="lede">
+        Each of these is a defined piece of work with a defined deliverable. If your situation does
+        not fit one of them, say so on the call and we will scope it properly rather than sell you
+        the nearest package.
+      </p>
+
+      <ul class="service-list">
+        {
+          services.map((service) => (
+            <li>
+              <div class="service-head">
+                <h2>
+                  <a href={`/services/${service.id}`}>{service.data.title}</a>
+                </h2>
+                <p class="service-prices">
+                  {service.data.packageIds.map((id) => {
+                    const item = packageById(id);
+                    return (
+                      <span class="service-price numeric">
+                        {formatMoney(item.price.INR, 'INR')}
+                        {item.recurring ? '/month' : ''}
+                      </span>
+                    );
+                  })}
+                </p>
+              </div>
+              <p class="service-audience">{service.data.audience}</p>
+              <p>{service.data.summary}</p>
+              <p class="service-standards">
+                {service.data.standards.map((standard) => <span class="tag">{standard}</span>)}
+              </p>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="service-more">
+        <a href="/what-we-test">The complete check catalogue</a> ·
+        <a href="/pricing">The full price sheet</a> ·
+        <a href="/sample-report">A sample report</a>
+      </p>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 18ch;
+  }
+
+  .service-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-xl) 0 0;
+  }
+
+  .service-list > li {
+    border-top: 1px solid var(--rule);
+    padding-block: var(--space-l);
+    max-width: none;
+  }
+
+  .service-list > li:last-child {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .service-head {
+    display: flex;
+    gap: var(--space-m);
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .service-list h2 {
+    font-size: var(--step-2);
+    margin: 0;
+  }
+
+  .service-list h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .service-list h2 a:hover {
+    color: var(--accent);
+  }
+
+  .service-prices {
+    display: flex;
+    gap: var(--space-s);
+    margin: 0;
+    max-width: none;
+  }
+
+  .service-price {
+    font-family: var(--font-display);
+    font-size: var(--step-1);
+    font-weight: 600;
+  }
+
+  .service-audience {
+    color: var(--accent);
+    font-size: var(--step--1);
+    font-weight: 600;
+    margin: var(--space-2xs) 0 var(--space-2xs);
+  }
+
+  .service-standards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    max-width: none;
+    margin-bottom: 0;
+  }
+
+  .service-more {
+    margin-top: var(--space-l);
+    font-size: var(--step--1);
+  }
+</style>

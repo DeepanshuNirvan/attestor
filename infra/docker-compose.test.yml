@@ -1,0 +1,113 @@
+# Deliberately vulnerable targets for the integration suite.
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   ATTESTOR_TEST_NETWORK_ONLY=1 pnpm test:integration
+#
+# Every service here is intentionally broken. They exist so the scanners can be exercised against
+# something real without ever touching an internet host.
+#
+# The network is `internal: true`. That is not a nicety: it means a container on this network has no
+# route off the machine, so a misconfigured integration test physically cannot reach a third party.
+# The integration runner refuses to start unless ATTESTOR_TEST_NETWORK_ONLY=1 is set, and this file
+# is what makes that flag true rather than aspirational.
+
+name: attestor-test
+
+networks:
+  targets:
+    internal: true
+    driver: bridge
+
+x-target: &target
+  restart: unless-stopped
+  networks: [targets]
+  logging:
+    driver: json-file
+    options:
+      max-size: '8m'
+      max-file: '2'
+
+services:
+  juice-shop:
+    <<: *target
+    # OWASP Juice Shop. The sample report published on the website is produced against this.
+    image: bkimminich/juice-shop:v18.0.0
+    environment:
+      NODE_ENV: unsafe
+    expose: ['3000']
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/rest/admin/application-version']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  dvwa:
+    <<: *target
+    image: vulnerables/web-dvwa:latest
+    expose: ['80']
+
+  webgoat:
+    <<: *target
+    image: webgoat/webgoat:v2025.4
+    environment:
+      TZ: UTC
+    expose: ['8080']
+
+  vampi:
+    <<: *target
+    # Vulnerable API, in its intentionally-insecure mode.
+    image: erev0s/vampi:latest
+    environment:
+      vulnerable: '1'
+      alembic_db_path: /tmp/vampi.db
+    expose: ['5000']
+
+  crapi-web:
+    <<: *target
+    # crAPI is a multi-service application; the compose file it ships with is large. This is the
+    # front door, and the integration suite drives the API through it.
+    image: crapi/crapi-web:latest
+    depends_on: [crapi-identity]
+    expose: ['80']
+
+  crapi-identity:
+    <<: *target
+    image: crapi/crapi-identity:latest
+    environment:
+      DB_HOST: crapi-postgres
+      DB_NAME: crapi
+      DB_USER: admin
+      DB_PASSWORD: crapisecretpassword
+    depends_on: [crapi-postgres]
+    expose: ['8080']
+
+  crapi-postgres:
+    <<: *target
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: crapisecretpassword
+      POSTGRES_DB: crapi
+    expose: ['5432']
+
+  vulnerable-llm:
+    <<: *target
+    # Purpose-built for the LLM module. Source in infra/vulnerable-llm/.
+    build:
+      context: ./vulnerable-llm
+    environment:
+      PORT: '8090'
+      # No model provider key. It runs a scripted stub so the suite is deterministic and free.
+      ATTESTOR_LLM_MODE: stub
+    expose: ['8090']
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8090/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # A plain HTTP host with no redirect, so the httpx cleartext finding has something to fire on.
+  cleartext:
+    <<: *target
+    image: nginx:1.27-alpine
+    expose: ['80']

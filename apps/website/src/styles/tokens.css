@@ -1,0 +1,72 @@
+/*
+ * Design tokens. Two accents maximum on any page: ink and one green. The severity ramp is a
+ * functional palette and appears only where data is being shown, never as decoration.
+ */
+
+:root {
+  /* Ground and ink */
+  --ground: #fbfaf8;
+  --ground-sunk: #f4f2ee;
+  --ground-raised: #ffffff;
+  --ink: #14161a;
+  --ink-muted: #4a5058;
+  --ink-faint: #767d86;
+  --rule: #dfdbd3;
+  --rule-strong: #c6c1b6;
+
+  /* The single accent */
+  --accent: #1f5f47;
+  --accent-deep: #14402f;
+  --accent-wash: #eef3f0;
+
+  /* Severity. Chosen so the greyscale print values are distinct: 22%, 38%, 55%, 70%, 84% */
+  --severity-critical: #7a1120;
+  --severity-high: #b4442a;
+  --severity-medium: #8a6a17;
+  --severity-low: #3b6076;
+  --severity-info: #6b7079;
+
+  /* Type */
+  --font-display: 'Source Serif 4', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-body: 'Public Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.89rem);
+  --step-0: clamp(1rem, 0.97rem + 0.15vw, 1.06rem);
+  --step-1: clamp(1.2rem, 1.14rem + 0.3vw, 1.35rem);
+  --step-2: clamp(1.45rem, 1.34rem + 0.55vw, 1.75rem);
+  --step-3: clamp(1.78rem, 1.58rem + 1vw, 2.4rem);
+  --step-4: clamp(2.15rem, 1.8rem + 1.75vw, 3.3rem);
+
+  --measure: 68ch;
+  --leading-body: 1.65;
+  --leading-tight: 1.14;
+
+  /* Space, on a 4px base */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-s: 1rem;
+  --space-m: 1.5rem;
+  --space-l: 2.25rem;
+  --space-xl: 3.5rem;
+  --space-2xl: 5.5rem;
+  --space-3xl: 8rem;
+
+  --width-page: 74rem;
+  --width-prose: 42rem;
+
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --ease: cubic-bezier(0.2, 0.6, 0.3, 1);
+
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-base: 1ms;
+  }
+}

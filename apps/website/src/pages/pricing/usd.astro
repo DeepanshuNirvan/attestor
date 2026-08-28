@@ -1,0 +1,108 @@
+---
+import BaseLayout from '../../layouts/base-layout.astro';
+import PriceSheet from '../../components/price-sheet.astro';
+import CommandPalette from '../../components/command-palette.astro';
+import { site } from '../../data/site';
+---
+
+<BaseLayout
+  title="Pricing in USD"
+  description="Published US dollar prices for international clients: web, API, cloud, mobile and LLM security assessments with fixed turnaround and a free retest."
+  path="/pricing/usd"
+>
+  <section class="section">
+    <div class="page">
+      <p class="eyebrow">Pricing · US dollars</p>
+      <h1>International engagements</h1>
+      <p class="lede">
+        These are separate prices, not a currency conversion of the rupee sheet. The work has a
+        different shape — different contract, different overlap hours, and a turnaround commitment
+        that accounts for the gap between working days.
+      </p>
+
+      <PriceSheet currency="USD" />
+
+      <div class="terms">
+        <h2>What is different about working with us from abroad</h2>
+        <ul class="rule-list">
+          <li>
+            <strong>Overlap hours.</strong> {site.overlapHours.usEastern} with US Eastern,{' '}
+            {site.overlapHours.unitedKingdom} with the UK. Calls are booked in your timezone. There
+            is a real person on the other end during those hours, not a ticket queue.
+          </li>
+          <li>
+            <strong>Contract and governing law.</strong> We will work under your master services
+            agreement or ours. Governing law and dispute resolution are negotiable for non-Indian
+            clients and we will not pretend otherwise to save a round of redlines.
+          </li>
+          <li>
+            <strong>Data handling.</strong> We act as a processor. Evidence is masked at capture and
+            deleted {site.evidenceRetentionDays} days after release with written confirmation. Where
+            the GDPR applies to you, a processing agreement with the standard clauses is available.
+          </li>
+          <li>
+            <strong>Credentials.</strong> Submitted through a one-time link into an encrypted vault.
+            They never travel through email or chat, they expire, and they are destroyed on closure.
+          </li>
+          <li>
+            <strong>Payment.</strong> Fifty per cent on signature, fifty per cent before release.
+            Bank transfer, and invoices carry whatever tax references your finance team needs.
+          </li>
+          <li>
+            <strong>Independence.</strong> We do not build or operate the systems we test, and we do
+            not take a stake in the companies we assess. This is what makes the report acceptable as
+            third-party evidence.
+          </li>
+        </ul>
+      </div>
+
+      <div class="panel-sunk">
+        <h2>On buying security work from India</h2>
+        <p>
+          You are going to ask, so here is the answer. The reason this costs less than a US or UK
+          firm is the cost base, not the depth of the work. The methodology is the published one —
+          OWASP WSTG, ASVS 5.0, MASVS, the LLM Top 10, NIST SP 800-115 — the tooling is the same
+          tooling, and the report is written to be read by your buyer's security team.
+        </p>
+        <p>
+          What you should check before hiring anyone, us included: read the sample report, ask who
+          will actually do the work, ask what happens to your credentials and your evidence, and ask
+          for the coverage matrix from a previous engagement with the client details removed. A firm
+          that cannot show you those things is selling you a scanner subscription with a logo on it.
+        </p>
+        <p class="cta"><a class="button" href="/sample-report">Read the sample report</a></p>
+      </div>
+    </div>
+  </section>
+
+  <CommandPalette />
+</BaseLayout>
+
+<style>
+  h1 {
+    max-width: 20ch;
+  }
+
+  .terms {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-l);
+    border-top: 1px solid var(--rule);
+  }
+
+  .terms h2 {
+    font-size: var(--step-2);
+  }
+
+  .panel-sunk {
+    margin-top: var(--space-xl);
+  }
+
+  .panel-sunk h2 {
+    font-size: var(--step-1);
+    font-family: var(--font-body);
+  }
+
+  .cta {
+    margin: var(--space-s) 0 0;
+  }
+</style>

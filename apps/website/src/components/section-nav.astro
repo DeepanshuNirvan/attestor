@@ -1,0 +1,113 @@
+---
+/**
+ * Sticky in-page navigation with scroll spy. Renders as a plain anchor list without JavaScript;
+ * the highlighting is the only part that needs script.
+ */
+
+interface Props {
+  sections: { id: string; label: string }[];
+  label?: string;
+}
+
+const { sections, label = 'On this page' } = Astro.props;
+---
+
+<nav class="section-nav" data-section-nav aria-label={label}>
+  <p class="section-nav-label">{label}</p>
+  <ul>
+    {
+      sections.map((section) => (
+        <li>
+          <a href={`#${section.id}`} data-section-link={section.id}>
+            {section.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<script>
+  const nav = document.querySelector<HTMLElement>('[data-section-nav]');
+  if (nav && 'IntersectionObserver' in window) {
+    const links = new Map<string, HTMLAnchorElement>();
+    for (const link of nav.querySelectorAll<HTMLAnchorElement>('[data-section-link]')) {
+      const id = link.dataset.sectionLink;
+      if (id) links.set(id, link);
+    }
+
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // The topmost visible section wins, which matches what the reader is looking at.
+        const active = [...links.keys()].find((id) => visible.has(id));
+        for (const [id, link] of links) {
+          link.setAttribute('aria-current', id === active ? 'true' : 'false');
+        }
+      },
+      { rootMargin: '-15% 0px -70% 0px', threshold: 0 },
+    );
+
+    for (const id of links.keys()) {
+      const target = document.getElementById(id);
+      if (target) observer.observe(target);
+    }
+  }
+</script>
+
+<style>
+  .section-nav {
+    position: sticky;
+    top: 5.5rem;
+    font-size: var(--step--1);
+  }
+
+  .section-nav-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 var(--space-2xs);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--rule);
+  }
+
+  li {
+    max-width: none;
+  }
+
+  a {
+    display: block;
+    padding: 0.32rem 0 0.32rem var(--space-s);
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: var(--ink);
+  }
+
+  a[aria-current='true'] {
+    color: var(--ink);
+    border-left-color: var(--accent);
+    font-weight: 600;
+  }
+
+  @media (max-width: 60rem) {
+    .section-nav {
+      position: static;
+      margin-bottom: var(--space-l);
+    }
+  }
+</style>
