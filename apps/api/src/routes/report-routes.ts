@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
@@ -14,6 +14,7 @@ import type { ConsoleContext } from '../context.ts';
 import {
   client as clientTable,
   engagement as engagementTable,
+  finding as findingTable,
   report as reportTable,
   reportDownload,
   reportSection as reportSectionTable,
@@ -61,6 +62,18 @@ async function unapprovedAiDrafts(
       ),
     );
   return rows.map((row) => row.sectionKey);
+}
+
+/** Findings still awaiting triage. The report never contains one, so the gate has to ask here. */
+async function outstandingCandidates(
+  database: ConsoleContext['database'],
+  engagementId: string,
+): Promise<number> {
+  const rows = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(findingTable)
+    .where(and(eq(findingTable.engagementId, engagementId), eq(findingTable.status, 'candidate')));
+  return Number(rows[0]?.count ?? 0);
 }
 
 export function registerReportRoutes(app: FastifyInstance, context: ConsoleContext): void {
@@ -129,7 +142,10 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
     const outcome = runChecklist(
       data,
       (engagements[0]?.reviewChecklist as Record<string, boolean>) ?? {},
-      { unapprovedAiDrafts: await unapprovedAiDrafts(context.database, id) },
+      {
+        unapprovedAiDrafts: await unapprovedAiDrafts(context.database, id),
+        outstandingCandidates: await outstandingCandidates(context.database, id),
+      },
     );
 
     const unreviewedLegal = LEGAL_BLOCKS.filter(
@@ -257,7 +273,10 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
     const outcome = runChecklist(
       data,
       (engagements[0]?.reviewChecklist as Record<string, boolean>) ?? {},
-      { unapprovedAiDrafts: await unapprovedAiDrafts(context.database, record.engagementId) },
+      {
+        unapprovedAiDrafts: await unapprovedAiDrafts(context.database, record.engagementId),
+        outstandingCandidates: await outstandingCandidates(context.database, record.engagementId),
+      },
     );
 
     if (!outcome.releasable) {

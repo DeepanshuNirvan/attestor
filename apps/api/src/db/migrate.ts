@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
-import { loadConfig, createLogger } from '@attestor/shared';
+import { loadMigrationConfig, createLogger } from '@attestor/shared';
 
 /**
  * Migrations.
@@ -105,7 +105,7 @@ async function sha256Hex(input: string): Promise<string> {
 
 const isEntryPoint = process.argv[1]?.endsWith('migrate.ts') === true;
 if (isEntryPoint) {
-  const config = loadConfig();
+  const config = loadMigrationConfig();
   const logger = createLogger({ service: 'migrate', level: config.LOG_LEVEL });
   runMigrations(config.DATABASE_URL)
     .then((applied) => {

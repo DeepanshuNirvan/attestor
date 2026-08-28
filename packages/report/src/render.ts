@@ -179,6 +179,47 @@ function testTypeLabel(testType: ReportData['testType']): string {
   return { blackBox: 'Black box', greyBox: 'Grey box', whiteBox: 'White box' }[testType];
 }
 
+/**
+ * Section numbering.
+ *
+ * Two sections are conditional — the attack narrative and the compliance mapping — so numbers
+ * cannot be written into the headings. They are derived once, in document order, from the sections
+ * this particular report actually contains, and the contents list and every cross-reference read
+ * from the same map. A report whose contents page disagrees with its headings, or which refers to
+ * a section that is not in it, is one an auditor stops trusting.
+ */
+const SECTION_TITLES = {
+  executiveSummary: 'Executive summary',
+  riskOverview: 'Risk overview',
+  scope: 'Scope',
+  methodology: 'Methodology',
+  coverage: 'Coverage matrix',
+  attackNarrative: 'Attack narrative',
+  findings: 'Detailed findings',
+  positiveObservations: 'Positive observations',
+  recommendations: 'Strategic recommendations',
+  compliance: 'Compliance mapping',
+  appendices: 'Appendices',
+  limitations: 'Limitations and disclaimer',
+} as const;
+
+type SectionKey = keyof typeof SECTION_TITLES;
+
+export type SectionNumbers = ReadonlyMap<SectionKey, number>;
+
+function numberSections(data: ReportData): SectionNumbers {
+  const present = (Object.keys(SECTION_TITLES) as SectionKey[]).filter((key) => {
+    if (key === 'attackNarrative') return data.attackNarrative !== undefined;
+    if (key === 'compliance') return data.complianceFrameworks.length > 0;
+    return true;
+  });
+  return new Map(present.map((key, index) => [key, index + 1]));
+}
+
+function heading(numbers: SectionNumbers, key: SectionKey): string {
+  return escapeHtml(`${numbers.get(key)}. ${SECTION_TITLES[key]}`);
+}
+
 function coverHtml(data: ReportData): string {
   const classification = legalBlock('report-cover-classification');
   const filled = fillPlaceholders(classification.text, placeholderValues(data));
@@ -233,16 +274,16 @@ function documentControlHtml(data: ReportData): string {
 </section>`;
 }
 
-function executiveSummaryHtml(data: ReportData): string {
+function executiveSummaryHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="executive-summary">
-  <h2>1. Executive summary</h2>
+  <h2>${heading(numbers, 'executiveSummary')}</h2>
   ${paragraphs(data.executiveSummary)}
   <h3>The first things to do</h3>
   ${list(data.headlineActions, true)}
 </section>`;
 }
 
-function riskOverviewHtml(data: ReportData): string {
+function riskOverviewHtml(data: ReportData, numbers: SectionNumbers): string {
   const counts = countBySeverity(data.findings);
   const total = data.findings.length || 1;
   const severityRows = (['critical', 'high', 'medium', 'low', 'info'] as const)
@@ -279,20 +320,20 @@ function riskOverviewHtml(data: ReportData): string {
     .join('\n');
 
   return `<section id="risk-overview">
-  <h2>2. Risk overview</h2>
+  <h2>${heading(numbers, 'riskOverview')}</h2>
   <h3>Findings by severity</h3>
   <table><tbody>${severityRows}</tbody></table>
   <h3>Findings by category</h3>
   <table><thead><tr><th>Category</th><th class="numeric">Findings</th></tr></thead><tbody>${categoryRows}</tbody></table>
   <h3>Findings by asset</h3>
   <table><thead><tr><th>Asset</th><th class="numeric">Findings</th></tr></thead><tbody>${assetRows}</tbody></table>
-  <p class="callout">Remediation order in section 10 is not the same as severity order. Several findings that are individually minor are steps in the chain described in section 7, and fixing them is cheap.</p>
+  <p class="callout">Remediation order in section ${numbers.get('recommendations')} is not the same as severity order. Several findings that are individually minor are steps in the chain described in section ${numbers.get('findings')}, and fixing them is cheap.</p>
 </section>`;
 }
 
-function scopeHtml(data: ReportData): string {
+function scopeHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="scope">
-  <h2>3. Scope</h2>
+  <h2>${heading(numbers, 'scope')}</h2>
   <h3>Assets in scope</h3>
   ${list(data.scopeIncluded)}
   <h3>Explicitly out of scope</h3>
@@ -308,7 +349,7 @@ function scopeHtml(data: ReportData): string {
 </section>`;
 }
 
-function methodologyHtml(data: ReportData): string {
+function methodologyHtml(data: ReportData, numbers: SectionNumbers): string {
   const toolRows = data.toolsUsed
     .map(
       (tool) =>
@@ -317,7 +358,7 @@ function methodologyHtml(data: ReportData): string {
     .join('\n');
 
   return `<section id="methodology">
-  <h2>4. Methodology</h2>
+  <h2>${heading(numbers, 'methodology')}</h2>
   <p>Testing followed ${escapeHtml(data.methodology.join(', '))}.</p>
   <p>The engagement ran in four phases: unauthenticated discovery and enumeration; automated scanning under agreed rate limits; human validation of every candidate finding; and human-led testing of access control, business logic and multi-step flows. Automated tooling was used to obtain coverage. Every finding in this report was reproduced by a tester before it was included, and findings that came only from a tool and could not be reproduced are not present.</p>
   <h3>Tools used</h3>
@@ -332,7 +373,7 @@ function methodologyHtml(data: ReportData): string {
 </section>`;
 }
 
-function coverageHtml(data: ReportData): string {
+function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
   const byCategory = new Map<string, CoverageEntry[]>();
   for (const entry of data.coverage) {
     const list = byCategory.get(entry.check.category);
@@ -371,7 +412,7 @@ function coverageHtml(data: ReportData): string {
   const notTested = data.coverage.length - tested - partial;
 
   return `<section id="coverage">
-  <h2>5. Coverage matrix</h2>
+  <h2>${heading(numbers, 'coverage')}</h2>
   <p>This matrix is generated from what actually executed during the engagement. It is not a statement of intent: a check appears as tested only where a completed run or a recorded manual test covered it, and anything less carries the reason.</p>
   <table>
     <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
@@ -385,7 +426,7 @@ function coverageHtml(data: ReportData): string {
 </section>`;
 }
 
-function narrativeHtml(data: ReportData): string {
+function narrativeHtml(data: ReportData, numbers: SectionNumbers): string {
   if (!data.attackNarrative) return '';
   const steps = data.attackNarrative.steps
     .map(
@@ -398,7 +439,7 @@ function narrativeHtml(data: ReportData): string {
     : '';
 
   return `<section id="attack-narrative">
-  <h2>6. Attack narrative</h2>
+  <h2>${heading(numbers, 'attackNarrative')}</h2>
   <h3>${escapeHtml(data.attackNarrative.title)}</h3>
   ${diagram}
   ${steps}
@@ -520,7 +561,7 @@ function retestLabel(outcome: NonNullable<ReportFinding['retestOutcome']>): stri
   }[outcome];
 }
 
-function findingsHtml(data: ReportData): string {
+function findingsHtml(data: ReportData, numbers: SectionNumbers): string {
   const ordered = [...data.findings].sort((a, b) => {
     const bySeverity = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     if (bySeverity !== 0) return bySeverity;
@@ -528,32 +569,32 @@ function findingsHtml(data: ReportData): string {
   });
 
   return `<section id="findings">
-  <h2>7. Detailed findings</h2>
+  <h2>${heading(numbers, 'findings')}</h2>
   <p>Ordered by severity, then by reference. Every finding here was reproduced by a tester.</p>
 </section>
 ${ordered.map((finding, index) => findingHtml(finding, index)).join('\n')}`;
 }
 
-function positivesHtml(data: ReportData): string {
+function positivesHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="positive-observations">
-  <h2>8. Positive observations</h2>
+  <h2>${heading(numbers, 'positiveObservations')}</h2>
   <p>Controls found to be working. These are recorded because a report that lists only failures gives a distorted picture of the system and of the team that built it.</p>
   ${list(data.positiveObservations)}
 </section>`;
 }
 
-function roadmapHtml(data: ReportData): string {
+function roadmapHtml(data: ReportData, numbers: SectionNumbers): string {
   const blocks = data.roadmap
     .map((horizon) => `<h3>${escapeHtml(horizon.horizon)}</h3>${list(horizon.items)}`)
     .join('\n');
   return `<section id="recommendations">
-  <h2>9. Strategic recommendations</h2>
+  <h2>${heading(numbers, 'recommendations')}</h2>
   <p>Grouped by root cause rather than by finding, because several findings frequently share one fix.</p>
   ${blocks}
 </section>`;
 }
 
-function complianceHtml(data: ReportData): string {
+function complianceHtml(data: ReportData, numbers: SectionNumbers): string {
   if (data.complianceFrameworks.length === 0) return '';
 
   const sections = data.complianceFrameworks
@@ -582,7 +623,7 @@ function complianceHtml(data: ReportData): string {
     .join('\n');
 
   return `<section id="compliance">
-  <h2>11. Compliance mapping</h2>
+  <h2>${heading(numbers, 'compliance')}</h2>
   <p class="callout callout-warning">This mapping is provided for convenience in evidencing your own programme. It is not a compliance opinion, not an audit opinion and not a certification. ${escapeHtml(data.branding.legalEntityName)} is not empanelled by CERT-In.</p>
   ${sections}
 </section>`;
@@ -617,7 +658,7 @@ function controlTouchesFinding(
   return false;
 }
 
-function appendicesHtml(data: ReportData): string {
+function appendicesHtml(data: ReportData, numbers: SectionNumbers): string {
   const portRows = data.appendices.portsAndServices
     .map(
       (row) =>
@@ -630,7 +671,7 @@ function appendicesHtml(data: ReportData): string {
     .join('\n');
 
   return `<section id="appendices">
-  <h2>12. Appendices</h2>
+  <h2>${heading(numbers, 'appendices')}</h2>
   <h3>Asset inventory</h3>
   ${list(data.appendices.assetInventory)}
   <h3>Ports and services</h3>
@@ -646,7 +687,7 @@ function appendicesHtml(data: ReportData): string {
 </section>`;
 }
 
-function legalHtml(data: ReportData): string {
+function legalHtml(data: ReportData, numbers: SectionNumbers): string {
   const document = data.kind === 'retest' ? 'retestReport' : 'assessmentReport';
   const values = placeholderValues(data);
 
@@ -663,31 +704,20 @@ function legalHtml(data: ReportData): string {
     .join('\n');
 
   return `<section id="limitations">
-  <h2>13. Limitations and disclaimer</h2>
+  <h2>${heading(numbers, 'limitations')}</h2>
   ${blocks}
 </section>`;
 }
 
-function tableOfContentsHtml(data: ReportData): string {
+function tableOfContentsHtml(numbers: SectionNumbers): string {
   const entries = [
-    'Document control',
-    '1. Executive summary',
-    '2. Risk overview',
-    '3. Scope',
-    '4. Methodology',
-    '5. Coverage matrix',
-    ...(data.attackNarrative ? ['6. Attack narrative'] : []),
-    '7. Detailed findings',
-    '8. Positive observations',
-    '9. Strategic recommendations',
-    ...(data.complianceFrameworks.length > 0 ? ['11. Compliance mapping'] : []),
-    '12. Appendices',
-    '13. Limitations and disclaimer',
+    escapeHtml('Document control'),
+    ...[...numbers.keys()].map((key) => heading(numbers, key)),
   ];
 
   return `<section id="contents" class="toc continues">
   <h2>Contents</h2>
-  <ol>${entries.map((entry) => `<li><span>${escapeHtml(entry)}</span></li>`).join('\n')}</ol>
+  <ol>${entries.map((entry) => `<li><span>${entry}</span></li>`).join('\n')}</ol>
 </section>`;
 }
 
@@ -740,6 +770,7 @@ async function templateCss(templateId: string): Promise<string> {
 }
 
 export async function renderReportHtml(data: ReportData): Promise<string> {
+  const numbers = numberSections(data);
   const [fonts, css] = await Promise.all([
     embeddedFontCss(data.templateId),
     templateCss(data.templateId),
@@ -757,21 +788,21 @@ ${css}
 </head>
 <body>
 ${coverHtml(data)}
-${tableOfContentsHtml(data)}
+${tableOfContentsHtml(numbers)}
 ${documentControlHtml(data)}
 ${retestBasisHtml(data)}
-${executiveSummaryHtml(data)}
-${riskOverviewHtml(data)}
-${scopeHtml(data)}
-${methodologyHtml(data)}
-${coverageHtml(data)}
-${narrativeHtml(data)}
-${findingsHtml(data)}
-${positivesHtml(data)}
-${roadmapHtml(data)}
-${complianceHtml(data)}
-${appendicesHtml(data)}
-${legalHtml(data)}
+${executiveSummaryHtml(data, numbers)}
+${riskOverviewHtml(data, numbers)}
+${scopeHtml(data, numbers)}
+${methodologyHtml(data, numbers)}
+${coverageHtml(data, numbers)}
+${narrativeHtml(data, numbers)}
+${findingsHtml(data, numbers)}
+${positivesHtml(data, numbers)}
+${roadmapHtml(data, numbers)}
+${complianceHtml(data, numbers)}
+${appendicesHtml(data, numbers)}
+${legalHtml(data, numbers)}
 </body>
 </html>
 `;

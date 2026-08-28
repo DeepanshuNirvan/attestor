@@ -41,6 +41,14 @@ export interface IngestResult {
   suppressed: number;
   collapsed: number;
   correlatedGroups: number;
+  /**
+   * Findings inserted by this call, with the tool's own record of each.
+   *
+   * The worker captures that text through the masking layer and links it to the finding. It is
+   * returned rather than stored here because this module has no object store, and because a
+   * finding with nothing attached is one the pre-release checklist refuses to let out.
+   */
+  createdFindings: { id: string; evidenceText?: string }[];
 }
 
 /**
@@ -91,10 +99,28 @@ export async function ingestFindings(
 ): Promise<IngestResult> {
   const now = input.now ?? new Date();
   if (input.raw.length === 0) {
-    return { created: 0, updated: 0, suppressed: 0, collapsed: 0, correlatedGroups: 0 };
+    return {
+      created: 0,
+      updated: 0,
+      suppressed: 0,
+      collapsed: 0,
+      correlatedGroups: 0,
+      createdFindings: [],
+    };
   }
 
   const completed = input.raw.map((raw) => completeFinding(raw, input, now));
+
+  // `completeFinding` produces a `Finding`, which carries no evidence text, and dedupe collapses
+  // several raw results into one. Keep the first record seen for each key, so a collapsed finding
+  // still arrives with the tool's own record of it attached.
+  const evidenceByKey = new Map<string, string>();
+  for (const [index, raw] of input.raw.entries()) {
+    const key = completed[index]?.dedupeKey;
+    if (key && raw.evidenceText !== undefined && !evidenceByKey.has(key)) {
+      evidenceByKey.set(key, raw.evidenceText);
+    }
+  }
 
   // False-positive memory is per client, not per engagement: the same noisy rule against the same
   // asset should stay suppressed at the next quarterly run.
@@ -113,6 +139,7 @@ export async function ingestFindings(
 
   let created = 0;
   let updated = 0;
+  const createdFindings: IngestResult['createdFindings'] = [];
 
   for (const item of correlated) {
     const existing = await database
@@ -145,7 +172,9 @@ export async function ingestFindings(
       continue;
     }
 
-    await database.insert(findingTable).values({
+    const [inserted] = await database
+      .insert(findingTable)
+      .values({
       engagementId: input.engagementId,
       scanRunId: input.scanRunId,
       source: item.source,
@@ -178,8 +207,12 @@ export async function ingestFindings(
       attemptCount: item.attemptCount ?? null,
       firstSeenAt: now,
       lastSeenAt: now,
-    });
+      })
+      .returning({ id: findingTable.id });
     created += 1;
+    if (inserted?.id) {
+      createdFindings.push({ id: inserted.id, evidenceText: evidenceByKey.get(item.dedupeKey) });
+    }
   }
 
   const collapsedCount = [...collapsed.values()].reduce(
@@ -193,6 +226,7 @@ export async function ingestFindings(
     suppressed,
     collapsed: collapsedCount,
     correlatedGroups: groups.length,
+    createdFindings,
   };
 }
 

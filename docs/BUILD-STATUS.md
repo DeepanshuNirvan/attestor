@@ -3,9 +3,20 @@
 Resume point for this build. Update it whenever a milestone lands, so a new session can pick up
 from here without re-reading the whole repository.
 
-**Last updated:** 2026-08-25, after the platform was run end to end against a real Postgres and both
-surfaces were driven through their real APIs in a browser. Eleven defects were found and fixed; they
-are listed under "Bugs found and fixed" below, starting at number 11.
+**Read `docs/PRODUCT-CONTEXT.md` alongside this file.** That one is the stable picture — what the
+product is, how it is built, and the non-obvious things that are true about the run path. This one
+is the live state.
+
+**Last updated:** 2026-08-28, after the first regression run with a working container daemon. The
+stack was booted under compose for the first time, real security tools were run in real containers
+against deliberately vulnerable targets, and the engagement was driven through triage, report
+generation and the release gate. **Twenty-five further defects were found and fixed** — all of them
+passing lint, typecheck and the full suite beforehand. They are written up in
+`docs/REGRESSION-2026-08-28.md`, numbered 22 to 46.
+
+Four of them meant the product could not do its job at all: no engagement could ever reach a
+runnable state, the container runner crashed the worker on the first byte of tool output, tool input
+and output went to a directory the tool never saw, and no report could be produced or released.
 
 ---
 
@@ -16,15 +27,16 @@ are listed under "Bugs found and fixed" below, starting at number 11.
 | Lint | `pnpm lint` | passing |
 | Typecheck (workspaces) | `pnpm typecheck` | passing |
 | Typecheck (root project) | `pnpm exec tsc -p tsconfig.json --noEmit` | passing |
-| Unit and property tests | `pnpm test` | **354 passing, 27 files** |
-| Claim check | `pnpm check:claims` | passing, 279 files scanned |
-| Marketing site build | `pnpm --filter @attestor/website build` | passing, 22 pages indexed |
+| Unit and property tests | `pnpm test` | **357 passing, 27 files** |
+| Claim check | `pnpm check:claims` | passing |
+| Marketing site build | `pnpm --filter @attestor/website build` | passing |
 | Console build | `ATTESTOR_SURFACE=console pnpm --filter @attestor/console build` | passing |
 | Portal build | `ATTESTOR_SURFACE=portal pnpm --filter @attestor/console build` | passing |
-| XSS corpus integration | `ATTESTOR_TEST_NETWORK_ONLY=1 pnpm test:integration -- xss-corpus` | **26 passing, verified in a real browser** |
-| Both surfaces in a browser | `pnpm --filter @attestor/console dev` | **every page rendered against a stub API; all 200, no CSP violations** |
-| End-to-end flows against real Postgres | see "Running it without Docker" below | **110 checks passing across four flows** |
-| Portal signed into in a browser, real API | `next start` on the portal build | **sign-in, MFA, dashboard and findings verified; page hydrates, no CSP violations** |
+| Integration suite | `ATTESTOR_TEST_NETWORK_ONLY=1 pnpm test:integration` | **31 passing** — the live run suite passes for the first time |
+| **The whole stack under compose** | `docker compose -f infra/docker-compose.yml up -d --build` | **nine services healthy, both UIs 200** |
+| **A live tool run** | see `docs/REGRESSION-2026-08-28.md` | **real containers, real targets, real findings** |
+| **A whole engagement through the real API** | the same | **zero failures, from bootstrap to the release gate** |
+| **Platform security regression** | the same | **24 cases passing** |
 
 Everything above has been run. Nothing in this table is an expectation.
 
@@ -203,60 +215,43 @@ instructions:
 
 ---
 
+The twenty-five found on 2026-08-28, in the first regression run with a working container daemon,
+are written up in full in `docs/REGRESSION-2026-08-28.md` — numbers 22 to 46. Four of them meant the
+product could not perform its core function, two were controls that could never fire, and one was a
+safety rail whose test asserted the opposite of its name.
+
+---
+
 ## Not done
 
 Ranked by what should happen next.
 
-> Note: `apps/console/.env.local` is currently set to `ATTESTOR_SURFACE=console`. It is a gitignored
-> local-development file; flip it to `portal` and restart the dev server to work on that surface.
-
-1. **A live tool run has never been executed.** This is now the only part of the platform that has
-   not been exercised. It needs a container daemon:
-   `docker compose -f infra/docker-compose.test.yml up -d --wait`, then
-   `apps/api/src/engagement-run.integration.test.ts`. Everything the run depends on either side of
-   the container — scope guard, policy resolution, run records, queueing, evidence capture — has
-   been run for real.
-2. **The stack has never been booted under compose.** Docker Desktop on this machine is broken: the
-   `docker-desktop` WSL distribution is missing and only `docker-desktop-data` remains, so the
-   daemon does not start. The platform itself has been run end to end without it — see below — but
-   the compose file, the Dockerfile and the image build are still unexercised.
-
-### Running it without Docker
-
-Everything except tool containers runs against a real Postgres with no daemon, which is how the
-defects above were found. A real Postgres 16 matters rather than a stub: migration `0001` creates
-the least-privilege portal role, and it is the role grants that make the portal's isolation real.
-
-- `npm i embedded-postgres@16` in a scratch directory gives real Postgres 16 binaries. Initialise
-  with `--encoding=UTF8 --data-checksums` to match compose, and start it on a spare port.
-- Point `DATABASE_URL` and `PORTAL_DATABASE_URL` at it, then run the repository's own
-  `apps/api/src/db/migrate.ts` and `apps/api/src/db/seed.ts` unchanged.
-- `buildConsoleServer(context, queues)` and `buildPortalServer(context)` both take their
-  dependencies as arguments, so the API runs unmodified with an in-process stand-in for the queue
-  and a small S3-compatible listener in place of MinIO. Nothing in `apps/` or `packages/` has to
-  change to do this.
-- Passwords that end up in a connection string must use a URL-safe alphabet. See the note at the
-  end of the bug list.
-
-Verified this way: the portal role cannot read `credential_set`, `staff_user`, `authorisation`,
-`panic_stop`, `ai_usage` or `client_invitation` beyond what migration `0003` grants; the audit log
-refuses `UPDATE`, `DELETE` and `TRUNCATE` even to the owner role; one tenant cannot read, comment
-on, change the status of, or request a retest against another tenant's findings or engagements by
-direct id or by filter; and a finding whose every free-text field carries `<script>` renders as
-text in the report HTML, in the portal, and inside Next's flight payload, where `<` arrives as
-`<`.
-3. **`infra/tool-images.lock.json` does not exist yet.** `node scripts/pin-tool-images.mjs --pull`
-   writes it, and until then no tool will start — by design.
-4. **Off-host log shipping and alerting.** The two real gaps in the ASVS self-assessment, in V16.
-5. **Legal text is not lawyer-reviewed.** Every block carries `lawyerReviewedAt: null` and documents
-   render with a visible draft banner until that changes. Tracked by the pre-release checklist.
-6. **A model has never actually been called.** The AI layer is fully implemented and fully tested
+1. **Eleven of forty-one tool images cannot be pulled.** `gau`, `whatweb`, `nikto`, `commix`,
+   `kiterunner`, `cloudsplaining`, `apktool`, `jadx`, `garak`, `promptfoo`, `strix`. The runner
+   refuses an unpinned image, so each is silently absent from every run while the website and the
+   user guide list it as available. Each needs a working image reference or removal from the
+   catalogue — leaving them listed overstates what the platform does.
+2. **Legal text is not lawyer-reviewed.** Every block carries `lawyerReviewedAt: null` and documents
+   render with a visible draft banner until that changes. Still the one thing that cannot ship.
+3. **A model has never actually been called.** The AI layer is fully implemented and fully tested
    against an injected transport, but no request has gone to a provider — there is no key here, and
    the default configuration refuses everything anyway. The first real call should be made on a
    scratch engagement with a low budget ceiling.
-7. **Notification sending is deliberately manual.** There is no SMTP client anywhere. Approving
+4. **Mobile, cloud, code and LLM modules have not been driven end to end** against a live target.
+   Recon, web and network have.
+5. **Off-host log shipping and alerting.** The two real gaps in the ASVS self-assessment, in V16.
+6. **Notification sending is deliberately manual.** There is no SMTP client anywhere. Approving
    records the decision; a person sends the message and marks it sent. If that ever changes, it is a
    design decision, not a feature.
+
+### Running a live tool run
+
+`docs/PRODUCT-CONTEXT.md` §5 has the things that are true and non-obvious about the run path, and
+they are all load-bearing. The one that catches everybody: **a tool container is on a fresh per-run
+bridge network and cannot reach the `internal: true` test-target network.** In production it reaches
+targets over ordinary egress. To drive a real run against the local vulnerable stack, publish the
+targets on the host and scope the host address as a client-declared private range with a `cidr`
+scope item — which is the internal-engagement path, and worth exercising for its own sake.
 
 ---
 

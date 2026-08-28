@@ -2,6 +2,7 @@ import type { RawFinding } from '@attestor/findings';
 import {
   normaliseSeverity,
   parseJsonLines,
+  recordAsEvidence,
   splitTarget,
   type ParseContext,
   type ScannerAdapter,
@@ -49,9 +50,17 @@ interface NucleiResult {
   timestamp?: string;
 }
 
-function asArray(value: string[] | string | undefined): string[] {
-  if (value === undefined) return [];
-  return Array.isArray(value) ? value : [value];
+/**
+ * Template authors fill the classification block by hand, and a good number of templates emit
+ * `"cve-id": null` or an array with a null in it. The first real nuclei run against a live target
+ * crashed the whole scan job on `cve.toUpperCase()` — the fixtures were all well-formed, so the
+ * hostile-input test never reached it. Anything that is not a non-empty string is dropped here,
+ * once, rather than guarded at each of the four places this feeds.
+ */
+function asArray(value: unknown): string[] {
+  if (value === undefined || value === null) return [];
+  const values = Array.isArray(value) ? value : [value];
+  return values.filter((entry): entry is string => typeof entry === 'string' && entry !== '');
 }
 
 function firstCwe(classification: NucleiClassification | undefined): number | undefined {
@@ -144,6 +153,12 @@ export const nucleiAdapter: ScannerAdapter = {
       '-retries',
       '1',
       '-disable-update-check',
+      // The image ships no templates and -disable-update-check stops it fetching any, so without
+      // being pointed at a provisioned pack nuclei exits with "no templates provided for scan" —
+      // which is indistinguishable from a clean scan unless you read the exit code. The runner
+      // mounts the pack read-only at this path.
+      '-t',
+      '/templates',
       // Interactsh is an out-of-band service run by a third party. Blind checks that need it are
       // handled by our own collector, so the tool must not send client data to someone else's.
       '-no-interactsh',
@@ -207,6 +222,7 @@ export const nucleiAdapter: ScannerAdapter = {
         cvssScore: info?.classification?.['cvss-score'],
         cweId: firstCwe(info?.classification),
         affectedAssets: [{ value: port ? `${host}:${port}` : host, location }],
+        evidenceText: recordAsEvidence(result),
         businessImpact: '',
         likelihood: '',
         attackerPrerequisites: '',

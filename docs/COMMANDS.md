@@ -334,7 +334,8 @@ curl -sS -b /tmp/attestor.jar -X PUT http://127.0.0.1:8080/engagements/<id>/poli
 JSON
 ```
 
-Returns any warnings — a value clamped to a ceiling comes back as a warning rather than an error, so
+A rate above a ceiling is refused outright and the policy is not saved. Anything merely suspect — a
+check id matching nothing, an auth profile with no session indicator — comes back in `warnings`, so
 you find out before the run rather than during it. `docs/POLICY-COOKBOOK.md` has the full reference.
 
 ### 8.8 Move to a runnable state

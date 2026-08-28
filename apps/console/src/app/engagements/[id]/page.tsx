@@ -4,6 +4,8 @@ import { Notice, PageHeader, Severity, Shell, Stat } from '@/components/shell';
 import { RunControls } from '@/components/run-controls';
 import { StopControl } from '@/components/stop-control';
 import { StateControl } from '@/components/state-control';
+import { PreFlightChecklist, type PreFlightItem } from '@/components/pre-flight-checklist';
+import { PaymentControl } from '@/components/payment-control';
 import { ScopeEditor } from '@/components/scope-editor';
 import { tryGet } from '@/lib/api';
 
@@ -65,6 +67,12 @@ interface EngagementDetail {
   policyWarnings: string[];
 }
 
+interface PreFlightResponse {
+  items: PreFlightItem[];
+  confirmations: Record<string, boolean>;
+  outstanding: string[];
+}
+
 function formatDateTime(value: string | null): string {
   if (!value) return '—';
   return new Intl.DateTimeFormat('en-GB', {
@@ -81,6 +89,7 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const data = await tryGet<EngagementDetail>(`/engagements/${id}`);
   if (data === null) redirect('/login');
+  const preFlight = await tryGet<PreFlightResponse>(`/engagements/${id}/pre-flight-checklist`);
   if (!data.engagement) notFound();
 
   const { engagement, panicStop } = data;
@@ -178,6 +187,35 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
         <section className="panel">
           <h2>Lifecycle</h2>
           <StateControl engagementId={id} current={engagement.state} />
+        </section>
+
+        <section className="panel">
+          <h2>Before a live run</h2>
+          <p className="muted small">
+            This checklist gates the move to ready to run, and it has no override. The advance
+            payment gate does; this one does not, because the things on it are what stop a run
+            harming someone.
+          </p>
+          {preFlight === null ? (
+            <p className="muted small">The checklist could not be loaded.</p>
+          ) : (
+            <PreFlightChecklist
+              engagementId={id}
+              items={preFlight.items}
+              confirmations={preFlight.confirmations}
+              outstanding={preFlight.outstanding}
+            />
+          )}
+        </section>
+
+        <section className="panel">
+          <h2>Payments</h2>
+          <PaymentControl
+            engagementId={id}
+            advancePaidAt={engagement.advancePaidAt}
+            finalPaidAt={engagement.finalPaidAt}
+            currency={engagement.currency}
+          />
         </section>
 
         <section className="panel">

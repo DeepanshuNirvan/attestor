@@ -70,14 +70,16 @@ describe('origin guard', () => {
     await app.close();
   });
 
-  it('treats an opaque origin as something to refuse nothing on', async () => {
+  it('refuses an opaque origin, which is a browser context and not an absent header', async () => {
     const app = await buildApp();
     const response = await app.inject({
       method: 'POST',
       url: '/thing',
+      // What a sandboxed iframe or a document loaded from data: sends. An attacker can arrange
+      // that; they cannot arrange for a header to be absent from a browser request.
       headers: { origin: 'null' },
     });
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(403);
     await app.close();
   });
 });

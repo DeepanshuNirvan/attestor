@@ -152,9 +152,12 @@ rateLimits:
     abortConsecutiveServerErrors: 20
 ```
 
-A value above a ceiling is **clamped, with a warning** — you find out when you save the policy, not
-when the client calls. The adaptive block is what stops a run that is hurting a target: it slows down
-when latency rises and aborts outright when it doubles.
+A value above a ceiling is **refused when you save the policy**, naming the field and the ceiling —
+you find out then, not when the client calls. Nothing is silently reduced, so the number in the
+policy is the number the run uses. `politeMode` halves the values you did set, and that halving is
+clamped too, so no combination can produce an effective rate above the ceiling. The adaptive block
+is what stops a run that is hurting a target: it slows down when latency rises and aborts outright
+when it doubles.
 
 ### 2.6 Windows and blackouts
 
@@ -575,9 +578,9 @@ curl -sS -b jar -X PUT :8080/engagements/<id>/policy \
   -d "$(jq -Rs '{yaml: .}' < my-policy.yaml)"
 ```
 
-The response carries `warnings`. Read them: a clamped rate limit, a check id that matches nothing, an
-auth profile with no session indicator all come back as warnings rather than errors, which is how you
-find out before the run instead of during it.
+A rate above a ceiling is an error and the policy is not saved. Everything else that is merely
+suspect — a check id that matches nothing, an auth profile with no session indicator — comes back in
+`warnings`, which is how you find out before the run instead of during it. Read them.
 
 To see what the four layers actually resolved to:
 
@@ -591,7 +594,7 @@ curl -sS -b jar :8080/engagements/<id> | jq .policy
 
 Worth knowing so you do not go looking.
 
-- Any rate above the ceilings. Clamped, with a warning.
+- Any rate above the ceilings. The policy is refused and not saved.
 - Any form of flood, stress, volumetric or load test. There is no field, no flag, no escape hatch.
 - A destructive payload set. Adapters build commands from a fixed vocabulary.
 - Cost-abuse LLM testing without a spend ceiling and the client's acknowledgement.

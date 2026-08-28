@@ -1,6 +1,8 @@
 import type { RawFinding } from '@attestor/findings';
 import {
+  hostList,
   normaliseSeverity,
+  recordAsEvidence,
   parseJsonObject,
   splitTarget,
   type DiscoveredAsset,
@@ -317,6 +319,7 @@ export const schemathesisAdapter: ScannerAdapter = {
 
         findings.push({
           source: 'tool',
+          evidenceText: recordAsEvidence(check),
           toolName: 'schemathesis',
           toolFindingRef: check.name ?? 'schemathesis-check',
           checkId: mapped.checkId,
@@ -435,10 +438,14 @@ export const nmapAdapter: ScannerAdapter = {
       '-sV',
       '--version-intensity',
       '5',
-      // Safe script categories only. No exploit, no brute, no dos — those categories are not
-      // available through this platform and never will be.
+      // The `safe` category only, which is the claim the tool inventory and the report both make.
+      // No exploit, no brute, no dos — those are not available through this platform and never will
+      // be. `discovery` used to be here and does not belong: it is not a safe category, and several
+      // of its scripts (whois-ip, whois-domain, targets-*) send the client's hostnames to third
+      // parties that never authorised anything. `default` is dropped for the same reason — it is a
+      // convenience selection, not a safety one, and it overlaps `safe` for everything wanted here.
       '--script',
-      'safe,default,discovery',
+      'safe',
       '--script-timeout',
       '60s',
       '-Pn',
@@ -453,7 +460,7 @@ export const nmapAdapter: ScannerAdapter = {
       '2',
     ],
     outputFile: 'nmap.xml',
-    inputFiles: [{ name: 'hosts.txt', contents: `${targets.join('\n')}\n` }],
+    inputFiles: [{ name: 'hosts.txt', contents: hostList(targets) }],
   }),
 
   parse: (raw, context: ParseContext): RawFinding[] => {
@@ -465,6 +472,7 @@ export const nmapAdapter: ScannerAdapter = {
         if (cleartextServices.includes(port.service) && port.service !== 'http') {
           findings.push({
             source: 'tool',
+            evidenceText: recordAsEvidence(port),
             toolName: 'nmap',
             toolFindingRef: `cleartext-${port.service}`,
             checkId: 'network-transport-encryption',
@@ -489,6 +497,7 @@ export const nmapAdapter: ScannerAdapter = {
         if (versionScript && versionScript.output.trim() !== '') {
           findings.push({
             source: 'tool',
+            evidenceText: recordAsEvidence(port),
             toolName: 'nmap',
             toolFindingRef: 'known-vulnerabilities',
             checkId: 'network-cve-correlation',

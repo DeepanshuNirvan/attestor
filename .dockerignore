@@ -1,0 +1,36 @@
+# The image installs its own dependencies in the `dependencies` stage. Without this file the
+# console stage's `COPY . .` lands the host's node_modules on top of them, which replaces
+# linux-musl native binaries — @node-rs/argon2, sharp, esbuild — with the build machine's own.
+# The image then builds cleanly and fails at start-up.
+node_modules
+**/node_modules
+
+# Build output, regenerated inside the image.
+.next
+**/.next
+dist
+**/dist
+.astro
+**/.astro
+.turbo
+**/.turbo
+
+.git
+.github
+docs
+*.md
+!README.md
+
+# Local secrets and state. infra/.env is read by compose on the host, never baked into an image.
+infra/.env
+.env
+.env.*
+.seed-credentials.txt
+
+# Test and editor scaffolding.
+coverage
+**/coverage
+playwright-report
+test-results
+.vscode
+.idea

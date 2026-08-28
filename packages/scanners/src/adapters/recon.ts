@@ -1,6 +1,8 @@
 import type { RawFinding } from '@attestor/findings';
 import {
+  hostList,
   parseJsonLines,
+  recordAsEvidence,
   splitTarget,
   type DiscoveredAsset,
   type ParseContext,
@@ -143,6 +145,7 @@ export const httpxAdapter: ScannerAdapter = {
       if (result.scheme === 'http' && !result.location?.startsWith('https://')) {
         findings.push({
           source: 'tool',
+          evidenceText: recordAsEvidence(result),
           toolName: 'httpx',
           toolFindingRef: 'plaintext-http',
           checkId: 'web-credentials-over-encrypted-channel',
@@ -229,7 +232,7 @@ export const naabuAdapter: ScannerAdapter = {
       'c',
     ],
     outputFile: 'naabu.jsonl',
-    inputFiles: [{ name: 'hosts.txt', contents: `${targets.join('\n')}\n` }],
+    inputFiles: [{ name: 'hosts.txt', contents: hostList(targets) }],
   }),
 
   parse: (raw, context: ParseContext): RawFinding[] => {
@@ -262,6 +265,13 @@ export const naabuAdapter: ScannerAdapter = {
 
     return [...grouped.entries()].map(([host, ports]) => ({
       source: 'tool' as const,
+      // One finding covers several of naabu's result lines, so the evidence is the set of ports it
+      // grouped rather than a single record.
+      evidenceText: recordAsEvidence(
+        [...ports]
+          .sort((a, b) => a - b)
+          .map((port) => ({ host, port, service: sensitivePorts[port] ?? 'unknown' })),
+      ),
       toolName: 'naabu',
       toolFindingRef: 'sensitive-port-exposed',
       checkId: 'network-exposed-management-interfaces',
@@ -322,11 +332,13 @@ export const tlsxAdapter: ScannerAdapter = {
       '-untrusted',
       '-tls-version',
       '-cipher',
-      '-san',
+      // No -san here. It is a display probe in tlsx, not an extra field: combining it with the
+      // certificate probes above makes the tool refuse to start with "san or cn flag cannot be
+      // used with other probes". `-json` already emits subject_an, and the parser does not read it.
       '-silent',
     ],
     outputFile: 'tlsx.jsonl',
-    inputFiles: [{ name: 'hosts.txt', contents: `${targets.join('\n')}\n` }],
+    inputFiles: [{ name: 'hosts.txt', contents: hostList(targets) }],
   }),
 
   parse: (raw, context: ParseContext): RawFinding[] => {
@@ -349,6 +361,7 @@ export const tlsxAdapter: ScannerAdapter = {
 
         findings.push({
           source: 'tool',
+          evidenceText: recordAsEvidence(result),
           toolName: 'tlsx',
           toolFindingRef: 'certificate-problem',
           checkId: 'recon-tls-configuration',
@@ -377,6 +390,7 @@ export const tlsxAdapter: ScannerAdapter = {
         if (daysLeft >= 0 && daysLeft <= CERTIFICATE_WARNING_DAYS) {
           findings.push({
             source: 'tool',
+            evidenceText: recordAsEvidence(result),
             toolName: 'tlsx',
             toolFindingRef: 'certificate-expiring',
             checkId: 'recon-tls-configuration',
@@ -400,6 +414,7 @@ export const tlsxAdapter: ScannerAdapter = {
       if (result.tls_version && weakVersions.has(result.tls_version)) {
         findings.push({
           source: 'tool',
+          evidenceText: recordAsEvidence(result),
           toolName: 'tlsx',
           toolFindingRef: 'weak-tls-version',
           checkId: 'recon-tls-configuration',

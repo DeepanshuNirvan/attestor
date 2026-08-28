@@ -72,6 +72,11 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      # Evidence is written with ServerSideEncryption: AES256. MinIO refuses that with
+      # "KMS is not configured" unless it has a key, so without this every evidence upload — and
+      # therefore every completed tool run — failed. A single built-in key gives SSE-S3 without an
+      # external KMS. Back it up with the other secrets: losing it makes the buckets unreadable.
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?set MINIO_KMS_SECRET_KEY in .env}
     volumes:
       - minio-data:/data
     healthcheck:
@@ -111,6 +116,41 @@ services:
         mc anonymous set none local/attestor-reports
         mc version enable local/attestor-reports
         echo "buckets ready"
+    restart: 'no'
+    logging: *logging
+
+  # The daemon creates a bind source owned by root, and the worker runs as uid 1000 — so without
+  # this it cannot create a run directory inside its own workspace. One short root container fixes
+  # the ownership once; nothing else in the stack needs root.
+  workspace-init:
+    image: alpine:3.21
+    command: ['sh', '-c', 'chown 1000:1000 /workspace && chmod 700 /workspace && echo "workspace ready"']
+    volumes:
+      - /tmp/attestor:/workspace
+    restart: 'no'
+    logging: *logging
+
+  # nuclei's image ships no templates, and -disable-update-check stops it fetching any at run time,
+  # so without this it starts, finds nothing to run, and exits — which for a long time looked
+  # exactly like a clean scan. The pack is downloaded once, here, into the shared workspace, and
+  # mounted read-only into each nuclei run. Refresh it deliberately, in a batch, never mid-
+  # engagement: `docker compose run --rm nuclei-templates-init`.
+  nuclei-templates-init:
+    image: projectdiscovery/nuclei:latest
+    depends_on:
+      workspace-init:
+        condition: service_completed_successfully
+    user: '0:0'
+    # The chmod matters: the install runs as root, and the tool container that later mounts this
+    # pack read-only runs as uid 65532. Without it the pack exists and nuclei cannot open it.
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        nuclei -update-templates -update-template-dir /workspace/nuclei-templates &&
+        chmod -R a+rX /workspace/nuclei-templates &&
+        echo "templates ready"
+    volumes:
+      - /tmp/attestor:/workspace
     restart: 'no'
     logging: *logging
 
@@ -213,6 +253,10 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      workspace-init:
+        condition: service_completed_successfully
+      nuclei-templates-init:
+        condition: service_completed_successfully
     env_file: [.env]
     environment:
       DATABASE_URL: postgres://attestor:${POSTGRES_PASSWORD}@postgres:5432/attestor
@@ -221,11 +265,25 @@ services:
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
     command: ['node', '--experimental-strip-types', 'apps/api/src/worker.ts']
+    # The image runs as uid 1000, and the socket is mode 0660 owned by root — so without this the
+    # worker connects and gets EACCES, and every tool run fails before a container is created.
+    # Adding the socket's group grants exactly that access and nothing else; the process still runs
+    # as a non-root user. 0 matches Docker Desktop, where the socket is root:root. On a Linux host
+    # it is usually root:docker, so set DOCKER_SOCKET_GID to the docker group:
+    #   stat -c '%g' /var/run/docker.sock
+    group_add:
+      - '${DOCKER_SOCKET_GID:-0}'
     volumes:
       # The only service with the socket. This is what lets it start tool containers, and it is the
       # reason the worker is a separate process from the API.
       - /var/run/docker.sock:/var/run/docker.sock
-      - tool-workspace:/tmp/attestor
+      # The worker writes a tool's input files into this directory and then asks the daemon to bind
+      # the same path into the tool container. The daemon resolves that path on the host, so the
+      # two only mean the same directory when this is a host bind at an identical path. As a named
+      # volume it was not: the worker wrote /tmp/attestor/<run> inside itself while the daemon
+      # created an empty /tmp/attestor/<run> on the host, so every tool started with no input file
+      # and wrote its output where nothing would ever read it.
+      - /tmp/attestor:/tmp/attestor
     logging: *logging
     deploy:
       resources:
@@ -297,4 +355,3 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
-  tool-workspace:

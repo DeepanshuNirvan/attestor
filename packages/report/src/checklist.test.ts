@@ -64,10 +64,25 @@ describe('the manual items', () => {
   });
 });
 
+describe('the review queue', () => {
+  it('blocks release while a candidate is still awaiting triage', () => {
+    // The candidate is in the queue, not in the report: the query that builds a report filters
+    // them out. Checking only the report is why this item never fired.
+    const outcome = runChecklist(data, ALL_MANUAL, {
+      unapprovedAiDrafts: [],
+      outstandingCandidates: 3,
+    });
+
+    expect(outcome.releasable).toBe(false);
+    expect(outcome.blocking.find((entry) => entry.id === 'no-candidates')?.reason).toContain('3');
+  });
+});
+
 describe('AI drafts', () => {
   it('block release while a section is still an unapproved draft', () => {
     const outcome = runChecklist(data, ALL_MANUAL, {
       unapprovedAiDrafts: ['executiveSummary'],
+      outstandingCandidates: 0,
     });
 
     expect(outcome.releasable).toBe(false);
@@ -76,7 +91,10 @@ describe('AI drafts', () => {
   });
 
   it('pass when no section is an unapproved draft', () => {
-    const outcome = runChecklist(data, ALL_MANUAL, { unapprovedAiDrafts: [] });
+    const outcome = runChecklist(data, ALL_MANUAL, {
+      unapprovedAiDrafts: [],
+      outstandingCandidates: 0,
+    });
 
     expect(outcome.releasable).toBe(true);
   });

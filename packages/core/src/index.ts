@@ -3,6 +3,7 @@ export * from './scope/hostname.ts';
 export * from './scope/ip.ts';
 export * from './scope/never-touch-list.ts';
 export * from './engagement/state-machine.ts';
+export * from './engagement/pre-flight.ts';
 export * from './audit/audit-log.ts';
 export * from './panic-stop.ts';
 export * from './runner/tool-images.ts';

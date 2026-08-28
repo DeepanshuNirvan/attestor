@@ -1,10 +1,12 @@
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { buildCoverageMatrix, type Finding } from '@attestor/findings';
 import { resolvePolicy } from '@attestor/policy';
+import { TOOL_IMAGES } from '@attestor/core';
 import type { ReportData, ReportEvidence, ReportFinding } from '@attestor/report';
 import type { Database } from '../db/client.ts';
 import {
   client as clientTable,
+  discoveredAsset as discoveredAssetTable,
   engagement as engagementTable,
   evidence as evidenceTable,
   finding as findingTable,
@@ -85,7 +87,7 @@ export async function buildReportData(
     { name: 'engagement', yamlSource: record.policyYaml },
   ]);
 
-  const [scopeItems, findings, sections, runs, digests] = await Promise.all([
+  const [scopeItems, findings, sections, runs, assets, digests] = await Promise.all([
     database.select().from(scopeItemTable).where(eq(scopeItemTable.engagementId, input.engagementId)),
     database
       .select()
@@ -102,6 +104,11 @@ export async function buildReportData(
       .from(reportSectionTable)
       .where(eq(reportSectionTable.engagementId, input.engagementId)),
     database.select().from(scanRunTable).where(eq(scanRunTable.engagementId, input.engagementId)),
+    database
+      .select()
+      .from(discoveredAssetTable)
+      .where(eq(discoveredAssetTable.engagementId, input.engagementId))
+      .orderBy(asc(discoveredAssetTable.host), asc(discoveredAssetTable.port)),
     loadToolDigests(),
   ]);
 
@@ -211,11 +218,22 @@ export async function buildReportData(
     findingCountByCheckId,
   });
 
-  const toolsUsed = [...new Set(runs.map((run) => run.toolName))].map((toolName) => ({
-    name: toolName,
-    version: digests[toolName]?.slice(7, 19) ?? 'pinned by digest',
-    purpose: 'See the tool inventory appendix.',
-  }));
+  // Only tools that actually ran. Listing every scan_run row put dry runs, scope refusals and
+  // crashes into a table headed "Tools used", which is a claim about work that was not done. The
+  // digest is printed in full because "we used nuclei" is not a statement anyone can check and
+  // "we used nuclei at sha256:…" is — it is the same reason the images are pinned at all.
+  const toolsUsed = [
+    ...new Set(runs.filter((run) => run.status === 'completed' && !run.dryRun).map((run) => run.toolName)),
+  ]
+    .sort()
+    .map((toolName) => {
+      const tool = TOOL_IMAGES.find((image) => image.id === toolName);
+      return {
+        name: tool?.displayName ?? toolName,
+        version: digests[toolName] ?? 'digest not recorded',
+        purpose: tool?.purpose ?? 'Not recorded.',
+      };
+    });
 
   const narrativeStored = sectionMap.get('attackNarrative');
 
@@ -297,8 +315,23 @@ export async function buildReportData(
     complianceFrameworks: policy.report.complianceFrameworks,
 
     appendices: {
-      assetInventory: scopeItems.filter((item) => item.included).map((item) => item.value),
-      portsAndServices: [],
+      // What the engagement found, falling back to what was scoped when reconnaissance produced
+      // nothing — an inventory that silently equals the scope list tells the reader nothing.
+      assetInventory:
+        assets.length > 0
+          ? [...new Set(assets.map((asset) => asset.host))].sort()
+          : scopeItems.filter((item) => item.included).map((item) => item.value),
+      portsAndServices: assets
+        .filter((asset) => asset.kind === 'port' && asset.port !== null)
+        .map((asset) => {
+          const metadata = asset.metadata as Record<string, string | number | boolean>;
+          return {
+            host: asset.host,
+            port: asset.port ?? 0,
+            service: String(metadata.service ?? 'unknown'),
+            version: String(metadata.version ?? ''),
+          };
+        }),
       outOfScopeNotes: sectionText(sectionMap, 'outOfScopeNotes', [
         'No denial-of-service, load or volumetric testing was performed. The platform used for this assessment contains no such capability.',
       ]),

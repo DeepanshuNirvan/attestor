@@ -75,6 +75,32 @@ export function normaliseSeverity(value: string | undefined): Severity {
   return 'info';
 }
 
+/**
+ * A target list for a tool that scans hosts rather than URLs.
+ *
+ * Scope items are frequently URLs, and the run request passes whatever it was given straight
+ * through to every adapter. naabu and nmap take a host or an address and refuse a URL outright —
+ * "no valid ipv4 or ipv6 targets were found" — so the tools that enumerate ports have to reduce
+ * their targets to bare hosts. Duplicates are collapsed, because two URLs on one host are one host.
+ */
+export function hostList(targets: readonly string[]): string {
+  const hosts = new Set(
+    targets.map((target) => splitTarget(target).host).filter((host) => host !== ''),
+  );
+  return [...hosts, ''].join('\n');
+}
+
+/**
+ * The record a finding was parsed from, as evidence text.
+ *
+ * This is what the tool actually said about this result. It goes through the masking and redaction
+ * layer in the worker like any other evidence, and it exists so a candidate arrives in triage with
+ * its provenance attached rather than with nothing.
+ */
+export function recordAsEvidence(record: unknown): string {
+  return JSON.stringify(record, null, 2);
+}
+
 /** Most modern tools emit JSON Lines. Malformed lines are skipped, not fatal. */
 export function parseJsonLines<T>(raw: string): T[] {
   const out: T[] = [];

@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { Writable } from 'node:stream';
 import Docker from 'dockerode';
 import type { ToolImage } from './tool-images.ts';
 
@@ -53,6 +53,16 @@ export interface ContainerRunnerOptions {
   docker?: Docker;
 }
 
+/** Sink for one half of the de-multiplexed attach stream. */
+function collectInto(chunks: Buffer[]): Writable {
+  return new Writable({
+    write(chunk: Buffer, unusedEncoding, callback) {
+      chunks.push(Buffer.from(chunk));
+      callback();
+    },
+  });
+}
+
 export class ContainerRunner {
   private readonly docker: Docker;
 
@@ -81,7 +91,16 @@ export class ContainerRunner {
     const container = await this.docker.createContainer({
       Image: image,
       Cmd: request.command,
-      Env: Object.entries(request.environment).map(([key, value]) => `${key}=${value}`),
+      // UID 65532 has no passwd entry in most tool images, so HOME is unset and a tool that keeps
+      // configuration or a template cache under it falls back to `/` — which is read-only here.
+      // nuclei died on `mkdir /.config: read-only file system` before it sent a single request,
+      // exited non-zero and wrote nothing, which looked from the outside like a clean scan.
+      // Pointing HOME at the tmpfs belongs here rather than per tool, with the rest of the
+      // hardening, so a new adapter cannot forget it.
+      Env: Object.entries({
+        ...(request.tool.needsWritableTmp ? { HOME: '/home/nonroot' } : {}),
+        ...request.environment,
+      }).map(([key, value]) => `${key}=${value}`),
       User: '65532:65532',
       Labels: {
         'com.attestor.purpose': 'engagement-run',
@@ -120,14 +139,14 @@ export class ContainerRunner {
 
     try {
       const stream = await container.attach({ stream: true, stdout: true, stderr: true });
-      const stdout = new Readable({ read() {} });
-      const stderr = new Readable({ read() {} });
-      stdout.on('data', (chunk: Buffer) => stdoutChunks.push(chunk));
-      stderr.on('data', (chunk: Buffer) => stderrChunks.push(chunk));
-      // dockerode types the modem loosely; the demux helper is the documented way to split the
-      // multiplexed attach stream.
-      const modem = container.modem as { demuxStream: (source: NodeJS.ReadableStream, out: Readable, err: Readable) => void };
-      modem.demuxStream(stream, stdout, stderr);
+      // demuxStream *writes* the two de-multiplexed halves into the sinks it is given, so these
+      // have to be Writable. Handing it Readables threw `stderr.write is not a function` from
+      // inside docker-modem's response handler — asynchronously, so it took the worker process
+      // down rather than failing the run.
+      const modem = container.modem as {
+        demuxStream: (source: NodeJS.ReadableStream, out: Writable, err: Writable) => void;
+      };
+      modem.demuxStream(stream, collectInto(stdoutChunks), collectInto(stderrChunks));
 
       for (const network of request.additionalNetworks ?? []) {
         await this.docker.getNetwork(network).connect({ Container: container.id });
@@ -190,6 +209,45 @@ export class ContainerRunner {
         .catch(() => undefined);
     }
     return containers.length;
+  }
+
+  /**
+   * Remove run containers and run networks left behind by a previous life of this process.
+   *
+   * `run()` removes its container and its network in a `finally`, which covers a tool that fails,
+   * times out or is killed. It does not cover the worker itself being killed — a crash, a restart,
+   * a deploy — and then the container and its network survive with nothing left to reclaim them.
+   * Across enough restarts that is an unbounded leak of networks on a machine that has 31 of them
+   * available by default.
+   *
+   * Only exited containers are removed. A running one belongs to a worker that is still alive, and
+   * killing another worker's run is the one thing this must never do.
+   */
+  async reclaimOrphans(): Promise<{ containers: number; networks: number }> {
+    const label = ['com.attestor.purpose=engagement-run'];
+
+    const containers = await this.docker.listContainers({
+      all: true,
+      filters: JSON.stringify({ label, status: ['exited', 'dead', 'created'] }),
+    });
+    for (const summary of containers) {
+      await this.docker.getContainer(summary.Id).remove({ force: true }).catch(() => undefined);
+    }
+
+    // A network still attached to a live container refuses removal, which is the behaviour wanted:
+    // it fails, is caught, and the run that owns it keeps working.
+    const networks = await this.docker.listNetworks({ filters: JSON.stringify({ label }) });
+    let removed = 0;
+    for (const summary of networks as { Id: string }[]) {
+      const gone = await this.docker
+        .getNetwork(summary.Id)
+        .remove()
+        .then(() => true)
+        .catch(() => false);
+      if (gone) removed += 1;
+    }
+
+    return { containers: containers.length, networks: removed };
   }
 
   async imageDigestFor(reference: string): Promise<string | null> {

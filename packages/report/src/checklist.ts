@@ -18,9 +18,19 @@ import { unfilledPlaceholders, type ReportData } from './render.ts';
 export interface ChecklistContext {
   /** Section keys that are AI drafts and have not been approved by a person. */
   unapprovedAiDrafts: string[];
+  /**
+   * Findings still sitting in the review queue as candidates.
+   *
+   * This has to come from outside the report because the report never contains a candidate: the
+   * query that assembles it filters to confirmed statuses. The item below used to look for
+   * candidates *in the report*, where by construction there are none, so it passed on every
+   * engagement — including one released with a queue full of unreviewed tool output, which is the
+   * exact situation it exists to stop.
+   */
+  outstandingCandidates: number;
 }
 
-const EMPTY_CONTEXT: ChecklistContext = { unapprovedAiDrafts: [] };
+const EMPTY_CONTEXT: ChecklistContext = { unapprovedAiDrafts: [], outstandingCandidates: 0 };
 
 export interface ChecklistItem {
   id: string;
@@ -87,12 +97,13 @@ export const CHECKLIST: ChecklistItem[] = [
   },
   {
     id: 'no-candidates',
-    label: 'No unconfirmed candidate has reached the report',
-    check: (data) => {
-      const candidates = data.findings.filter((finding) => finding.status === 'candidate');
-      return candidates.length === 0
+    label: 'Every candidate has been confirmed or discarded',
+    check: (data, context) => {
+      const inReport = data.findings.filter((finding) => finding.status === 'candidate').length;
+      const outstanding = context.outstandingCandidates + inReport;
+      return outstanding === 0
         ? null
-        : `${candidates.length} finding(s) are still candidates and must be confirmed or discarded`;
+        : `${outstanding} finding(s) are still candidates in the review queue and must be confirmed or discarded before this report goes out`;
     },
   },
   {

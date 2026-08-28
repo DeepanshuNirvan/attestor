@@ -21,8 +21,19 @@ export interface PdfOptions {
 
 let sharedBrowser: Browser | null = null;
 
+/**
+ * The image installs Alpine's own Chromium rather than Playwright's, because Playwright does not
+ * publish a musl build. Playwright has no environment variable for that — it ignores
+ * `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, which the Dockerfile set — so the path has to be passed to
+ * `launch` explicitly, and until it was, every report generated in a container failed with
+ * "Executable doesn't exist" and the operator got a 500 with no report.
+ */
 async function browser(): Promise<Browser> {
-  sharedBrowser ??= await chromium.launch({ args: ['--disable-dev-shm-usage'] });
+  const executablePath = process.env.CHROMIUM_EXECUTABLE_PATH;
+  sharedBrowser ??= await chromium.launch({
+    args: ['--disable-dev-shm-usage'],
+    ...(executablePath ? { executablePath } : {}),
+  });
   return sharedBrowser;
 }
 

@@ -309,6 +309,35 @@ export const evidence = pgTable(
   ],
 );
 
+/**
+ * What reconnaissance found, as distinct from what the tester typed into scope.
+ *
+ * Adapters have always produced this through `parseAssets`; nothing persisted it, so the report's
+ * ports-and-services appendix was permanently empty and its asset inventory was a copy of the scope
+ * list. One row per asset per engagement, updated rather than duplicated on a second sighting.
+ */
+export const discoveredAsset = pgTable(
+  'discovered_asset',
+  {
+    id: id(),
+    engagementId: uuid('engagement_id')
+      .notNull()
+      .references(() => engagement.id, { onDelete: 'cascade' }),
+    scanRunId: uuid('scan_run_id').references(() => scanRun.id, { onDelete: 'set null' }),
+    kind: text('kind').notNull(),
+    value: text('value').notNull(),
+    host: text('host').notNull(),
+    port: integer('port'),
+    metadata: jsonb('metadata').notNull().default(sql`'{}'::jsonb`),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('discovered_asset_unique_idx').on(table.engagementId, table.kind, table.value),
+    index('discovered_asset_engagement_idx').on(table.engagementId),
+  ],
+);
+
 export const falsePositiveMemo = pgTable(
   'false_positive_memo',
   {

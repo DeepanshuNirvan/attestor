@@ -73,21 +73,51 @@ const schema = z.object({
 
 export type AppConfig = z.infer<typeof schema>;
 
-let cached: AppConfig | null = null;
-
-export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
-  if (cached) return cached;
-  const parsed = schema.safeParse(source);
+function parseOrThrow<T extends z.ZodType>(shape: T, source: NodeJS.ProcessEnv): z.infer<T> {
+  const parsed = shape.safeParse(source);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
       .join('; ');
     throw new Error(`invalid configuration: ${issues}`);
   }
-  if (parsed.data.AI_ENABLED && !parsed.data.AI_API_KEY) {
+  return parsed.data;
+}
+
+/**
+ * Configuration for the database tools.
+ *
+ * `migrate` and `seed` open Postgres and nothing else. Parsing the whole schema made them demand
+ * Redis and S3 credentials they never touch, which is why the one-shot `migrate` service — the
+ * only one in the compose file without those variables — could not start, and why the restore
+ * drill in the runbook could not apply a migration without inventing an object store first.
+ *
+ * The subsets stay here rather than in the scripts so that "unset means the process refuses to
+ * start" is still decided in one file.
+ */
+const migrationSchema = schema.pick({ NODE_ENV: true, LOG_LEVEL: true, DATABASE_URL: true });
+const seedSchema = migrationSchema.extend({ VAULT_MASTER_KEY: schema.shape.VAULT_MASTER_KEY });
+
+export type MigrationConfig = z.infer<typeof migrationSchema>;
+export type SeedConfig = z.infer<typeof seedSchema>;
+
+export function loadMigrationConfig(source: NodeJS.ProcessEnv = process.env): MigrationConfig {
+  return parseOrThrow(migrationSchema, source);
+}
+
+export function loadSeedConfig(source: NodeJS.ProcessEnv = process.env): SeedConfig {
+  return parseOrThrow(seedSchema, source);
+}
+
+let cached: AppConfig | null = null;
+
+export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
+  if (cached) return cached;
+  const config = parseOrThrow(schema, source);
+  if (config.AI_ENABLED && !config.AI_API_KEY) {
     throw new Error('AI_ENABLED is true but AI_API_KEY is not set');
   }
-  cached = parsed.data;
+  cached = config;
   return cached;
 }
 

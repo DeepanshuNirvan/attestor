@@ -2,6 +2,7 @@ import type { RawFinding } from '@attestor/findings';
 import {
   normaliseSeverity,
   parseJsonLines,
+  recordAsEvidence,
   parseJsonObject,
   splitTarget,
   type ParseContext,
@@ -225,6 +226,7 @@ ${
 
         findings.push({
           source: 'tool',
+          evidenceText: recordAsEvidence(alert),
           toolName: 'zap',
           toolFindingRef: pluginId,
           checkId: ZAP_PLUGIN_TO_CHECK[pluginId],
@@ -320,6 +322,7 @@ export const dalfoxAdapter: ScannerAdapter = {
 
         return {
           source: 'tool' as const,
+          evidenceText: recordAsEvidence(result),
           toolName: 'dalfox',
           toolFindingRef: result.inject_type ?? 'xss',
           checkId: isDom ? 'web-dom-xss' : 'web-reflected-xss',

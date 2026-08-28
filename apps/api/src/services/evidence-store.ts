@@ -87,10 +87,13 @@ export class EvidenceStore {
    * removed as a credential rather than merely masked as an address.
    */
   async capture(input: CaptureInput): Promise<StoredEvidence> {
-    if (!input.text && !input.binary) {
+    // Absent, not falsy. A tool that found nothing writes an empty file, and that is evidence —
+    // it is the record that the tool ran and reported nothing. Treating '' as "no content" failed
+    // the whole scan job on the most ordinary outcome there is.
+    if (input.text === undefined && input.binary === undefined) {
       throw new Error('evidence capture needs either text or binary content');
     }
-    if (input.text && input.binary) {
+    if (input.text !== undefined && input.binary !== undefined) {
       throw new Error('evidence capture takes text or binary, not both');
     }
 

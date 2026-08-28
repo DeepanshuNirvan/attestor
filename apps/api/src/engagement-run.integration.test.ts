@@ -31,6 +31,13 @@ const nuclei = adapterFor('nuclei');
 const TARGET_NETWORK = 'attestor-test_targets';
 const TARGET_CONTAINER = 'attestor-test-juice-shop-1';
 
+/**
+ * The nuclei template pack, provisioned by the `nuclei-templates-init` service into the shared
+ * workspace. The path is resolved by the daemon rather than by this process, which is why it is the
+ * daemon's `/tmp/attestor` and not this machine's temporary directory.
+ */
+const TEMPLATE_PACK = '/tmp/attestor/nuclei-templates';
+
 async function containerAddress(container: string): Promise<string> {
   const template = '{{(index .NetworkSettings.Networks "' + TARGET_NETWORK + '").IPAddress}}';
   const { stdout } = await run('docker', ['inspect', '-f', template, container]);
@@ -242,6 +249,10 @@ describe('an engagement run against the vulnerable stack', () => {
         targets: [targetIp],
         command: invocation.command,
         outputDirectory,
+        // nuclei's image ships no templates and the adapter passes `-t /templates`, so the pack has
+        // to be mounted here exactly as the worker mounts it. Without this nuclei starts, finds
+        // nothing to run and exits — which is what "no findings" used to mean.
+        readOnlyMounts: [{ hostPath: TEMPLATE_PACK, containerPath: '/templates' }],
       },
       {
         scopeContext,
@@ -257,6 +268,7 @@ describe('an engagement run against the vulnerable stack', () => {
 
     expect(outcome.status).toBe('completed');
     if (outcome.status !== 'completed') return;
+    expect(outcome.result.exitCode, outcome.result.stderr.slice(-400)).toBe(0);
 
     const raw = await readFile(path.join(outputDirectory, invocation.outputFile), 'utf8').catch(
       () => '',

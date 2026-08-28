@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
-import { createLogger, engagementReference, loadConfig } from '@attestor/shared';
+import { createLogger, engagementReference, loadSeedConfig } from '@attestor/shared';
 import { loadProfileYaml } from '@attestor/policy';
 import { sampleFindings, buildSampleReportData } from '@attestor/report/fixtures';
 import { consoleDatabase } from './client.ts';
@@ -401,6 +401,6 @@ export async function seed(databaseUrl: string, vaultMasterKey: string): Promise
 
 const isEntryPoint = process.argv[1]?.endsWith('seed.ts') === true;
 if (isEntryPoint) {
-  const config = loadConfig();
+  const config = loadSeedConfig();
   await seed(config.DATABASE_URL, config.VAULT_MASTER_KEY);
 }

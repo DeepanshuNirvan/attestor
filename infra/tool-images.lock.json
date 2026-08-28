@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-08-28T11:20:20.759Z",
+  "images": {
+    "subfinder": {
+      "image": "projectdiscovery/subfinder",
+      "tag": "latest",
+      "digest": "sha256:c0f4683f91e8e30fbb5bf45051ef45e245ef48424b0d5bc99f8a72cb45163ea9",
+      "pinnedAt": "2026-08-28T10:58:30.689Z"
+    },
+    "amass": {
+      "image": "caffix/amass",
+      "tag": "latest",
+      "digest": "sha256:b11100806a4fd31990103a92d296cd5b7dd5442502e3cf51aceeeaa397305d08",
+      "pinnedAt": "2026-08-28T10:58:40.372Z"
+    },
+    "dnsx": {
+      "image": "projectdiscovery/dnsx",
+      "tag": "latest",
+      "digest": "sha256:8fced0bedf3655e06c9f1805f6277d60d4988a4b13209e24b3d7cde7baa656ec",
+      "pinnedAt": "2026-08-28T10:58:50.508Z"
+    },
+    "httpx": {
+      "image": "projectdiscovery/httpx",
+      "tag": "latest",
+      "digest": "sha256:e2f89a700e535b3e0d5ccf95e3383ebb54c2faecd8e8100573455cd0cbe8e02d",
+      "pinnedAt": "2026-08-28T10:59:33.906Z"
+    },
+    "naabu": {
+      "image": "projectdiscovery/naabu",
+      "tag": "latest",
+      "digest": "sha256:0b7efcd6eb4bf7be2c5cfb2bbfe091a132df0e442e549267bca818a4cef15ea4",
+      "pinnedAt": "2026-08-28T11:02:35.359Z"
+    },
+    "tlsx": {
+      "image": "projectdiscovery/tlsx",
+      "tag": "latest",
+      "digest": "sha256:8a3298106704f50d0ef1049fe70ed26fe1605a9c9cde0064beb1f80071bf4dbc",
+      "pinnedAt": "2026-08-28T11:02:55.584Z"
+    },
+    "katana": {
+      "image": "projectdiscovery/katana",
+      "tag": "latest",
+      "digest": "sha256:4e9fce12c507e1ca455baf493e14b899db5f2e0ed22ba62591aa42300487a947",
+      "pinnedAt": "2026-08-28T11:04:52.746Z"
+    },
+    "zap": {
+      "image": "zaproxy/zap-stable",
+      "tag": "latest",
+      "digest": "sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef",
+      "pinnedAt": "2026-08-28T11:08:26.702Z"
+    },
+    "nuclei": {
+      "image": "projectdiscovery/nuclei",
+      "tag": "latest",
+      "digest": "sha256:582d5546902e67052097cb2d07296c642d50a1afc5e44623cb038845df9a32eb",
+      "pinnedAt": "2026-08-28T11:08:53.724Z"
+    },
+    "testssl": {
+      "image": "drwetter/testssl.sh",
+      "tag": "3.2",
+      "digest": "sha256:8cff617787ee3206993d5f0d95f942b2cbedefc24d4d8e030ed35544146c4841",
+      "pinnedAt": "2026-08-28T11:09:04.355Z"
+    },
+    "ffuf": {
+      "image": "secsi/ffuf",
+      "tag": "latest",
+      "digest": "sha256:eb69340b78ad7d5cab51cc1f46c673fb9cb94eea87ee43eb933ef308b8bc2fce",
+      "pinnedAt": "2026-08-28T11:09:10.829Z"
+    },
+    "dalfox": {
+      "image": "hahwul/dalfox",
+      "tag": "latest",
+      "digest": "sha256:970398742165633c2ff0f835ccae3fb64e6a80aaa20437072704f3780148a9e4",
+      "pinnedAt": "2026-08-28T11:09:18.039Z"
+    },
+    "arjun": {
+      "image": "secsi/arjun",
+      "tag": "latest",
+      "digest": "sha256:3b69b880f9c2bf1c94b371ea672dec44d5fc5e8b4434fd2dd388f1cf439ed22d",
+      "pinnedAt": "2026-08-28T11:09:29.819Z"
+    },
+    "sqlmap": {
+      "image": "secsi/sqlmap",
+      "tag": "latest",
+      "digest": "sha256:dcc989c4f1c87d31f680494dde502b000906bbd5187c61dca135b35c98963fcf",
+      "pinnedAt": "2026-08-28T11:09:37.287Z"
+    },
+    "schemathesis": {
+      "image": "schemathesis/schemathesis",
+      "tag": "stable",
+      "digest": "sha256:72d6907a936f7b5f08f137c8f84c89eb3ab7834956d9af416e7b6510ebe4e065",
+      "pinnedAt": "2026-08-28T11:09:50.059Z"
+    },
+    "mitmproxy": {
+      "image": "mitmproxy/mitmproxy",
+      "tag": "latest",
+      "digest": "sha256:00b77b5d8804c8ad18cb6caefbf9d5849e895e8986c5ce011f4ae30f4385962f",
+      "pinnedAt": "2026-08-28T11:10:03.729Z"
+    },
+    "semgrep": {
+      "image": "semgrep/semgrep",
+      "tag": "latest",
+      "digest": "sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade",
+      "pinnedAt": "2026-08-28T11:10:36.379Z"
+    },
+    "gitleaks": {
+      "image": "zricethezav/gitleaks",
+      "tag": "latest",
+      "digest": "sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f",
+      "pinnedAt": "2026-08-28T11:10:44.898Z"
+    },
+    "trufflehog": {
+      "image": "trufflesecurity/trufflehog",
+      "tag": "latest",
+      "digest": "sha256:deb2af10659a488a14d262a323addcde099d99827a1cf1dc4e93c17915c39f08",
+      "pinnedAt": "2026-08-28T11:10:52.165Z"
+    },
+    "trivy": {
+      "image": "aquasec/trivy",
+      "tag": "latest",
+      "digest": "sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969",
+      "pinnedAt": "2026-08-28T11:11:01.970Z"
+    },
+    "syft": {
+      "image": "anchore/syft",
+      "tag": "latest",
+      "digest": "sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c",
+      "pinnedAt": "2026-08-28T11:11:09.094Z"
+    },
+    "grype": {
+      "image": "anchore/grype",
+      "tag": "latest",
+      "digest": "sha256:8a93fc48da96bd6ec5981279d099b69de11541dc68fdf222fb9161f8ff284af7",
+      "pinnedAt": "2026-08-28T11:11:16.248Z"
+    },
+    "checkov": {
+      "image": "bridgecrew/checkov",
+      "tag": "latest",
+      "digest": "sha256:a2a097c9188e8dc73ab6527b47d0149312d06d050fa3202ac0b7eea292849748",
+      "pinnedAt": "2026-08-28T11:11:42.309Z"
+    },
+    "prowler": {
+      "image": "toniblyx/prowler",
+      "tag": "latest",
+      "digest": "sha256:f1c5e423d1a7709f55844da4ee80770ad40ac5dc2996aa5f896eaa3c74ca0383",
+      "pinnedAt": "2026-08-28T11:16:32.449Z"
+    },
+    "kube-bench": {
+      "image": "aquasec/kube-bench",
+      "tag": "latest",
+      "digest": "sha256:75506f222d1eb6ce2a751a5533bdc0a3b54c898e2e49e7751d0ee22cfb862679",
+      "pinnedAt": "2026-08-28T11:16:45.121Z"
+    },
+    "kubescape": {
+      "image": "quay.io/kubescape/kubescape",
+      "tag": "latest",
+      "digest": "sha256:6853634edce0eb3e55283289d5b47d1fa1d4af07f5a70775a946a84e863e74b1",
+      "pinnedAt": "2026-08-28T11:17:49.472Z"
+    },
+    "nmap": {
+      "image": "instrumentisto/nmap",
+      "tag": "latest",
+      "digest": "sha256:96f6ed194519b62421a1a1c57809e65a7f94d2aa1c8c25676f247e5e148c0827",
+      "pinnedAt": "2026-08-28T11:17:58.017Z"
+    },
+    "mobsf": {
+      "image": "opensecurity/mobile-security-framework-mobsf",
+      "tag": "latest",
+      "digest": "sha256:b92e31864e8b9c5decffe3297d9839b803c20693ab7940184dcf57fa64869cce",
+      "pinnedAt": "2026-08-28T11:20:12.122Z"
+    }
+  }
+}

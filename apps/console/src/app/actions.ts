@@ -93,6 +93,49 @@ export async function changeState(
   return { ok: true };
 }
 
+export async function savePreFlightChecklist(
+  engagementId: string,
+  itemIds: string[],
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const confirmations = Object.fromEntries(itemIds.map((id) => [id, form.get(id) === 'on']));
+
+  try {
+    await api.put(`/engagements/${engagementId}/pre-flight-checklist`, confirmations);
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+
+  revalidatePath(`/engagements/${engagementId}`);
+  return { ok: true };
+}
+
+export async function recordPayment(
+  engagementId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const kind = formText(form, 'kind');
+  const reference = formText(form, 'reference').trim();
+  const amount = Number.parseInt(formText(form, 'amount'), 10);
+
+  if (reference === '') return { ok: false, error: 'an invoice reference is required' };
+
+  try {
+    await api.post(`/engagements/${engagementId}/payment`, {
+      kind,
+      reference,
+      ...(Number.isFinite(amount) ? { amount } : {}),
+    });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+
+  revalidatePath(`/engagements/${engagementId}`);
+  return { ok: true };
+}
+
 export async function queueRun(
   engagementId: string,
   unusedPrevious: ActionResult,

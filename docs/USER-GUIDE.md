@@ -400,9 +400,10 @@ single run**. Later layers override earlier ones.
 | `report` | Template, branding, CVSS version, which compliance mappings, which sections, tone |
 | `notifications` | Who is told what, and how quickly for a critical |
 
-Rate limits are **clamped to hard ceilings** — 40 requests per second globally, 10 per target, 12
-concurrent. A policy asking for more is clamped and warns. There is no field anywhere that expresses
-a load test.
+Rate limits have **hard ceilings** — 40 requests per second globally, 10 per target, 12 concurrent.
+A policy asking for more is refused when you save it, naming the field and the ceiling; nothing is
+silently reduced, so the number in the policy is the number the run uses. There is no field anywhere
+that expresses a load test.
 
 Five profiles ship in `packages/policy/src/profiles/`. Copy one to make your own.
 

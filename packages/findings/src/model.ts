@@ -102,7 +102,18 @@ export const rawFindingSchema = findingSchema
     status: true,
   })
   .extend({
-    /** Evidence captured alongside the finding, already masked by the capture layer. */
+    /**
+     * The tool's own record of this specific result, as text.
+     *
+     * Adapters are pure functions with no access to object storage, so they cannot produce an
+     * `objectKey` — which is why the array below was never populated by anything and every
+     * tool-derived finding reached triage with no evidence at all. An adapter can always produce
+     * the record it parsed, and the worker captures that through the masking layer and links it to
+     * the finding. It is a starting point for the tester, not a substitute for the evidence a
+     * person attaches when they reproduce the issue.
+     */
+    evidenceText: z.string().optional(),
+    /** Evidence already in object storage, keyed. Populated by the worker, not by an adapter. */
     evidence: z
       .array(
         z.object({

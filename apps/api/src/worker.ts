@@ -20,6 +20,17 @@ const context = buildConsoleContext();
 const queues = buildQueues(context.config.REDIS_URL);
 const logger = context.logger.child({ process: 'worker' });
 
+// A worker that was killed mid-run leaves its tool container and its per-run network behind, since
+// the cleanup lives in a `finally` that never ran. Reclaim those before taking any new work —
+// running containers are left alone, because they belong to a worker that is still alive.
+const orphans = await context.containerRunner.reclaimOrphans().catch((error: unknown) => {
+  logger.warn('could not reclaim orphaned run containers', { error });
+  return null;
+});
+if (orphans && (orphans.containers > 0 || orphans.networks > 0)) {
+  logger.info('reclaimed orphaned run resources from a previous worker', orphans);
+}
+
 const scanWorker = buildWorker<ScanJob>(
   QUEUE_NAMES.scan,
   (job) => handleScanJob(context, job),

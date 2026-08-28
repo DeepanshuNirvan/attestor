@@ -35,7 +35,9 @@ FROM base AS runtime
 # than the downloaded one.
 RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont tini
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+# Playwright ignores PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH; packages/report/src/pdf.ts reads this and
+# passes it to launch(). Alpine's Chromium is used because Playwright ships no musl build.
+ENV CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=dependencies /app/apps ./apps
@@ -64,8 +66,12 @@ FROM base AS console
 ARG ATTESTOR_SURFACE=console
 ENV ATTESTOR_SURFACE=$ATTESTOR_SURFACE
 
-COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+# pnpm puts a node_modules in every workspace directory, not only the root, and `next` is resolved
+# from apps/console/node_modules/.bin. Copying only the root one leaves `next: not found`.
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=dependencies /app/apps/console/node_modules ./apps/console/node_modules
+COPY --from=dependencies /app/packages ./packages
 # The API URL is read at request time by the server, but next build needs one present.
 ENV ATTESTOR_API_URL=http://api:8080
 ENV ATTESTOR_PORTAL_API_URL=http://portal-api:8081

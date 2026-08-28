@@ -13,10 +13,12 @@ import type { FastifyInstance } from 'fastify';
  * and the defence against that is an origin check — which needs no plumbing and cannot be forgotten
  * by a route author.
  *
- * A request with no `Origin` is allowed: server-to-server callers do not send one, and a browser
- * always does on a cross-origin state-changing request, which is the case being defended against.
- * The session cookie is `SameSite=strict` as well, so this is the second lock rather than the only
- * one.
+ * A request with **no** `Origin` header is allowed: server-to-server callers do not send one, and a
+ * browser always does on a cross-origin state-changing request, which is the case being defended
+ * against. `Origin: null` is not the same thing and is refused — that is what a sandboxed iframe or
+ * a document loaded from `data:` sends, which is a browser context an attacker can arrange, not an
+ * absent header. The session cookie is `SameSite=strict` as well, so this is the second lock rather
+ * than the only one.
  */
 export function registerOriginGuard(app: FastifyInstance, allowedOrigin: string): void {
   const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -25,8 +27,8 @@ export function registerOriginGuard(app: FastifyInstance, allowedOrigin: string)
     if (SAFE_METHODS.has(request.method)) return;
 
     const origin = request.headers.origin;
-    if (origin === undefined || origin === '' || origin === 'null') {
-      // Not a browser, or a browser that sends nothing to forge with.
+    if (origin === undefined || origin === '') {
+      // Not a browser. The Next server forwards the session cookie and sends no Origin.
       return;
     }
 

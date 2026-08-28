@@ -5,7 +5,10 @@ import {
   canTransition,
   clearPanicStop,
   engagePanicStop,
+  missingPreFlightItems,
+  unknownPreFlightItems,
   validateScopeItem,
+  PRE_FLIGHT_CHECKLIST,
   type TransitionContext,
 } from '@attestor/core';
 import { PROFILE_IDS, loadProfileYaml, resolvePolicy, CLOUD_TESTING_POLICIES } from '@attestor/policy';
@@ -69,11 +72,21 @@ export function registerEngagementRoutes(
         clientId: z.string().uuid(),
         title: z.string().min(3).max(200),
         type: z.string().min(2).max(40),
+        // The report prints all three, and the pre-release checklist blocks on the dates because
+        // the legal blocks quote them. Until these were accepted here nothing could set them, so
+        // every engagement was greyBox with no test window and no report could pass the gate.
+        testType: z.enum(['blackBox', 'greyBox', 'whiteBox']).default('greyBox'),
+        startsAt: z.coerce.date().optional(),
+        endsAt: z.coerce.date().optional(),
         timezone: z.string().default('Asia/Kolkata'),
         currency: z.enum(['INR', 'USD']).default('INR'),
         quotedAmount: z.number().int().nonnegative().default(0),
         profileId: z.enum(PROFILE_IDS).optional(),
       })
+      .refine(
+        (value) => !value.startsAt || !value.endsAt || value.endsAt > value.startsAt,
+        { message: 'the test window ends before it begins' },
+      )
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
 
@@ -95,6 +108,9 @@ export function registerEngagementRoutes(
         referenceSequence: sequence,
         type: parsed.data.type,
         title: parsed.data.title,
+        testType: parsed.data.testType,
+        startsAt: parsed.data.startsAt,
+        endsAt: parsed.data.endsAt,
         timezone: parsed.data.timezone,
         currency: parsed.data.currency,
         quotedAmount: parsed.data.quotedAmount,
@@ -113,6 +129,61 @@ export function registerEngagementRoutes(
     });
 
     return reply.code(201).send({ engagement: created });
+  });
+
+  /**
+   * Revising an engagement.
+   *
+   * Test windows move, and the assessment type is often settled after the scoping call rather than
+   * at creation. Only the fields an operator legitimately revises are here: the reference, the
+   * client and the state are not editable, because the first is quoted by the client for years, the
+   * second would move work between tenants, and the third belongs to the state machine.
+   */
+  app.patch('/engagements/:id', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = z
+      .object({
+        title: z.string().min(3).max(200).optional(),
+        testType: z.enum(['blackBox', 'greyBox', 'whiteBox']).optional(),
+        startsAt: z.coerce.date().optional(),
+        endsAt: z.coerce.date().optional(),
+        timezone: z.string().min(1).max(60).optional(),
+        quotedAmount: z.number().int().nonnegative().optional(),
+      })
+      .safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+    const rows = await context.database
+      .select()
+      .from(engagementTable)
+      .where(eq(engagementTable.id, id))
+      .limit(1);
+    const record = rows[0];
+    if (!record) return reply.code(404).send({ error: 'not found' });
+
+    const startsAt = parsed.data.startsAt ?? record.startsAt;
+    const endsAt = parsed.data.endsAt ?? record.endsAt;
+    if (startsAt && endsAt && endsAt <= startsAt) {
+      return reply.code(400).send({ error: 'the test window ends before it begins' });
+    }
+
+    const [updated] = await context.database
+      .update(engagementTable)
+      .set({ ...parsed.data, updatedAt: new Date() })
+      .where(eq(engagementTable.id, id))
+      .returning();
+
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'engagement.updated',
+      subjectType: 'engagement',
+      subjectId: id,
+      metadata: { changed: Object.keys(parsed.data) },
+      ...requestContext(request),
+    });
+
+    return reply.send({ engagement: updated });
   });
 
   app.get('/engagements/:id', { preHandler: guard }, async (request, reply) => {
@@ -434,7 +505,7 @@ export function registerEngagementRoutes(
       credentialsVerified:
         credentials.length === 0 ||
         credentials.every((credential) => credential.lastVerifiedAt !== null || credential.revokedAt !== null),
-      preFlightChecklistComplete: Object.values(checklist).length > 0 && Object.values(checklist).every(Boolean),
+      preFlightChecklistComplete: missingPreFlightItems(checklist).length === 0,
       reviewChecklistComplete:
         Object.values(reviewChecklist).length > 0 && Object.values(reviewChecklist).every(Boolean),
       finalPaymentReceived: record.finalPaidAt !== null,
@@ -489,6 +560,114 @@ export function registerEngagementRoutes(
     });
 
     return reply.send({ ok: true, state: parsed.data.to });
+  });
+
+  /**
+   * The pre-flight checklist, which gates `advancePaid → readyToRun`.
+   *
+   * The required ids come from the catalogue rather than from the request, so the gate cannot be
+   * satisfied by inventing a key. Unknown ids are refused rather than ignored: a typo that silently
+   * does nothing is how a checklist becomes decoration.
+   */
+  app.put('/engagements/:id/pre-flight-checklist', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = z.record(z.string(), z.boolean()).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+    const unknown = unknownPreFlightItems(parsed.data);
+    if (unknown.length > 0) {
+      return reply.code(400).send({ error: 'unknown checklist items', unknown });
+    }
+
+    await context.database
+      .update(engagementTable)
+      .set({ preFlightChecklist: parsed.data, updatedAt: new Date() })
+      .where(eq(engagementTable.id, id));
+
+    const outstanding = missingPreFlightItems(parsed.data);
+
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'engagement.preFlightChecklistUpdated',
+      subjectType: 'engagement',
+      subjectId: id,
+      metadata: { confirmed: Object.keys(parsed.data).filter((key) => parsed.data[key]), outstanding },
+      ...requestContext(request),
+    });
+
+    return reply.send({ ok: true, items: PRE_FLIGHT_CHECKLIST, outstanding });
+  });
+
+  app.get('/engagements/:id/pre-flight-checklist', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const rows = await context.database
+      .select({ checklist: engagementTable.preFlightChecklist })
+      .from(engagementTable)
+      .where(eq(engagementTable.id, id))
+      .limit(1);
+    if (!rows[0]) return reply.code(404).send({ error: 'not found' });
+    const confirmations = rows[0].checklist as Record<string, boolean>;
+    return reply.send({
+      items: PRE_FLIGHT_CHECKLIST,
+      confirmations,
+      outstanding: missingPreFlightItems(confirmations),
+    });
+  });
+
+  /**
+   * Recording a payment.
+   *
+   * Both gates that read these dates — the advance before a run, the balance before release — had
+   * no way to be satisfied except the seed, so an engagement created through the API could not
+   * reach `readyToRun` and its report could not be released. The amount and reference are recorded
+   * because "who said this was paid, and against which invoice" is the question asked later.
+   */
+  app.post('/engagements/:id/payment', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = z
+      .object({
+        kind: z.enum(['advance', 'final']),
+        reference: z.string().min(1).max(120),
+        amount: z.number().int().nonnegative().optional(),
+        receivedAt: z.coerce.date().default(() => new Date()),
+      })
+      .safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+    const rows = await context.database
+      .select({ id: engagementTable.id })
+      .from(engagementTable)
+      .where(eq(engagementTable.id, id))
+      .limit(1);
+    if (!rows[0]) return reply.code(404).send({ error: 'not found' });
+
+    await context.database
+      .update(engagementTable)
+      .set({
+        ...(parsed.data.kind === 'advance'
+          ? { advancePaidAt: parsed.data.receivedAt }
+          : { finalPaidAt: parsed.data.receivedAt }),
+        updatedAt: new Date(),
+      })
+      .where(eq(engagementTable.id, id));
+
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'engagement.paymentRecorded',
+      subjectType: 'engagement',
+      subjectId: id,
+      metadata: {
+        kind: parsed.data.kind,
+        reference: parsed.data.reference,
+        amount: parsed.data.amount ?? null,
+        receivedAt: parsed.data.receivedAt.toISOString(),
+      },
+      ...requestContext(request),
+    });
+
+    return reply.send({ ok: true, kind: parsed.data.kind, receivedAt: parsed.data.receivedAt });
   });
 
   /** A one-time link the client uses to submit credentials without them travelling through email. */

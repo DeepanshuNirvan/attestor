@@ -48,7 +48,7 @@ services:
 
   webgoat:
     <<: *target
-    image: webgoat/webgoat:v2025.4
+    image: webgoat/webgoat:v2025.3
     environment:
       TZ: UTC
     expose: ['8080']

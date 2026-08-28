@@ -9,9 +9,12 @@
 
 export const AUDIT_ACTIONS = [
   'engagement.created',
+  'engagement.updated',
   'engagement.stateChanged',
   'engagement.panicStopped',
   'engagement.panicStopCleared',
+  'engagement.preFlightChecklistUpdated',
+  'engagement.paymentRecorded',
   'authorisation.uploaded',
   'authorisation.revoked',
   'authorisation.assetListDiffed',

@@ -184,12 +184,19 @@ export async function coverageFromRuns(
     .from(scanRunTable)
     .where(eq(scanRunTable.engagementId, engagementId));
 
+  // A dry run sends no packet, so it can never be evidence of coverage in either direction.
+  const live = runs.filter((run) => !run.dryRun);
+
   return {
-    completedRuns: runs
-      .filter((run) => run.status === 'completed' && !run.dryRun)
+    completedRuns: live
+      .filter((run) => run.status === 'completed')
       .map((run) => ({ scanRunId: run.id, checkIds: run.coveredCheckIds as string[] })),
-    abortedRuns: runs
-      .filter((run) => run.status === 'aborted' || run.status === 'failed')
+    // `refused` belongs here with `aborted` and `failed`. Dropping it left a scope refusal invisible
+    // to the matrix, so the check fell through to the generic "no completed run covered this check"
+    // — and "the run was refused because the target resolves outside the authorised range" is the
+    // answer a client is actually owed.
+    abortedRuns: live
+      .filter((run) => ['aborted', 'failed', 'refused'].includes(run.status))
       .map((run) => ({
         scanRunId: run.id,
         checkIds: run.coveredCheckIds as string[],
