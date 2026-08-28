@@ -11,7 +11,7 @@ import {
   revokeAllSessionsFor,
   revokeSession,
   verifyPassword,
-  verifyTotp,
+  consumeTotp,
 } from '../services/auth.ts';
 import { SESSION_COOKIE, cookieOptions, requestContext, requireSession } from './session-guard.ts';
 
@@ -119,7 +119,7 @@ export function registerAuthRoutes(app: FastifyInstance, context: ConsoleContext
       if (!user?.totpSecretSealed) return reply.code(403).send(GENERIC_FAILURE);
 
       const secret = await context.vault.open('staff-mfa', JSON.parse(user.totpSecretSealed) as never);
-      if (!verifyTotp(secret, parsed.data.code)) {
+      if (!(await consumeTotp(context.database, { kind: 'staff', id: user.id }, secret, parsed.data.code))) {
         throttle.recordFailure(key);
         return reply.code(401).send(GENERIC_FAILURE);
       }
@@ -245,7 +245,9 @@ export function registerAuthRoutes(app: FastifyInstance, context: ConsoleContext
     }
 
     const secret = await context.vault.open('staff-mfa', JSON.parse(user.totpSecretSealed) as never);
-    if (!verifyTotp(secret, parsed.data.code)) return reply.code(401).send(GENERIC_FAILURE);
+    if (!(await consumeTotp(context.database, { kind: 'staff', id: user.id }, secret, parsed.data.code))) {
+      return reply.code(401).send(GENERIC_FAILURE);
+    }
 
     await context.database
       .update(staffUser)

@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { createLogger, engagementReference, loadConfig } from '@attestor/shared';
 import { loadProfileYaml } from '@attestor/policy';
@@ -119,11 +121,35 @@ export async function seed(databaseUrl: string, vaultMasterKey: string): Promise
       .returning({ id: staffUser.id });
     ownerId = created?.id;
 
+    // The logger redacts anything that looks like a secret, which is correct everywhere else and
+    // fatal here: an otpauth URL logged through it arrives as secret=[REDACTED], and the enrolment
+    // secret is random per seed, so nobody can ever enrol and the demo account cannot sign in.
+    // Written to a gitignored file instead — deliberate to open, trivial to delete, never in a log.
+    const credentialsPath = fileURLToPath(new URL('../../../../.seed-credentials.txt', import.meta.url));
+    await writeFile(
+      credentialsPath,
+      [
+        'Attestor demo credentials',
+        '=========================',
+        'Delete this file once you have enrolled. It is gitignored, not secret-safe.',
+        '',
+        'Console sign-in: http://localhost:3000/login',
+        'Email:    owner@attestorsecurity.com',
+        'Password: change-this-password-now',
+        '',
+        'Add this to an authenticator app to get the six-digit code:',
+        enrolment.otpauthUrl,
+        '',
+        `Or enter the secret by hand: ${enrolment.secretBase32}`,
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
     logger.info('demo staff account created', {
       email: 'owner@attestorsecurity.com',
-      password: 'change-this-password-now',
-      otpauthUrl: enrolment.otpauthUrl,
-      note: 'Demo credentials. Change the password and re-enrol MFA before this touches anything real.',
+      credentialsPath,
+      note: 'Password and MFA enrolment written to that file. Change the password and re-enrol MFA before this touches anything real.',
     });
   }
 

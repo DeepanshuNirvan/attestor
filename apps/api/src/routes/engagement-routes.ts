@@ -208,10 +208,22 @@ export function registerEngagementRoutes(
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
 
-    // Validate at entry so a typo is a form error now rather than a refusal on the morning of the
-    // test.
+    // Validate at entry so a typo — or a forbidden target — is a form error now rather than a
+    // refusal on the morning of the test, when one bad item refuses the whole run.
+    //
+    // A private address is only legitimate inside a range the client has declared as their own, so
+    // the ranges already recorded and the ones arriving in this request both count.
+    const declaredRanges = await context.database
+      .select({ value: scopeItemTable.value })
+      .from(scopeItemTable)
+      .where(and(eq(scopeItemTable.engagementId, id), eq(scopeItemTable.kind, 'cidr')));
+    const ownedPrivateRanges = [
+      ...declaredRanges.map((row) => row.value),
+      ...parsed.data.items.filter((item) => item.kind === 'cidr').map((item) => item.value),
+    ];
+
     const problems = parsed.data.items
-      .map((item) => ({ item, problem: validateScopeItem(item) }))
+      .map((item) => ({ item, problem: validateScopeItem(item, { ownedPrivateRanges }) }))
       .filter((entry) => entry.problem !== null);
     if (problems.length > 0) {
       return reply.code(400).send({
@@ -647,10 +659,18 @@ export function registerEngagementRoutes(
     );
 
     // Drain the queue too: a stop that kills running containers but lets the next queued job start
-    // is not a stop.
-    await queues.scan.pause();
+    // is not a stop. If the queue cannot be reached, the stop still stands — every worker checks
+    // the flag before it starts — so say so rather than failing the request.
+    let queuePaused = true;
+    let queuePauseError: string | undefined;
+    try {
+      await queues.scan.pause();
+    } catch (error) {
+      queuePaused = false;
+      queuePauseError = error instanceof Error ? error.message : 'the queue could not be paused';
+    }
 
-    return reply.send(result);
+    return reply.send({ ...result, queuePaused, ...(queuePauseError === undefined ? {} : { queuePauseError }) });
   });
 
   app.delete('/engagements/:id/panic-stop', { preHandler: guard }, async (request, reply) => {

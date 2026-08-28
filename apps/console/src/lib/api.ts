@@ -55,11 +55,91 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     cache: 'no-store',
   });
 
+  await forwardSessionCookies(response);
+
   const text = await response.text();
   const body: unknown = text === '' ? null : JSON.parse(text);
 
   if (!response.ok) throw new ApiError(response.status, body);
   return body as T;
+}
+
+/**
+ * Pass the API's `Set-Cookie` on to the browser.
+ *
+ * Without this the session cookie the API issues at sign-in is read into this process and dropped:
+ * the browser never receives it, the next request carries nothing, and the second factor is
+ * answered with "not signed in". Nobody can sign in to either surface at all.
+ *
+ * It is invisible to a build, a typecheck and the test suite, and invisible to a stub API too,
+ * because a stub has no session to issue.
+ */
+async function forwardSessionCookies(response: Response): Promise<void> {
+  const headers = response.headers.getSetCookie();
+  if (headers.length === 0) return;
+
+  const store = await cookies();
+  for (const header of headers) {
+    const parsed = parseSetCookie(header);
+    if (!parsed) continue;
+    try {
+      store.set(parsed.name, parsed.value, parsed.options);
+    } catch {
+      // Cookies can only be written from a Server Action or a Route Handler. A read during a page
+      // render has no business setting one, so there is nothing to do here.
+      return;
+    }
+  }
+}
+
+interface ParsedCookie {
+  name: string;
+  value: string;
+  options: {
+    path?: string;
+    expires?: Date;
+    maxAge?: number;
+    httpOnly?: boolean;
+    secure?: boolean;
+    sameSite?: 'strict' | 'lax' | 'none';
+  };
+}
+
+function parseSetCookie(header: string): ParsedCookie | null {
+  const [pair, ...attributes] = header.split(';');
+  if (!pair) return null;
+  const equals = pair.indexOf('=');
+  if (equals === -1) return null;
+
+  const parsed: ParsedCookie = {
+    name: pair.slice(0, equals).trim(),
+    value: pair.slice(equals + 1).trim(),
+    options: {},
+  };
+
+  for (const attribute of attributes) {
+    const [rawName, ...rest] = attribute.split('=');
+    const name = rawName?.trim().toLowerCase();
+    const value = rest.join('=').trim();
+
+    if (name === 'path') parsed.options.path = value;
+    else if (name === 'expires') {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) parsed.options.expires = date;
+    } else if (name === 'max-age') {
+      const seconds = Number(value);
+      if (Number.isFinite(seconds)) parsed.options.maxAge = seconds;
+    } else if (name === 'httponly') parsed.options.httpOnly = true;
+    else if (name === 'secure') parsed.options.secure = true;
+    else if (name === 'samesite') {
+      const lowered = value.toLowerCase();
+      if (lowered === 'strict' || lowered === 'lax' || lowered === 'none') {
+        parsed.options.sameSite = lowered;
+      }
+    }
+  }
+
+  return parsed;
 }
 
 export const api = {

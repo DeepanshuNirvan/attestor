@@ -28,7 +28,7 @@ import {
   revokeAllSessionsFor,
   revokeSession,
   verifyPassword,
-  verifyTotp,
+  consumeTotp,
 } from '../services/auth.ts';
 import {
   SESSION_COOKIE,
@@ -134,6 +134,16 @@ export function registerPortalRoutes(app: FastifyInstance, context: PortalContex
       .onConflictDoNothing()
       .returning({ id: clientUser.id });
 
+    if (!created) {
+      // The address already has an account, so nothing was written — and the secret above was
+      // never stored. Returning the enrolment URL anyway would hand somebody a QR code that can
+      // never produce a working code, after spending their invitation. Leave the invitation
+      // unspent so it still works once the clash is sorted out.
+      return reply.code(409).send({
+        error: 'an account already exists for that address; sign in instead, or ask for it to be moved',
+      });
+    }
+
     await context.database
       .update(clientInvitation)
       .set({ acceptedAt: new Date() })
@@ -166,7 +176,10 @@ export function registerPortalRoutes(app: FastifyInstance, context: PortalContex
     if (!user?.totpSecretSealed || user.totpEnrolledAt) return reply.code(409).send(GENERIC_FAILURE);
 
     const enrolling = await openTotpSecret(context, user.totpSecretSealed);
-    if (!enrolling || !verifyTotp(enrolling, parsed.data.code)) {
+    if (
+      !enrolling ||
+      !(await consumeTotp(context.database, { kind: 'client', id: user.id }, enrolling, parsed.data.code))
+    ) {
       return reply.code(401).send(GENERIC_FAILURE);
     }
 
@@ -259,7 +272,10 @@ export function registerPortalRoutes(app: FastifyInstance, context: PortalContex
         return reply.code(401).send(GENERIC_FAILURE);
       }
       const secret = await openTotpSecret(context, user.totpSecretSealed);
-      if (!secret || !verifyTotp(secret, parsed.data.code)) {
+      if (
+        !secret ||
+        !(await consumeTotp(context.database, { kind: 'client', id: user.id }, secret, parsed.data.code))
+      ) {
         throttle.recordFailure(key);
         return reply.code(401).send(GENERIC_FAILURE);
       }

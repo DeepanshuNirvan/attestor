@@ -3,7 +3,22 @@
 import * as cvssCalculator from 'ae-cvss-calculator';
 import { severityFromCvssScore, type CvssVersion, type Severity } from '@attestor/shared';
 
-const { Cvss3P1, Cvss4P0 } = cvssCalculator;
+// The two runtimes disagree about where a CommonJS module's exports land. Node puts
+// `module.exports` on the namespace's `default` and hoists almost nothing; Vite's module runner
+// puts the same properties directly on the namespace. Reading whichever object actually carries the
+// constructors is the only form that works in both — and getting this wrong is invisible to the
+// test suite, which runs under Vite while the API runs under Node.
+const calculator =
+  (cvssCalculator as unknown as { default?: typeof cvssCalculator }).default ?? cvssCalculator;
+
+const { Cvss3P1, Cvss4P0 } = calculator;
+
+if (typeof Cvss3P1 !== 'function' || typeof Cvss4P0 !== 'function') {
+  // Fail on import rather than on the first finding somebody tries to save.
+  throw new Error(
+    'ae-cvss-calculator did not export the CVSS constructors. The CommonJS interop in this file needs revisiting.',
+  );
+}
 
 /**
  * CVSS 3.1 and 4.0, both supported, chosen per engagement.

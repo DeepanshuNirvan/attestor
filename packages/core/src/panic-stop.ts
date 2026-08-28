@@ -101,6 +101,11 @@ export interface PanicStopDependencies {
 export interface PanicStopResult {
   containersKilled: number;
   state: PanicStopState;
+  /**
+   * Why the kill sweep could not be completed, when it could not. The stop is still in force — the
+   * flag is set before anything is killed — but somebody has to go and check by hand.
+   */
+  containerKillError?: string;
 }
 
 export async function engagePanicStop(
@@ -122,7 +127,19 @@ export async function engagePanicStop(
   // Set the flag before killing anything: a job that starts during the kill sweep must still find
   // the stop in force.
   await dependencies.store.engage(input);
-  const containersKilled = await dependencies.killRunningContainers(input.engagementId ?? undefined);
+
+  // The kill sweep is the part that can fail: it talks to the container daemon, and the moment a
+  // stop is most needed is exactly when that daemon may be unreachable or wedged. Letting the
+  // failure propagate would abandon the audit record and answer the operator with an error, while
+  // the stop is in fact in force — the worst of both, because they cannot tell whether testing has
+  // stopped. Report it instead, and leave the stop engaged.
+  let containersKilled = 0;
+  let containerKillError: string | undefined;
+  try {
+    containersKilled = await dependencies.killRunningContainers(input.engagementId ?? undefined);
+  } catch (error) {
+    containerKillError = error instanceof Error ? error.message : 'the kill sweep failed';
+  }
 
   await dependencies.auditLog.record({
     actorId: input.pressedBy,
@@ -130,12 +147,13 @@ export async function engagePanicStop(
     action: 'engagement.panicStopped',
     subjectType: input.scope === 'platform' ? 'platform' : 'engagement',
     subjectId: input.engagementId ?? 'platform',
-    metadata: { reason: input.reason, containersKilled, scope: input.scope },
+    metadata: { reason: input.reason, containersKilled, containerKillError, scope: input.scope },
   });
 
   return {
     containersKilled,
     state: await dependencies.store.state(input.engagementId ?? 'platform'),
+    ...(containerKillError === undefined ? {} : { containerKillError }),
   };
 }
 

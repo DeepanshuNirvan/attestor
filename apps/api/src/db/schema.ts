@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -433,6 +434,8 @@ export const staffUser = pgTable(
     role: text('role').notNull().default('tester'),
     totpSecretSealed: text('totp_secret_sealed'),
     totpEnrolledAt: timestamp('totp_enrolled_at', { withTimezone: true }),
+    /** The last TOTP timestep this account spent, so a code cannot be used twice. */
+    totpLastTimestep: bigint('totp_last_timestep', { mode: 'number' }),
     active: boolean('active').notNull().default(true),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     createdAt: createdAt(),
@@ -453,6 +456,8 @@ export const clientUser = pgTable(
     role: text('role').notNull().default('clientMember'),
     totpSecretSealed: text('totp_secret_sealed'),
     totpEnrolledAt: timestamp('totp_enrolled_at', { withTimezone: true }),
+    /** The last TOTP timestep this account spent, so a code cannot be used twice. */
+    totpLastTimestep: bigint('totp_last_timestep', { mode: 'number' }),
     /** MFA is mandatory: an account without it cannot pass the login flow. */
     invitedBy: uuid('invited_by'),
     invitedAt: timestamp('invited_at', { withTimezone: true }),

@@ -14,3 +14,6 @@ tmp/
 
 # Local editor and preview configuration.
 .claude/launch.json
+
+# Demo credentials written by `pnpm seed`.
+.seed-credentials.txt

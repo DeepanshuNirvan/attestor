@@ -246,9 +246,10 @@ describe('client authenticator secrets', () => {
   });
 
   it('is never verified straight out of the column', () => {
-    // `verifyTotp(user.totpSecretSealed, …)` only works if the column holds plaintext. It must go
-    // through the vault first, so this pattern reappearing is the regression.
+    // Verifying straight out of the column only works if the column holds plaintext. It must go
+    // through the vault first, so either of these patterns reappearing is the regression.
     expect(source).not.toMatch(/verifyTotp\(\s*(?:user|enrolling)\.totpSecretSealed/);
+    expect(source).not.toMatch(/totpSecretSealed\s*,\s*parsed\.data\.code/);
   });
 
   it('uses a different key from the credential vault', () => {

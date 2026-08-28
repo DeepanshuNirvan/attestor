@@ -1,12 +1,13 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
-import csrf from '@fastify/csrf-protection';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { redactValue } from '@attestor/shared';
 import { buildPortalContext, type PortalContext } from './context.ts';
 import { registerPortalRoutes } from './portal/portal-routes.ts';
+import { registerOriginGuard } from './routes/origin-guard.ts';
+import { registerUuidParamGuard } from './routes/uuid-params.ts';
 
 /**
  * The client portal API.
@@ -58,11 +59,10 @@ export async function buildPortalServer(
   });
 
   await app.register(cookie, { secret: context.config.SESSION_SECRET });
-  await app.register(csrf, {
-    cookieOpts: { signed: true, sameSite: 'strict', path: '/', httpOnly: true },
-    // Every state-changing method is protected. GET is exempt because it changes nothing.
-    getToken: (request) => String(request.headers['x-csrf-token'] ?? ''),
-  });
+
+  // Every state-changing method is checked against the portal's own origin. GET is exempt because
+  // it changes nothing. See routes/origin-guard.ts for why this is an origin check and not a token.
+  registerOriginGuard(app, context.config.PORTAL_ORIGIN);
 
   // Authentication routes get their own tighter limit on top of the global one, because they are
   // the routes worth attacking.
@@ -93,6 +93,8 @@ export async function buildPortalServer(
   });
 
   app.get('/health', () => ({ ok: true }));
+
+  registerUuidParamGuard(app);
 
   registerPortalRoutes(app, context);
 

@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { hash as argon2Hash, verify as argon2Verify } from '@node-rs/argon2';
 import { TOTP, Secret } from 'otpauth';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, or } from 'drizzle-orm';
 import type { Database } from '../db/client.ts';
 import { clientUser, session, staffUser } from '../db/schema.ts';
 
@@ -84,14 +84,66 @@ export function beginTotpEnrolment(accountLabel: string, issuer = 'Attestor Secu
  * Verify a TOTP code. A window of one step either side covers ordinary clock drift; anything wider
  * meaningfully extends how long a shoulder-surfed code stays usable.
  */
+/**
+ * Whether a code is currently valid for this secret.
+ *
+ * Validity is not sufficient on its own: a valid code stays valid for the rest of its window, so
+ * anything that authenticates a user must go through `consumeTotp`, which also spends it.
+ */
 export function verifyTotp(secretBase32: string, code: string): boolean {
+  return totpTimestep(secretBase32, code) !== null;
+}
+
+const TOTP_PERIOD_SECONDS = 30;
+
+/**
+ * The timestep a code belongs to, or null if it is not a valid code for this secret.
+ *
+ * `validate` reports how many steps away the match was, which is what turns "this code is valid"
+ * into "this code is the one issued at 17:42:30" — the thing that has to be recorded for a code to
+ * be usable only once.
+ */
+function totpTimestep(secretBase32: string, code: string): number | null {
   const totp = new TOTP({
     algorithm: 'SHA1',
     digits: 6,
-    period: 30,
+    period: TOTP_PERIOD_SECONDS,
     secret: Secret.fromBase32(secretBase32),
   });
-  return totp.validate({ token: code.replace(/\s/g, ''), window: 1 }) !== null;
+  const delta = totp.validate({ token: code.replace(/\s/g, ''), window: 1 });
+  if (delta === null) return null;
+  return Math.floor(Date.now() / 1000 / TOTP_PERIOD_SECONDS) + delta;
+}
+
+/**
+ * Verify a TOTP code and spend it, so the same code cannot be presented twice.
+ *
+ * The check and the claim are one statement: the update only matches a row whose recorded timestep
+ * is older than this code's, so two requests racing with the same code produce one update and one
+ * miss rather than two successes.
+ */
+export async function consumeTotp(
+  database: Database,
+  who: { kind: 'staff' | 'client'; id: string },
+  secretBase32: string,
+  code: string,
+): Promise<boolean> {
+  const timestep = totpTimestep(secretBase32, code);
+  if (timestep === null) return false;
+
+  const table = who.kind === 'staff' ? staffUser : clientUser;
+  const claimed = await database
+    .update(table)
+    .set({ totpLastTimestep: timestep })
+    .where(
+      and(
+        eq(table.id, who.id),
+        or(isNull(table.totpLastTimestep), lt(table.totpLastTimestep, timestep)),
+      ),
+    )
+    .returning({ id: table.id });
+
+  return claimed.length === 1;
 }
 
 export type SessionSubject =
@@ -131,9 +183,19 @@ export interface ResolvedSession {
   mfaSatisfied: boolean;
 }
 
+/**
+ * Resolve a session token.
+ *
+ * `expect` is not a convenience. The portal connects as `attestor_portal`, which has no privilege
+ * on `staff_user` at all, so resolving a staff session on the portal raises a database error rather
+ * than returning a subject the caller can reject. Refusing on the session row — before the lookup —
+ * keeps that a clean "no such session" instead of a 500, and stops the public surface from
+ * distinguishing a valid staff token from a meaningless one.
+ */
 export async function resolveSession(
   database: Database,
   token: string,
+  expect?: SessionSubject['kind'],
 ): Promise<ResolvedSession | null> {
   const rows = await database
     .select()
@@ -149,6 +211,9 @@ export async function resolveSession(
 
   const row = rows[0];
   if (!row) return null;
+
+  const kind = row.staffUserId ? 'staff' : row.clientUserId ? 'client' : null;
+  if (kind === null || (expect !== undefined && kind !== expect)) return null;
 
   if (row.staffUserId) {
     const staff = await database

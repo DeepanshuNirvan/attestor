@@ -68,11 +68,34 @@ export async function runMigrations(databaseUrl: string): Promise<string[]> {
         );
       }
     }
+
+    await grantPortalRoleLogin(client);
   } finally {
     await client.end();
   }
 
   return applied;
+}
+
+/**
+ * Give the portal role its password.
+ *
+ * Migration 0001 creates `attestor_portal` NOLOGIN, because a migration file cannot carry a secret.
+ * Something still has to turn it into a role the portal API can authenticate as, and this is the
+ * one step every deployment path already runs as the owner. Without it the portal API cannot
+ * connect at all and crash-loops on `password authentication failed`.
+ *
+ * Idempotent, and a no-op when the password is unset — a deployment that does not run the portal
+ * should not be forced to invent a secret for it.
+ */
+async function grantPortalRoleLogin(client: pg.Client): Promise<void> {
+  const password = process.env.PORTAL_DB_PASSWORD;
+  if (password === undefined || password === '') return;
+
+  // ALTER ROLE takes no bind parameters, so the password has to be quoted as a literal.
+  await client.query(
+    `ALTER ROLE attestor_portal WITH LOGIN PASSWORD ${client.escapeLiteral(password)}`,
+  );
 }
 
 async function sha256Hex(input: string): Promise<string> {

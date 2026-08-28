@@ -1,6 +1,5 @@
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
-import csrf from '@fastify/csrf-protection';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -14,6 +13,8 @@ import { registerEngagementRoutes } from './routes/engagement-routes.ts';
 import { registerFindingRoutes } from './routes/finding-routes.ts';
 import { registerPlatformRoutes } from './routes/platform-routes.ts';
 import { registerReportRoutes } from './routes/report-routes.ts';
+import { registerOriginGuard } from './routes/origin-guard.ts';
+import { registerUuidParamGuard } from './routes/uuid-params.ts';
 
 /**
  * The console API.
@@ -52,7 +53,9 @@ export async function buildConsoleServer(
   });
 
   await app.register(cookie, { secret: context.config.SESSION_SECRET });
-  await app.register(csrf, { cookieOpts: { signed: true, sameSite: 'strict', path: '/' } });
+
+  // Enforced, unlike the token plugin this replaces. See routes/origin-guard.ts.
+  registerOriginGuard(app, context.config.CONSOLE_ORIGIN);
 
   await app.register(rateLimit, {
     max: 300,
@@ -77,6 +80,8 @@ export async function buildConsoleServer(
     // endpoint that fingerprints the stack.
     return { ok: true };
   });
+
+  registerUuidParamGuard(app);
 
   registerAiRoutes(app, context);
   registerAuthRoutes(app, context);

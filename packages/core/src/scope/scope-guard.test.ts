@@ -444,10 +444,38 @@ describe('validateScopeItem', () => {
     expect(validateScopeItem({ kind: 'domain', value: 'app.client.example' })).toBeNull();
     expect(validateScopeItem({ kind: 'wildcard', value: '*.client.example' })).toBeNull();
     expect(validateScopeItem({ kind: 'wildcard', value: 'client.example' })).toBeNull();
-    expect(validateScopeItem({ kind: 'ip', value: '203.0.113.4' })).toBeNull();
-    expect(validateScopeItem({ kind: 'cidr', value: '203.0.113.0/24' })).toBeNull();
+    // A routable address. 203.0.113.0/24 is TEST-NET-3 and the run-time guard refuses it, so
+    // accepting it here would be the entry check disagreeing with the check that matters.
+    expect(validateScopeItem({ kind: 'ip', value: '93.184.216.34' })).toBeNull();
+    expect(validateScopeItem({ kind: 'cidr', value: '10.20.0.0/16' })).toBeNull();
     expect(validateScopeItem({ kind: 'url', value: 'https://app.client.example/api' })).toBeNull();
     expect(validateScopeItem({ kind: 'mobilePackage', value: 'com.client.app' })).toBeNull();
+  });
+
+  it('refuses what the run-time guard would refuse anyway', () => {
+    // Each of these was accepted at entry before, sat in the engagement record, and then refused
+    // the entire run on test day.
+    expect(validateScopeItem({ kind: 'ip', value: '127.0.0.1' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'ip', value: '169.254.169.254' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'ip', value: '10.0.0.5' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'wildcard', value: '*.gov.in' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'domain', value: 'portal.gov.in' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'domain', value: 'api.stripe.com' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'url', value: 'http://169.254.169.254/latest/meta-data/' })).not.toBeNull();
+  });
+
+  it('refuses a wildcard that covers a whole registry', () => {
+    expect(validateScopeItem({ kind: 'wildcard', value: '*.com' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'wildcard', value: '*.in' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'wildcard', value: '*.co.uk' })).not.toBeNull();
+    expect(validateScopeItem({ kind: 'cidr', value: '0.0.0.0/0' })).not.toBeNull();
+  });
+
+  it('allows a private address only inside a range the client has declared', () => {
+    expect(validateScopeItem({ kind: 'ip', value: '10.20.30.40' })).not.toBeNull();
+    expect(
+      validateScopeItem({ kind: 'ip', value: '10.20.30.40' }, { ownedPrivateRanges: ['10.20.0.0/16'] }),
+    ).toBeNull();
   });
 
   it('rejects typos at entry time, so they are not discovered on test day', () => {

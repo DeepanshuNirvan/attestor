@@ -455,24 +455,101 @@ export async function checkScope(
  * Validate scope items when they are entered, so a typo is a form error rather than a refusal on
  * the morning of the test.
  */
-export function validateScopeItem(item: Pick<ScopeItem, 'kind' | 'value'>): string | null {
+/**
+ * Wildcard bases that are registry suffixes rather than a domain anyone owns.
+ *
+ * `*.co.uk` has two labels and looks specific, but it covers every business in the United Kingdom.
+ * A short list rather than the full public suffix list: these are the ones a person actually
+ * mistypes, and the run-time guard is still behind this.
+ */
+const REGISTRY_SUFFIX_BASES = new Set([
+  'co.uk', 'org.uk', 'ac.uk', 'me.uk', 'net.uk',
+  'co.in', 'net.in', 'org.in', 'firm.in', 'gen.in', 'ind.in', 'gov.in', 'nic.in', 'ac.in', 'res.in',
+  'com.au', 'net.au', 'org.au', 'gov.au', 'edu.au',
+  'co.nz', 'co.za', 'com.br', 'com.sg', 'com.my', 'com.cn', 'com.tr', 'com.mx',
+  'co.jp', 'or.jp', 'ne.jp', 'ac.jp', 'go.jp',
+  'co.kr', 'com.hk', 'com.tw', 'com.ar', 'com.pk', 'com.bd',
+]);
+
+export interface ScopeItemValidationContext {
+  /**
+   * CIDR ranges the client has declared as their own. A private address is only a legitimate
+   * target when it falls inside one of these, which is exactly the rule `checkScope` applies.
+   */
+  ownedPrivateRanges?: readonly string[];
+}
+
+/** Why this hostname may never be a target, or null. Applies to a plain host, not a pattern. */
+function hostnameIsForbidden(hostname: string, ownedRanges: Cidr[]): string | null {
+  const neverTouch = neverTouchHostReason(hostname);
+  if (neverTouch) {
+    return `"${hostname}" is on the global never-touch list — ${neverTouch} No client authorisation can override this.`;
+  }
+  if (isIpAddress(hostname)) {
+    const blocked = neverTouchAddressReason(hostname);
+    if (blocked) return `"${hostname}" is on the never-touch list — ${blocked}`;
+    const forbidden = forbiddenIpReason(hostname, ownedRanges);
+    if (forbidden) return forbidden.detail;
+  }
+  return null;
+}
+
+/**
+ * Validate a scope item at entry.
+ *
+ * Syntax is the easy half. The half that matters is refusing the values the run-time guard would
+ * refuse anyway — loopback, reserved and metadata addresses, never-touch hosts, and wildcards broad
+ * enough to cover a registry. Catching those here is the whole point of validating at entry: a
+ * forbidden entry that is only caught on the morning of the test refuses the entire run, and it
+ * sits in the authorisation diff and the engagement record until then.
+ */
+export function validateScopeItem(
+  item: Pick<ScopeItem, 'kind' | 'value'>,
+  context: ScopeItemValidationContext = {},
+): string | null {
   const value = item.value.trim();
   if (value === '') return 'value is empty';
 
+  const ownedRanges = parseOwnedRanges(context.ownedPrivateRanges ?? []);
+
   switch (item.kind) {
-    case 'domain':
-      return normaliseHostname(value) ? null : `"${value}" is not a valid hostname`;
-    case 'wildcard':
-      return isValidHostnamePattern(value.startsWith('*.') ? value : `*.${value}`)
-        ? null
-        : `"${value}" is not a valid wildcard pattern`;
-    case 'ip':
-      return isIpAddress(value) ? null : `"${value}" is not a valid IP address`;
-    case 'cidr':
-      return parseCidr(value) ? null : `"${value}" is not a valid CIDR range`;
+    case 'domain': {
+      const hostname = normaliseHostname(value);
+      if (!hostname) return `"${value}" is not a valid hostname`;
+      return hostnameIsForbidden(hostname, ownedRanges);
+    }
+    case 'wildcard': {
+      const pattern = value.startsWith('*.') ? value : `*.${value}`;
+      if (!isValidHostnamePattern(pattern)) return `"${value}" is not a valid wildcard pattern`;
+
+      const base = pattern.slice(2).toLowerCase();
+      if (base.split('.').length < 2 || REGISTRY_SUFFIX_BASES.has(base)) {
+        return `"${value}" covers an entire registry, not a client's estate. Name the domains the client owns.`;
+      }
+      // A wildcard is forbidden if anything under it is: check the base and a host beneath it, so
+      // "*.gov.in" is refused by the same entry that refuses "portal.gov.in".
+      return hostnameIsForbidden(base, ownedRanges) ?? hostnameIsForbidden(`scope-check.${base}`, ownedRanges);
+    }
+    case 'ip': {
+      if (!isIpAddress(value)) return `"${value}" is not a valid IP address`;
+      return hostnameIsForbidden(value, ownedRanges);
+    }
+    case 'cidr': {
+      const cidr = parseCidr(value);
+      if (!cidr) return `"${value}" is not a valid CIDR range`;
+      // A CIDR item is how a client declares a range as their own, so a private range is expected
+      // here. A range that routes everything, or one on the never-touch list, is not.
+      if (cidr.prefix === 0) return `"${value}" covers the entire internet`;
+      const blocked = neverTouchAddressReason(value.split('/')[0] ?? value);
+      if (blocked) return `"${value}" is on the never-touch list — ${blocked}`;
+      return null;
+    }
     case 'url':
-    case 'llmEndpoint':
-      return parseTargetUrl(value) ? null : `"${value}" is not a valid http(s) URL`;
+    case 'llmEndpoint': {
+      const parsed = parseTargetUrl(value);
+      if (!parsed) return `"${value}" is not a valid http(s) URL`;
+      return hostnameIsForbidden(parsed.hostname, ownedRanges);
+    }
     case 'repo':
       return /^[\w.@:/-]+$/.test(value) ? null : `"${value}" is not a valid repository reference`;
     case 'cloudAccount':

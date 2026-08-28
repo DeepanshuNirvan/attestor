@@ -244,6 +244,11 @@ openssl rand -base64 32   # put in infra/.env
 docker compose -f infra/docker-compose.yml up -d api portal-api
 ```
 
+`SESSION_SECRET` never appears in a URL, so plain base64 is safe here. The database, Redis and MinIO
+passwords are not: they are interpolated into connection strings, where the `/` and `+` that base64
+produces end the password early. Generate those with a URL-safe alphabet —
+`openssl rand -base64 48 | tr -d '/+=' | head -c 32`.
+
 ### 4.2 `VAULT_MASTER_KEY`
 
 This is the dangerous one. Every stored client credential is encrypted under a subkey derived from

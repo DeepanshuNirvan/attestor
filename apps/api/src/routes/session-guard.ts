@@ -49,7 +49,7 @@ export function requireSession(options: GuardOptions) {
       return;
     }
 
-    const resolved = await resolveSession(options.database, token);
+    const resolved = await resolveSession(options.database, token, options.expect);
     if (!resolved) {
       // The cookie is stale or the account was deactivated. Clear it so the browser stops sending
       // a token that will never work again.
