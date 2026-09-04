@@ -285,6 +285,39 @@ describe('runToolForEngagement — execution', () => {
     }
   });
 
+  it('hands a secret to the container and to nothing else', async () => {
+    // The property the whole credential path rests on. A client's password reaches the tool as an
+    // environment variable, is scrubbed out of anything the tool says back, and never appears in
+    // the audit record — which stores the command line of every launch, so a secret placed there
+    // instead would be written to the database in the clear and kept for the life of the firm.
+    const { runner, runs } = fakeContainerRunner({ stdout: 'logged in as a-clients-real-password' });
+    const auditLog = new InMemoryAuditLog();
+
+    const outcome = await runToolForEngagement(
+      {
+        engagementId: 'eng-1',
+        scanRunId: 'run-1',
+        toolId: 'httpx',
+        targets: ['app.client.example'],
+        command: ['-plan', '/out/plan.yaml'],
+        secrets: { ATTESTOR_CRED_1_PASSWORD: 'a-clients-real-password' },
+        outputDirectory: '/tmp/out',
+      },
+      dependencies({ containerRunner: runner, auditLog }),
+    );
+
+    const started = runs[0] as { environment?: Record<string, string> };
+    expect(started.environment?.ATTESTOR_CRED_1_PASSWORD).toBe('a-clients-real-password');
+
+    const launched = JSON.stringify(auditLog.find('tool.launched'));
+    expect(launched).not.toContain('a-clients-real-password');
+
+    expect(outcome.status).toBe('completed');
+    if (outcome.status === 'completed') {
+      expect(outcome.result.stdout).not.toContain('a-clients-real-password');
+    }
+  });
+
   it('clears registered secrets once the run finishes', async () => {
     const { runner } = fakeContainerRunner();
     await runToolForEngagement(

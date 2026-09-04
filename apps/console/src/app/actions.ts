@@ -3,9 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { OWASP_RISK_FACTORS, isValidRiskScore } from '@attestor/findings';
 import { api, ApiError } from '@/lib/api';
 import { formText } from '@/lib/form';
 import { currentSurface } from '@/lib/surface';
+import { submitIntake } from '@/lib/intake-api';
 
 /**
  * Server actions.
@@ -91,6 +93,77 @@ export async function changeState(
 
   revalidatePath(`/engagements/${engagementId}`);
   return { ok: true };
+}
+
+/**
+ * A client submitting one test account.
+ *
+ * The field names come from the server's catalogue and are passed in rather than read from the
+ * form, so a submission can only ever carry the fields that kind of login declares — a hidden input
+ * added to the page cannot smuggle an extra one through.
+ *
+ * Nothing here is logged. A failure returns the reasons the API gave, which are written for the
+ * client rather than for us.
+ */
+export async function submitCredentials(
+  token: string,
+  slot: string,
+  fieldNames: string[],
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const values: Record<string, string> = {};
+  for (const name of fieldNames) {
+    const value = formText(form, name).trim();
+    if (value !== '') values[name] = value;
+  }
+
+  const outcome = await submitIntake(token, slot, values);
+  if (!outcome.ok) return { ok: false, error: outcome.problems.join(' ') };
+
+  return { ok: true };
+}
+
+/**
+ * Stop using a credential.
+ *
+ * Submitted from the credentials table as a plain form, so it needs no client component. The value
+ * is not destroyed here — closing the engagement is what destroys it — but nothing will open it
+ * again, and the audit trail keeps a record that it existed.
+ */
+export async function revokeCredential(
+  engagementId: string,
+  credentialSetId: string,
+): Promise<void> {
+  await api.post(`/engagements/${engagementId}/credentials/${credentialSetId}/revoke`, {});
+  revalidatePath(`/engagements/${engagementId}`);
+}
+
+/** Ask a client for test accounts. Returns the one-time link, which is shown once and not stored. */
+export async function requestCredentials(
+  engagementId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const expiresInHours = Number.parseInt(formText(form, 'expiresInHours', '72'), 10);
+
+  let accounts: unknown;
+  try {
+    accounts = JSON.parse(formText(form, 'accounts', '[]'));
+  } catch {
+    return { ok: false, error: 'that list of accounts was not readable' };
+  }
+
+  try {
+    const result = await api.post<{ url: string; expiresAt: string }>(
+      `/engagements/${engagementId}/credential-link`,
+      { accounts, ...(Number.isFinite(expiresInHours) ? { expiresInHours } : {}) },
+    );
+    revalidatePath(`/engagements/${engagementId}`);
+    return { ok: true, detail: result };
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
 }
 
 export async function savePreFlightChecklist(
@@ -281,6 +354,32 @@ export async function markFalsePositive(
     return { ok: false, error: message(error) };
   }
   revalidatePath(`/engagements/${engagementId}/triage`);
+  return { ok: true };
+}
+
+export async function saveRiskRating(
+  engagementId: string,
+  findingId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  // Only the factors that were answered are sent. A blank stays blank all the way to the database,
+  // because the calculator leaves an unanswered factor out of its average rather than scoring it
+  // zero, and a zero would quietly argue the risk is lower than anyone has established.
+  const scores: Record<string, number> = {};
+  for (const factor of OWASP_RISK_FACTORS) {
+    const raw = form.get(factor.id);
+    if (typeof raw !== 'string' || raw === '') continue;
+    const score = Number(raw);
+    if (Number.isInteger(score) && isValidRiskScore(factor.id, score)) scores[factor.id] = score;
+  }
+
+  try {
+    await api.put(`/findings/${findingId}`, { owaspRiskScores: scores });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+  revalidatePath(`/engagements/${engagementId}/findings/${findingId}`);
   return { ok: true };
 }
 

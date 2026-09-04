@@ -2,6 +2,9 @@ import type { ModuleName } from '@attestor/shared';
 import type { ScannerAdapter } from './adapter.ts';
 import { nucleiAdapter } from './adapters/nuclei.ts';
 import { httpxAdapter, naabuAdapter, subfinderAdapter, tlsxAdapter } from './adapters/recon.ts';
+import { katanaAdapter } from './adapters/crawl.ts';
+import { dnsxAdapter } from './adapters/dns.ts';
+import { ffufAdapter } from './adapters/content-discovery.ts';
 import { dalfoxAdapter, zapAdapter } from './adapters/web.ts';
 import {
   gitleaksAdapter,
@@ -47,6 +50,9 @@ export const ADAPTERS: ScannerAdapter[] = [
   mobsfAdapter,
   schemathesisAdapter,
   nmapAdapter,
+  katanaAdapter,
+  dnsxAdapter,
+  ffufAdapter,
 ];
 
 const byId = new Map(ADAPTERS.map((adapter) => [adapter.id, adapter]));

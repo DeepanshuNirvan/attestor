@@ -2,6 +2,40 @@ import type { Check } from './types.ts';
 
 export const reconChecks: Check[] = [
   {
+    id: 'recon-entry-point-mapping',
+    title: 'Application entry point and execution path mapping',
+    category: 'informationGathering',
+    modules: ['recon', 'web'],
+    description:
+      'Crawl the application and record what is actually reachable: every URL, the methods it answers to, the forms and parameters that reach it, and where each was linked from. This is the map every later test is aimed at — an injection test can only reach parameters somebody found, and an access control test can only replay requests somebody recorded.',
+    example:
+      'A checkout step reachable directly by URL without passing through the two screens before it, found because the crawl recorded the path and nothing linked to it from the basket.',
+    automation: 'automated',
+    tools: ['katana', 'zap'],
+    standards: {
+      wstg: ['WSTG-INFO-06', 'WSTG-INFO-07'],
+      asvs: ['v5.0.0-1.1.2'],
+      cwe: [1059],
+    },
+  },
+  {
+    id: 'recon-webserver-metafiles',
+    title: 'Webserver metafile review',
+    category: 'informationGathering',
+    modules: ['recon', 'web'],
+    description:
+      'Read the files a site publishes about itself — robots.txt, sitemap.xml, security.txt and the .well-known directory — for paths, contacts and infrastructure detail that were not meant to be advertised. Distinct from path discovery, which guesses at paths nobody published: this reads the ones the operator published on purpose and may not have reread since.',
+    example:
+      'A robots.txt with `Disallow: /admin-v2/` — an administrative interface nothing links to, named in a file served to anyone who asks for it.',
+    automation: 'automated',
+    tools: ['httpx'],
+    standards: {
+      wstg: ['WSTG-INFO-03'],
+      owaspTop10: ['A02:2025'],
+      cwe: [200],
+    },
+  },
+  {
     id: 'recon-subdomain-enumeration',
     title: 'Subdomain and hostname enumeration',
     category: 'informationGathering',
@@ -107,7 +141,7 @@ export const reconChecks: Check[] = [
     example:
       'A `/backup/` directory containing a database dump, reachable because directory listing was left on.',
     automation: 'automated',
-    tools: ['gau', 'waybackurls', 'ffuf', 'katana'],
+    tools: ['ffuf', 'katana', 'httpx'],
     standards: { wstg: ['WSTG-CONF-04', 'WSTG-INFO-05'], owaspTop10: ['A02:2025'], cwe: [548] },
   },
   {
@@ -134,7 +168,12 @@ export const reconChecks: Check[] = [
       'A bucket holding customer-uploaded identity documents with public read enabled for a support tool that was retired.',
     automation: 'automated',
     tools: ['nuclei', 'cloudsplaining'],
-    standards: { owaspTop10: ['A01:2025', 'A02:2025'], cwe: [732, 200] },
+    // WSTG-CONF-11 is the cloud storage test. This is it.
+    standards: {
+      wstg: ['WSTG-CONF-11'],
+      owaspTop10: ['A01:2025', 'A02:2025'],
+      cwe: [732, 200],
+    },
   },
   {
     id: 'recon-virtual-host-discovery',
@@ -204,5 +243,37 @@ export const reconChecks: Check[] = [
     automation: 'automated',
     tools: ['subfinder', 'httpx', 'naabu', 'tlsx'],
     standards: { owaspTop10: ['A02:2025'], cwe: [1059] },
+  },
+
+  /* Guide tests the platform holds as work a person does ------------------------------------- *
+   *                                                                                             *
+   * Nothing automates these, and pretending otherwise is the failure this catalogue exists to    *
+   * avoid. They are here so the tester works through them and the coverage matrix records them   *
+   * as manually tested, rather than leaving them absent from the report altogether.              */
+  {
+    id: 'recon-search-engine-discovery',
+    title: 'Search engine and public source discovery',
+    category: 'informationGathering',
+    modules: ['recon'],
+    description:
+      'Search the indexed and archived web for material about the client that was never meant to be public: cached pages taken down since, documents indexed from a directory nobody protected, error pages with internal paths, and posts by staff naming systems or versions. Done by a person, from a machine that is not the client, because the queries themselves reveal what is being looked at.',
+    example:
+      'A cached copy of a staging login page, taken down a year ago and still indexed, naming an internal hostname that resolves.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-INFO-01'], owaspTop10: ['A02:2025'], cwe: [200] },
+  },
+  {
+    id: 'recon-application-architecture-mapping',
+    title: 'Application architecture mapping',
+    category: 'informationGathering',
+    modules: ['recon', 'web'],
+    description:
+      'Draw what sits between the client and the application: reverse proxies, load balancers, a web application firewall, caches, an API gateway, and the trust boundary each one is meant to enforce. The map is what makes several later tests interpretable, because a header rewritten at the edge and a header honoured by the application are different facts.',
+    example:
+      'A cache in front of the application keyed on the path alone, which turns any header-controlled response variation into a poisoning primitive.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-INFO-10'], owaspTop10: ['A04:2025'], cwe: [1008] },
   },
 ];

@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS = [
   'authorisation.assetListDiffed',
   'scopeItem.added',
   'scopeItem.removed',
+  'credentialSet.linkIssued',
   'credentialSet.submitted',
   'credentialSet.verified',
   'credentialSet.revoked',

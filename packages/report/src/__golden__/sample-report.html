@@ -503,6 +503,7 @@ section.continues {
 .state-tested { color: var(--accent); }
 .state-partiallyTested { color: var(--medium); }
 .state-notTested { color: var(--ink-faint); }
+.state-notApplicable { color: var(--ink-faint); font-style: italic; }
 
 /* Attack narrative */
 
@@ -746,18 +747,32 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <section id="coverage">
   <h2>5. Coverage matrix</h2>
   <p>This matrix is generated from what actually executed during the engagement. It is not a statement of intent: a check appears as tested only where a completed run or a recorded manual test covered it, and anything less carries the reason.</p>
+  <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
   <table>
     <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
     <tbody>
-      <tr><td>Tested</td><td class="numeric">103</td></tr>
+      <tr><td>Tested</td><td class="numeric">109</td></tr>
       <tr><td>Partially tested</td><td class="numeric">0</td></tr>
-      <tr><td>Not tested</td><td class="numeric">107</td></tr>
+      <tr><td>Not present in this application</td><td class="numeric">0</td></tr>
+      <tr><td>Not tested</td><td class="numeric">126</td></tr>
     </tbody>
   </table>
   <h3>Information gathering</h3>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
+        <td>Application entry point and execution path mapping</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Webserver metafile review</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
         <td>Subdomain and hostname enumeration</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
@@ -809,6 +824,18 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td>Attack surface change detection</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Search engine and public source discovery</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Application architecture mapping</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -887,8 +914,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Padding oracle and ciphertext manipulation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -978,6 +1005,24 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
+      </tr>
+<tr>
+        <td>Application platform configuration</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Path confusion and route resolution</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>File and directory permissions on the host</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
       </tr>
 <tr>
         <td>API CORS and pre-flight consistency</td>
@@ -1233,8 +1278,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Session timeout and termination</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1259,6 +1304,18 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td>Logout and session-riding side effects</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Session identifiers and sensitive values in URLs</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Session hijacking exposure</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr></tbody>
     </table>
@@ -1291,8 +1348,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Password policy and credential strength</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1303,8 +1360,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Brute force and credential stuffing protection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1321,8 +1378,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Remember-me and persistent login</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1345,6 +1402,18 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Re-authentication for sensitive operations</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Username policy and account identifier handling</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Authentication on alternative channels</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
@@ -1438,6 +1507,12 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
+        <td>Role definitions and the permission model</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
         <td>Broken object level authorisation</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
@@ -1521,8 +1596,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Insecure deserialisation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1559,6 +1634,42 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td>CSV and spreadsheet formula injection</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>HTTP parameter pollution</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Server-side include injection</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>XPath injection</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Format string injection</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>IMAP and SMTP injection through mail features</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Incubated and delayed-execution vulnerabilities</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1609,14 +1720,14 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Cross-origin messaging</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
         <td>Client-side storage of sensitive data</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1629,6 +1740,36 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td>Source maps and build artefacts in production</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Reverse tabnabbing on outbound links</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>HTML injection</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Client-side JavaScript execution from controllable input</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Client-side resource manipulation</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>CSS injection</td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr></tbody>
     </table>
@@ -1679,6 +1820,18 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Chaining of low-severity findings</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Process timing and ordering</td>
+        <td><span class="coverage-state state-tested">Tested</span></td>
+        <td></td>
+        <td class="numeric">0</td>
+      </tr>
+<tr>
+        <td>Payment flow integrity</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">0</td>
@@ -1783,14 +1936,14 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>gRPC and binary protocol handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
         <td>Mobile backend parity with the web API</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr></tbody>
     </table>
@@ -1889,8 +2042,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Backend traffic capture and analysis</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1965,8 +2118,8 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr>
 <tr>
         <td>Model output rendered as HTML</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
+        <td><span class="coverage-state state-notTested">Not tested</span></td>
+        <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -2117,6 +2270,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       <span class="severity severity-critical">Critical</span>
       <span class="tag">9.3</span>
       <span class="tag">CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N</span>
+      <span class="tag">OWASP High</span>
       <span class="tag">CWE-89</span>
       <span class="tag">A05:2025</span>
       <span class="tag">WSTG-INPV-05</span>
@@ -2167,6 +2321,30 @@ Content-Type: application/json
   <h5>References</h5>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: SQL Injection Prevention</a></li>
 <li><a href="https://cwe.mitre.org/data/definitions/89.html">CWE-89: SQL Injection</a></li></ul>
+
+  <h5>OWASP risk rating</h5>
+  <p>Likelihood 7.00 (high), impact 5.50 (medium), giving an overall rating of <strong>High</strong>. Scored against the OWASP Risk Rating Methodology; each factor below is a published option of that method.</p>
+  <table>
+    <thead><tr><th>Factor</th><th class="numeric">Score</th></tr></thead>
+    <tbody>
+<tr><td>Skills required</td><td class="numeric">3</td></tr>
+<tr><td>Motive</td><td class="numeric">9</td></tr>
+<tr><td>Opportunity</td><td class="numeric">9</td></tr>
+<tr><td>Population size</td><td class="numeric">9</td></tr>
+<tr><td>Ease of discovery</td><td class="numeric">7</td></tr>
+<tr><td>Ease of exploit</td><td class="numeric">5</td></tr>
+<tr><td>Awareness</td><td class="numeric">6</td></tr>
+<tr><td>Intrusion detection</td><td class="numeric">8</td></tr>
+<tr><td>Loss of confidentiality</td><td class="numeric">7</td></tr>
+<tr><td>Loss of integrity</td><td class="numeric">5</td></tr>
+<tr><td>Loss of availability</td><td class="numeric">1</td></tr>
+<tr><td>Loss of accountability</td><td class="numeric">7</td></tr>
+<tr><td>Financial damage</td><td class="numeric">7</td></tr>
+<tr><td>Reputation damage</td><td class="numeric">5</td></tr>
+<tr><td>Non-compliance</td><td class="numeric">5</td></tr>
+<tr><td>Privacy violation</td><td class="numeric">7</td></tr>
+    </tbody>
+  </table>
 
   
   
@@ -2223,6 +2401,8 @@ evidence captured: 1 object</pre></figure>
   <h5>References</h5>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html">OWASP Cheat Sheet: JSON Web Token for Java</a></li>
 <li><a href="https://cwe.mitre.org/data/definitions/347.html">CWE-347: Improper Verification of Cryptographic Signature</a></li></ul>
+
+  
 
   
   
@@ -2286,6 +2466,8 @@ HTTP 200
 <li><a href="https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/">OWASP API Security Top 10: API1:2023 Broken Object Level Authorization</a></li></ul>
 
   
+
+  
   
   
 </article>
@@ -2337,6 +2519,8 @@ evidence captured: 1 object</pre></figure>
 
   <h5>References</h5>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Cross Site Scripting Prevention</a></li></ul>
+
+  
 
   
   
@@ -2394,6 +2578,8 @@ Content-Type: application/json
 
   <h5>References</h5>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html">OWASP Cheat Sheet: File Upload and Path Traversal</a></li></ul>
+
+  
 
   
   
@@ -2455,6 +2641,8 @@ HTTP 200
   <ul><li><a href="https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation">OWASP WSTG: Testing for Business Logic Data Validation</a></li></ul>
 
   
+
+  
   
   
 </article>
@@ -2510,6 +2698,8 @@ evidence captured: 1 object</pre></figure>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html">OWASP Cheat Sheet: HTTP Security Response Headers</a></li></ul>
 
   
+
+  
   
   
 </article>
@@ -2558,6 +2748,8 @@ evidence captured: 1 object</pre></figure>
 
   <h5>References</h5>
   <ul><li><a href="https://owasp.org/Top10/">OWASP Top 10 2025: A03 Software Supply Chain Failures</a></li></ul>
+
+  
 
   
   
@@ -2614,6 +2806,8 @@ evidence captured: 1 object</pre></figure>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Credential Stuffing Prevention</a></li></ul>
 
   
+
+  
   
   
 </article>
@@ -2664,6 +2858,8 @@ evidence captured: 1 object</pre></figure>
 
   <h5>References</h5>
   <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html">OWASP Cheat Sheet: Forgot Password</a></li></ul>
+
+  
 
   
   

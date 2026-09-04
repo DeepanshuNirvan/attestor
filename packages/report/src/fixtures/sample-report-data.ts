@@ -102,9 +102,35 @@ HTTP 200
 }
 
 export function buildSampleReportData(): ReportData {
-  const findings: ReportFinding[] = sampleFindings.map((finding) => ({
+  const findings: ReportFinding[] = sampleFindings.map((finding, index) => ({
     ...finding,
     evidence: evidenceFor(finding.reference ?? ''),
+    // The first finding carries an OWASP risk rating so the sample shows both scoring systems side
+    // by side, which is the point of publishing them together: CVSS scores the class of flaw and
+    // this scores what it means for this client. The rest are left unrated, which is also the truth
+    // about a real engagement — a rating is a conversation with the client, not a default.
+    ...(index === 0
+      ? {
+          owaspRiskScores: {
+            skillLevel: 3,
+            motive: 9,
+            opportunity: 9,
+            populationSize: 9,
+            easeOfDiscovery: 7,
+            easeOfExploit: 5,
+            awareness: 6,
+            intrusionDetection: 8,
+            lossOfConfidentiality: 7,
+            lossOfIntegrity: 5,
+            lossOfAvailability: 1,
+            lossOfAccountability: 7,
+            financialDamage: 7,
+            reputationDamage: 5,
+            nonCompliance: 5,
+            privacyViolation: 7,
+          },
+        }
+      : {}),
   }));
 
   const coveredCheckIds = new Set(

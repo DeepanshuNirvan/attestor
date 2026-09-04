@@ -105,13 +105,83 @@ export function toolsForModule(module: ModuleName): ToolImage[] {
 }
 
 /**
- * Tools that run inside the platform rather than in a container: the browser driver, the
- * access-control replay matrix, the rate-limit probe and the custom LLM probe corpus. They appear
- * in the catalogue for the coverage matrix and the report's tool inventory.
+ * Tools that run inside the platform rather than in a container.
+ *
+ * A probe belongs here when shipping it as an image would mean handing a container the client's
+ * credentials, or when the work is comparison rather than scanning. `implemented` is the honest
+ * half: an entry that is planned but not built says so, the catalogue refuses to claim a check is
+ * automated by it, and the coverage matrix cannot record it as tested. A tool that exists only as a
+ * name in this list is how a report ends up claiming work nobody did.
  */
-export const IN_PROCESS_TOOLS = [
-  { id: 'playwright', displayName: 'Playwright', purpose: 'Authenticated browsing, session capture and evidence' },
-  { id: 'accessControlMatrix', displayName: 'Access control matrix', purpose: 'Cross-role request replay and comparison' },
-  { id: 'rateLimitProbe', displayName: 'Rate limit probe', purpose: 'Bounded throttling measurement on sensitive endpoints' },
-  { id: 'attestorProbes', displayName: 'Attestor LLM probe corpus', purpose: 'Versioned in-house adversarial prompts' },
-] as const;
+export interface InProcessTool {
+  id: string;
+  displayName: string;
+  purpose: string;
+  /** Whether the probe exists and runs. See `run-probe-for-engagement.ts`. */
+  implemented: boolean;
+  modules: ModuleName[];
+  /** Catalogue check ids a completed run genuinely covers. Empty until it is implemented. */
+  coversCheckIds: string[];
+}
+
+export const IN_PROCESS_TOOLS: InProcessTool[] = [
+  {
+    id: 'accessControlMatrix',
+    displayName: 'Access control matrix',
+    purpose: 'Cross-identity request replay and response comparison',
+    implemented: true,
+    modules: ['web', 'api'],
+    coversCheckIds: [
+      'web-vertical-access-control',
+      'web-horizontal-access-control',
+      'web-tenant-isolation',
+      'api-bfla',
+    ],
+  },
+  {
+    id: 'playwright',
+    displayName: 'Playwright',
+    purpose: 'Authenticated browsing, session capture and evidence',
+    implemented: false,
+    modules: ['web'],
+    coversCheckIds: [],
+  },
+  {
+    id: 'rateLimitProbe',
+    displayName: 'Rate limit probe',
+    purpose: 'Bounded throttling measurement on sensitive endpoints',
+    implemented: true,
+    modules: ['web', 'api'],
+    // Throttling only. It deliberately probes with an address that cannot exist, so it can say
+    // nothing about whether a real account locks — `web-brute-force-protection` stays manual.
+    coversCheckIds: ['web-rate-limit-effectiveness', 'api-rate-limiting'],
+  },
+  {
+    id: 'requestManipulationProbe',
+    displayName: 'Request manipulation probe',
+    purpose: 'Method, duplicated-parameter and forwarded-host handling',
+    implemented: true,
+    modules: ['web', 'api'],
+    // Every request it sends is a GET, a HEAD or an OPTIONS, so it runs unchanged in read-only mode.
+    coversCheckIds: ['web-http-methods', 'web-parameter-pollution', 'web-host-header-handling'],
+  },
+  {
+    id: 'attestorProbes',
+    displayName: 'Attestor LLM probe corpus',
+    purpose: 'Versioned in-house adversarial prompts',
+    implemented: false,
+    modules: ['llm'],
+    coversCheckIds: [],
+  },
+];
+
+const IN_PROCESS_BY_ID = new Map(IN_PROCESS_TOOLS.map((tool) => [tool.id, tool]));
+
+export function inProcessToolById(id: string): InProcessTool | undefined {
+  return IN_PROCESS_BY_ID.get(id);
+}
+
+/** Probes that exist and apply to this module. The only ones a run may be created for. */
+export function implementedProbesForModule(module: ModuleName): InProcessTool[] {
+  return IN_PROCESS_TOOLS.filter((tool) => tool.implemented && tool.modules.includes(module));
+}

@@ -154,6 +154,33 @@ services:
     restart: 'no'
     logging: *logging
 
+  # httpx fetches a 92.6 MB classification model from huggingface at startup whenever it is asked
+  # for JSON output, which the adapter always asks for. That is unannounced third-party egress from
+  # inside a tool container in the middle of a client engagement, and it is paid again on every run:
+  # the container's home is a 64 MB tmpfs, so the download cannot even be kept. Fetched once here
+  # instead, into the shared workspace, and mounted read-only at the tool's home directory.
+  # To refresh it: rm /tmp/attestor/httpx-dit/model.json && docker compose run --rm httpx-model-init
+  httpx-model-init:
+    image: projectdiscovery/httpx:latest
+    depends_on:
+      workspace-init:
+        condition: service_completed_successfully
+    user: '0:0'
+    # Same chmod reasoning as the template pack: fetched as root, read by uid 65532.
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - >-
+        mkdir -p /workspace/httpx-dit &&
+        MODEL=/workspace/httpx-dit/model.json &&
+        URL=https://huggingface.co/datasets/happyhackingspace/dit/resolve/main/model.json &&
+        { [ -s "$$MODEL" ] || wget -q -O "$$MODEL" "$$URL" ; } &&
+        chmod -R a+rX /workspace/httpx-dit &&
+        echo "httpx model ready"
+    volumes:
+      - /tmp/attestor:/workspace
+    restart: 'no'
+    logging: *logging
+
   migrate:
     build:
       context: ..
@@ -257,6 +284,8 @@ services:
         condition: service_completed_successfully
       nuclei-templates-init:
         condition: service_completed_successfully
+      httpx-model-init:
+        condition: service_completed_successfully
     env_file: [.env]
     environment:
       DATABASE_URL: postgres://attestor:${POSTGRES_PASSWORD}@postgres:5432/attestor
@@ -328,10 +357,17 @@ services:
     depends_on:
       portal-api:
         condition: service_healthy
+      api:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       ATTESTOR_SURFACE: portal
       ATTESTOR_PORTAL_API_URL: http://portal-api:8081
+      # The one console address the portal knows, and it is used for exactly one page: the form a
+      # client fills in to hand over a test account. The console holds the vault key, so the
+      # submission has to reach it — sending credentials to the portal API instead would mean giving
+      # the internet-facing service the ability to write into the credential vault.
+      ATTESTOR_INTAKE_API_URL: http://api:8080
     ports:
       - '${PORTAL_BIND:-127.0.0.1}:3100:3000'
     logging: *logging

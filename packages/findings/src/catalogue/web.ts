@@ -14,7 +14,10 @@ export const webChecks: Check[] = [
     automation: 'automated',
     tools: ['zap', 'nuclei', 'httpx'],
     standards: {
-      wstg: ['WSTG-CONF-12'],
+      // CONF-12 is the Content-Security-Policy test, CONF-07 the HSTS one, and CONF-14 the rest of
+      // the header family. This check reads all of them from the same response, so claiming one and
+      // leaving the other two as gaps described the code rather than the work.
+      wstg: ['WSTG-CONF-12', 'WSTG-CONF-07', 'WSTG-CONF-14'],
       asvs: ['v5.0.0-3.4.1', 'v5.0.0-3.4.3'],
       owaspTop10: ['A02:2025'],
       cwe: [693, 1021],
@@ -66,9 +69,16 @@ export const webChecks: Check[] = [
       'Enumerate which methods each endpoint accepts, including TRACE, OPTIONS, PUT and DELETE, and test whether method override headers change authorisation behaviour.',
     example:
       'An endpoint that rejects DELETE but honours `X-HTTP-Method-Override: DELETE` on a POST, bypassing the method-based access rule.',
-    automation: 'assisted',
-    tools: ['zap', 'ffuf'],
-    standards: { wstg: ['WSTG-CONF-06'], owaspTop10: ['A01:2025'], cwe: [650] },
+    automation: 'automated',
+    tools: ['requestManipulationProbe', 'zap', 'ffuf'],
+    // INPV-03 is the second sentence of the description: whether the answer depends on the method
+    // rather than on the identity. The probe sends GET, HEAD and OPTIONS to the same URL and
+    // compares, which is that test performed rather than described.
+    standards: {
+      wstg: ['WSTG-CONF-06', 'WSTG-INPV-03'],
+      owaspTop10: ['A01:2025'],
+      cwe: [650, 288],
+    },
   },
   {
     id: 'web-file-extension-handling',
@@ -105,7 +115,9 @@ export const webChecks: Check[] = [
     example: 'A monitoring dashboard still on the vendor default login.',
     automation: 'assisted',
     tools: ['nuclei'],
-    standards: { wstg: ['WSTG-CONF-06', 'WSTG-ATHN-02'], owaspTop10: ['A07:2025'], cwe: [1392, 521] },
+    // CONF-06 is the HTTP methods test and was never anything this check does; it belongs to
+    // `web-http-methods`, which performs it.
+    standards: { wstg: ['WSTG-ATHN-02'], owaspTop10: ['A07:2025'], cwe: [1392, 521] },
   },
   {
     id: 'web-subresource-integrity',
@@ -147,9 +159,13 @@ export const webChecks: Check[] = [
       'Test whether the application trusts the Host or X-Forwarded-Host header when building links, password reset URLs or cache keys.',
     example:
       'A password reset email whose link uses the attacker-supplied Host header, sending the reset token to a site the attacker controls.',
-    automation: 'assisted',
-    tools: ['zap'],
-    standards: { wstg: ['WSTG-CONF-07'], owaspTop10: ['A01:2025'], cwe: [644] },
+    automation: 'automated',
+    tools: ['requestManipulationProbe'],
+    // This is WSTG-INPV-17. It previously claimed CONF-07, which is the HSTS test and is performed
+    // by `web-security-headers` — so host header injection read as a gap while a check for it
+    // existed. ZAP ships no rule for this at all; the probe sends the header and looks for the name
+    // it supplied coming back in a redirect target or in the page.
+    standards: { wstg: ['WSTG-INPV-17'], owaspTop10: ['A01:2025'], cwe: [644] },
   },
 
   /* Identity and registration ---------------------------------------------------------------- */
@@ -232,8 +248,8 @@ export const webChecks: Check[] = [
       'Test minimum and maximum length, whether long passphrases are accepted, whether breached-password checking exists, and whether composition rules are being used in place of length.',
     example:
       'A 16-character maximum that silently truncates, so a password manager\'s output is not what actually gets stored.',
-    automation: 'assisted',
-    tools: ['playwright'],
+    automation: 'manual',
+    tools: [],
     standards: {
       wstg: ['WSTG-ATHN-07'],
       asvs: ['v5.0.0-6.2.1', 'v5.0.0-6.2.2'],
@@ -268,8 +284,8 @@ export const webChecks: Check[] = [
       'Measure how many authentication attempts are accepted before throttling, whether throttling is per account or per address, and whether it can be bypassed by varying headers, casing or the request path. Bounded attempts against disposable accounts only.',
     example:
       'Rate limiting applied per IP only, so a credential-stuffing run from a residential proxy pool is unimpeded.',
-    automation: 'assisted',
-    tools: ['ffuf'],
+    automation: 'manual',
+    tools: [],
     standards: {
       wstg: ['WSTG-ATHN-03'],
       asvs: ['v5.0.0-6.2.4'],
@@ -323,8 +339,8 @@ export const webChecks: Check[] = [
       'Check what a persistent login token contains, whether it is revocable, whether it survives a password change, and whether it grants sensitive operations without re-authentication.',
     example:
       'A remember-me token that keeps working after the user changes their password following a suspected compromise.',
-    automation: 'assisted',
-    tools: ['playwright'],
+    automation: 'manual',
+    tools: [],
     standards: { wstg: ['WSTG-ATHN-05', 'WSTG-ATHN-06'], owaspTop10: ['A07:2025'], cwe: [539, 613] },
   },
   {
@@ -447,8 +463,8 @@ export const webChecks: Check[] = [
       'Check idle and absolute timeouts, that logout invalidates the session server-side rather than only clearing the cookie, and that all of a user\'s sessions can be terminated.',
     example:
       'Logout clearing the cookie but leaving the session valid, so a copied cookie keeps working for days.',
-    automation: 'assisted',
-    tools: ['playwright'],
+    automation: 'manual',
+    tools: [],
     standards: {
       wstg: ['WSTG-SESS-06', 'WSTG-SESS-07'],
       asvs: ['v5.0.0-7.3.1'],
@@ -485,7 +501,9 @@ export const webChecks: Check[] = [
       'No visibility of active sessions and no way to revoke them, so a user who suspects compromise has no remedy.',
     automation: 'manual',
     tools: [],
-    standards: { wstg: ['WSTG-SESS-08'], owaspTop10: ['A07:2025'], cwe: [613] },
+    // SESS-11 is the concurrent sessions test; SESS-08 is session puzzling, which the check below
+    // performs. Both claimed SESS-08, so one of them counted for nothing and SESS-11 read as a gap.
+    standards: { wstg: ['WSTG-SESS-11'], owaspTop10: ['A07:2025'], cwe: [613] },
   },
   {
     id: 'web-session-puzzling',
@@ -804,7 +822,10 @@ export const webChecks: Check[] = [
       'Identify serialised objects in cookies, hidden fields, caches and message queues, and test whether they are deserialised without type restriction or integrity checking.',
     example:
       'A signed-but-not-encrypted view state whose signing key is the framework default, allowing arbitrary object graphs to be submitted.',
-    automation: 'manual',
+    // ZAP's release passive rules find serialised Java objects and view state wherever they appear
+    // in traffic, which is the discovery half. Whether the endpoint deserialises them without a type
+    // restriction is the half a person still has to establish.
+    automation: 'assisted',
     tools: ['zap'],
     standards: {
       wstg: ['WSTG-INPV-11'],
@@ -855,7 +876,10 @@ export const webChecks: Check[] = [
       'A language parameter written into a Set-Cookie header, permitting an attacker-chosen cookie to be planted.',
     automation: 'automated',
     tools: ['zap', 'nuclei'],
-    standards: { wstg: ['WSTG-INPV-16'], owaspTop10: ['A05:2025'], cwe: [113, 93] },
+    // Response splitting is the second half of WSTG-INPV-15. It previously claimed INPV-16, which
+    // is reviewing the application's own inbound traffic — a monitoring exercise inside the client's
+    // infrastructure that this check has never performed and that the register records as such.
+    standards: { wstg: ['WSTG-INPV-15'], owaspTop10: ['A05:2025'], cwe: [113, 93] },
   },
   {
     id: 'web-request-smuggling',
@@ -987,7 +1011,7 @@ export const webChecks: Check[] = [
       'Issue tightly grouped concurrent requests against operations that consume a limited resource — balance, stock, credits, one-time tokens, invitations — to test whether the limit holds. Concurrency is bounded and never approaches a volumetric level.',
     example:
       'Two simultaneous withdrawal requests both passing the balance check, overdrawing the account.',
-    automation: 'assisted',
+    automation: 'manual',
     tools: [],
     standards: {
       wstg: ['WSTG-BUSL-01'],
@@ -1100,8 +1124,11 @@ export const webChecks: Check[] = [
       'Where the application accepts ciphertext from the client, test whether error behaviour distinguishes padding failures from decryption failures.',
     example:
       'An encrypted-but-unauthenticated identifier in a URL that can be altered a byte at a time to reach another record.',
-    automation: 'manual',
-    tools: [],
+    // ZAP's release active rules include a generic padding oracle test, and the plan we generate
+    // runs the full release policy. Confirming that the oracle is usable against a real identifier
+    // is still a person's work, which is what keeps this assisted rather than automated.
+    automation: 'assisted',
+    tools: ['zap'],
     standards: { wstg: ['WSTG-CRYP-02'], owaspTop10: ['A04:2025'], cwe: [209, 649] },
   },
   {
@@ -1202,8 +1229,8 @@ export const webChecks: Check[] = [
       'Check that message listeners validate the origin and the message shape, and that messages containing tokens are not sent to a wildcard target.',
     example:
       'A payment widget posting the session token to `*`, readable by any embedding page.',
-    automation: 'assisted',
-    tools: ['playwright'],
+    automation: 'manual',
+    tools: [],
     standards: { wstg: ['WSTG-CLNT-11'], owaspTop10: ['A01:2025'], cwe: [346, 942] },
   },
   {
@@ -1215,8 +1242,8 @@ export const webChecks: Check[] = [
       'Inspect local storage, session storage, IndexedDB and service worker caches for tokens, personal data and business data that survives logout.',
     example:
       'Access tokens in local storage that remain after logout on a shared machine.',
-    automation: 'assisted',
-    tools: ['playwright'],
+    automation: 'manual',
+    tools: [],
     standards: {
       wstg: ['WSTG-CLNT-12'],
       asvs: ['v5.0.0-3.2.1'],
@@ -1268,5 +1295,331 @@ export const webChecks: Check[] = [
       apiTop10: ['API4:2023'],
       cwe: [770, 307],
     },
+  },
+
+  /* Tests the platform performs and never used to claim ------------------------------------- *
+   *                                                                                            *
+   * Each of these was a gap in the WSTG footprint while the tool that performs it was already   *
+   * running on every engagement. They are new claims rather than new work: the rule named        *
+   * against each one is in ZAP's release set, and the plan the adapter generates runs the full   *
+   * release policy with only the denial-of-service rules turned off.                             */
+  {
+    id: 'web-parameter-pollution',
+    title: 'HTTP parameter pollution',
+    category: 'inputValidation',
+    modules: ['web', 'api'],
+    description:
+      'Send the same parameter twice and establish which copy the application acts on, because the layers in front of it do not have to agree. A gateway, a WAF and a framework can each read a different one, so the value that is inspected is not always the value that is used.',
+    example:
+      'A checkout that reads the last `amount` while the fraud rule in front of it reads the first, so a request carrying both passes inspection at one price and is charged at another.',
+    automation: 'automated',
+    tools: ['requestManipulationProbe'],
+    standards: {
+      wstg: ['WSTG-INPV-04'],
+      owaspTop10: ['A03:2025'],
+      cwe: [235],
+    },
+  },
+  {
+    id: 'web-server-side-includes',
+    title: 'Server-side include injection',
+    category: 'inputValidation',
+    modules: ['web'],
+    description:
+      'Test whether input written into a page is processed by the server as a server-side include directive before the page is sent, which turns a reflected value into file disclosure or command execution.',
+    example:
+      'A search term echoed into an `.shtml` page where an `exec cmd` directive is run by the server rather than displayed.',
+    automation: 'automated',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-INPV-08'],
+      owaspTop10: ['A03:2025'],
+      cwe: [97],
+    },
+  },
+  {
+    id: 'web-xpath-injection',
+    title: 'XPath injection',
+    category: 'inputValidation',
+    modules: ['web', 'api'],
+    description:
+      'Where a query runs against an XML document rather than a database, test whether input alters the query rather than being compared by it. The authentication bypass shape is identical to SQL injection and the defence is not, because XPath has no prepared statement.',
+    example:
+      'A login that selects a user node by concatenating the submitted name, so an always-true predicate returns the first account in the document.',
+    automation: 'assisted',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-INPV-09'],
+      owaspTop10: ['A03:2025'],
+      cwe: [643],
+    },
+  },
+  {
+    id: 'web-format-string-injection',
+    title: 'Format string injection',
+    category: 'inputValidation',
+    modules: ['web', 'api'],
+    description:
+      'Test whether user input reaches a formatting function as the format itself rather than as an argument, which discloses memory or crashes the process depending on the runtime.',
+    example:
+      'A username passed straight to a logging call as the format string, so a run of conversion specifiers reads adjacent memory into the log.',
+    automation: 'assisted',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-INPV-13'],
+      owaspTop10: ['A03:2025'],
+      cwe: [134],
+    },
+  },
+  {
+    id: 'web-exposed-session-variables',
+    title: 'Session identifiers and sensitive values in URLs',
+    category: 'sessionManagement',
+    modules: ['web', 'api'],
+    description:
+      'Look for session identifiers, tokens and other sensitive values carried in the query string rather than in a header or a cookie. Anything in a URL reaches the browser history, the Referer header of every outbound link, and every proxy and access log on the path.',
+    example:
+      'A session id appended to every link, so following an external link hands the session to that site in the Referer header.',
+    automation: 'automated',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-SESS-04'],
+      asvs: ['v5.0.0-3.1.1'],
+      owaspTop10: ['A02:2025'],
+      cwe: [598],
+    },
+  },
+  {
+    id: 'web-reverse-tabnabbing',
+    title: 'Reverse tabnabbing on outbound links',
+    category: 'clientSide',
+    modules: ['web'],
+    description:
+      'Find links and window openers that give the destination a handle back to the page that opened it. The destination can then navigate the original tab to a page of its choosing, which the user returns to believing they never left it.',
+    example:
+      'A user-submitted profile link opening in a new tab without `rel="noopener"`, letting the linked site replace the original tab with a copy of the login page.',
+    automation: 'automated',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-CLNT-14'],
+      owaspTop10: ['A04:2025'],
+      cwe: [1022],
+    },
+  },
+  {
+    id: 'web-html-injection',
+    title: 'HTML injection',
+    category: 'clientSide',
+    modules: ['web'],
+    description:
+      'Test whether input is written into the page as markup rather than as text, short of script execution. Content injection alone is enough to forge a login form, deface a page, or rewrite the destination of a form the user already trusts.',
+    example:
+      'A name field rendered unescaped, allowing an injected form that overlays the real one and posts the password elsewhere.',
+    automation: 'assisted',
+    tools: ['zap', 'dalfox'],
+    standards: {
+      wstg: ['WSTG-CLNT-03'],
+      owaspTop10: ['A03:2025'],
+      cwe: [80],
+    },
+  },
+  {
+    id: 'web-client-side-javascript-execution',
+    title: 'Client-side JavaScript execution from controllable input',
+    category: 'clientSide',
+    modules: ['web'],
+    description:
+      'Find places where input reaches a JavaScript event handler, an inline attribute or a dynamic evaluation, so the page runs code chosen by the requester without a script tag ever appearing in the response.',
+    example:
+      'A redirect parameter written into an `onclick` attribute, so the value becomes an expression the browser evaluates.',
+    automation: 'assisted',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-CLNT-02'],
+      owaspTop10: ['A03:2025'],
+      cwe: [95],
+    },
+  },
+  {
+    id: 'web-client-side-resource-manipulation',
+    title: 'Client-side resource manipulation',
+    category: 'clientSide',
+    modules: ['web'],
+    description:
+      'Test whether the requester can choose which resource the page loads or where it sends the user: a script source, a stylesheet, an iframe target, a character set, or a redirect built from a value the client supplied.',
+    example:
+      'A theme parameter used as the `src` of a script tag, so the page loads code from a host the requester names.',
+    automation: 'assisted',
+    tools: ['zap'],
+    standards: {
+      wstg: ['WSTG-CLNT-06'],
+      owaspTop10: ['A03:2025'],
+      cwe: [601, 829],
+    },
+  },
+
+  /* Guide tests the platform holds as work a person does ------------------------------------- *
+   *                                                                                             *
+   * Each is a WSTG test with no tool behind it. They were absent from the catalogue entirely,    *
+   * which meant a report simply did not mention them; holding them as manual work is the honest  *
+   * arrangement, and `appliesWhen` keeps the ones that need a feature from being counted against  *
+   * a target that does not have it.                                                              */
+  {
+    id: 'web-platform-configuration',
+    title: 'Application platform configuration',
+    category: 'configuration',
+    modules: ['web'],
+    description:
+      'Check what the platform shipped with and nobody removed: sample applications, documentation trees, installer and setup routes, framework debug modes, directory listing, and the default pages that name the exact build in use.',
+    example:
+      'A framework profiler route left enabled in production, listing every environment variable including the database password.',
+    automation: 'assisted',
+    tools: ['nuclei', 'ffuf'],
+    standards: { wstg: ['WSTG-CONF-02'], owaspTop10: ['A05:2025'], cwe: [16, 1188] },
+  },
+  {
+    id: 'web-path-confusion',
+    title: 'Path confusion and route resolution',
+    category: 'configuration',
+    modules: ['web', 'api'],
+    description:
+      'Test whether the proxy, the framework and the file server agree about what a path means. Matrix parameters, encoded separators, trailing suffixes and double slashes are each read differently by different layers, and where they disagree an authorisation rule applied by one is not applied by the other.',
+    example:
+      'A gateway rule protecting `/admin` that does not match `/admin;x=1`, which the application routes to the same handler.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-CONF-13'], owaspTop10: ['A01:2025'], cwe: [22, 436] },
+  },
+  {
+    id: 'web-file-permissions',
+    title: 'File and directory permissions on the host',
+    category: 'configuration',
+    modules: ['web'],
+    description:
+      'Where the engagement includes host access, review the ownership and mode of configuration files, key material, log directories and the deployment tree, and establish which of them the application user could modify. Needs access to the host, so it belongs to an internal or configuration-review engagement rather than to a black-box one.',
+    example:
+      'A world-readable configuration file holding the database password, on a host where several unrelated services run as different users.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-CONF-09'], owaspTop10: ['A05:2025'], cwe: [732] },
+  },
+  {
+    id: 'web-role-definitions',
+    title: 'Role definitions and the permission model',
+    category: 'accessControl',
+    modules: ['web', 'api'],
+    description:
+      'Establish which roles exist, what each is meant to be able to do, and whether the model is documented anywhere the developers actually read. Without it the access control testing has nothing to compare an observation against, and "this account could reach that record" is an observation rather than a finding.',
+    example:
+      'A support role documented as read-only that has held write access to customer records since a migration nobody reviewed.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-IDNT-01'], owaspTop10: ['A01:2025'], cwe: [1220] },
+  },
+  {
+    id: 'web-username-policy',
+    title: 'Username policy and account identifier handling',
+    category: 'authentication',
+    modules: ['web'],
+    description:
+      'Check whether usernames are predictable, whether the application enforces uniqueness in a form the user can see, and whether visually confusable or whitespace-padded identifiers can be registered to impersonate an existing account.',
+    example:
+      'A registration form that accepts a name differing from an administrator only by a Cyrillic character, which renders identically in the interface.',
+    automation: 'manual',
+    tools: [],
+    appliesWhen: ['registration'],
+    standards: { wstg: ['WSTG-IDNT-05'], owaspTop10: ['A07:2025'], cwe: [521, 1007] },
+  },
+  {
+    id: 'web-alternative-channel-authentication',
+    title: 'Authentication on alternative channels',
+    category: 'authentication',
+    modules: ['web', 'api'],
+    description:
+      'Find the other doors into the same account: a mobile application, a legacy interface, a partner or support console, an interactive voice system, an older API version. Each has to enforce what the main interface enforces, and the weakest one sets the real strength of the authentication.',
+    example:
+      'A legacy mobile endpoint that still accepts a password with no second factor, months after the web interface began requiring one.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-ATHN-10'], owaspTop10: ['A07:2025'], cwe: [287, 305] },
+  },
+  {
+    id: 'web-session-hijacking',
+    title: 'Session hijacking exposure',
+    category: 'sessionManagement',
+    modules: ['web'],
+    description:
+      'Take the whole path a session identifier travels and establish where a third party could obtain it: an unencrypted hop, a cookie scoped wider than the application, a value written into a log or a URL, a subdomain able to set cookies for the parent. Then confirm whether a stolen identifier is usable from another address and another browser.',
+    example:
+      'A session cookie scoped to the registrable domain, so a marketing subdomain run by an agency can read it.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-SESS-09'], owaspTop10: ['A07:2025'], cwe: [384, 614] },
+  },
+  {
+    id: 'web-mail-header-injection',
+    title: 'IMAP and SMTP injection through mail features',
+    category: 'inputValidation',
+    modules: ['web', 'api'],
+    description:
+      'Where the application sends or reads mail on the user behalf, test whether input reaches the protocol as a command or a header rather than as content, which lets a requester add recipients, forge headers, or reach the mail server directly.',
+    example:
+      'A contact form that writes the submitted subject into the message headers unfiltered, allowing an extra Bcc line to be added.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-INPV-10'], owaspTop10: ['A03:2025'], cwe: [93, 88] },
+  },
+  {
+    id: 'web-incubated-vulnerabilities',
+    title: 'Incubated and delayed-execution vulnerabilities',
+    category: 'inputValidation',
+    modules: ['web'],
+    description:
+      'Test the payloads that do nothing when submitted and fire later, somewhere else: content stored now and rendered in an administrative console tomorrow, a filename read by a batch job, a value that reaches a report generator or a mail template. The submission is harmless and the execution happens under somebody else identity.',
+    example:
+      'A delivery note field rendered unescaped in the warehouse console, so the payload runs with a staff session rather than the submitter one.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-INPV-14'], owaspTop10: ['A03:2025'], cwe: [79, 74] },
+  },
+  {
+    id: 'web-css-injection',
+    title: 'CSS injection',
+    category: 'clientSide',
+    modules: ['web'],
+    description:
+      'Test whether input reaches a stylesheet or a style attribute. Style alone is enough to read a page a character at a time through attribute selectors and background requests, to overlay a control the user is about to click, and to make a page claim something it does not say.',
+    example:
+      'A theme colour written straight into a style block, allowing a selector that leaks the value of a hidden anti-forgery token one character per request.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-CLNT-05'], owaspTop10: ['A03:2025'], cwe: [79, 116] },
+  },
+  {
+    id: 'web-process-timing',
+    title: 'Process timing and ordering',
+    category: 'businessLogic',
+    modules: ['web', 'api'],
+    description:
+      'Measure what the time a response takes reveals, and what happens when the steps of a process arrive in an order the designer did not expect: a step skipped, repeated, or replayed after the window it belonged to.',
+    example:
+      'A login that answers measurably faster for an account that does not exist, giving an enumeration oracle that the error text carefully avoids.',
+    automation: 'manual',
+    tools: [],
+    standards: { wstg: ['WSTG-BUSL-04'], owaspTop10: ['A04:2025'], cwe: [208, 841] },
+  },
+  {
+    id: 'web-payment-flow',
+    title: 'Payment flow integrity',
+    category: 'businessLogic',
+    modules: ['web', 'api'],
+    description:
+      'Follow the money through the application: where the amount is decided, whether the client can influence it, whether the confirmation the payment provider sends back is verified rather than trusted, and whether an order can be completed without a settled payment. Tested only against a sandbox or a staging provider, never against live settlement.',
+    example:
+      'An order marked paid on the browser redirect back from the provider, without checking the signed server-to-server notification that follows it.',
+    automation: 'manual',
+    tools: [],
+    appliesWhen: ['payment'],
+    standards: { wstg: ['WSTG-BUSL-10'], owaspTop10: ['A04:2025'], cwe: [602, 840] },
   },
 ];

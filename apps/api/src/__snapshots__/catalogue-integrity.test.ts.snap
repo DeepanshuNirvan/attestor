@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the WSTG footprint we publish > holds the WSTG gap at or below the level it has been reduced to 1`] = `[]`;

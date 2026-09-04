@@ -17,3 +17,9 @@ tmp/
 
 # Demo credentials written by `pnpm seed`.
 .seed-credentials.txt
+
+# Throwaway end-to-end harnesses. They drive the real API, so they hold a real password and a real
+# TOTP secret for the local stack; `tmp-e2e-state.json` was one `git add -A` away from the history.
+tmp-*.mjs
+tmp-*.json
+*-e2e.mjs

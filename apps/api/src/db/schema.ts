@@ -156,6 +156,8 @@ export const credentialSet = pgTable(
     nonce: text('nonce').notNull(),
     /** Whether this is the second account for the role, which access control testing needs. */
     isSecondary: boolean('is_secondary').notNull().default(false),
+    /** Which slot on the intake link this came from, so a resubmission replaces rather than adds. */
+    intakeSlot: text('intake_slot'),
     tenantId: text('tenant_id'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     lastVerifiedAt: timestamp('last_verified_at', { withTimezone: true }),
@@ -164,7 +166,16 @@ export const credentialSet = pgTable(
     shreddedAt: timestamp('shredded_at', { withTimezone: true }),
     createdAt: createdAt(),
   },
-  (table) => [index('credential_set_engagement_idx').on(table.engagementId)],
+  (table) => [
+    index('credential_set_engagement_idx').on(table.engagementId),
+    // Partial, matching migration 0005: rows that predate intake have a null slot and must not
+    // collide with each other. The `where` is not decoration — an ON CONFLICT that names these two
+    // columns without it matches no index at all, and every submission fails with "no unique or
+    // exclusion constraint matching the ON CONFLICT specification".
+    uniqueIndex('credential_set_intake_slot_unique')
+      .on(table.engagementId, table.intakeSlot)
+      .where(sql`${table.intakeSlot} is not null`),
+  ],
 );
 
 /** One-time links for the client to submit credentials without them travelling through email. */
@@ -174,7 +185,14 @@ export const credentialIntakeLink = pgTable('credential_intake_link', {
     .notNull()
     .references(() => engagement.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull(),
+  /**
+   * What this link is asking for: one entry per account, each with a label, a role, and the kind of
+   * login it is. The client then sees the two or three boxes that kind needs rather than a blank
+   * form they have to interpret.
+   */
+  requested: jsonb('requested').notNull().default(sql`'[]'::jsonb`),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  /** First submission. The link stays usable until it expires, so it can be completed in stages. */
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdBy: uuid('created_by').notNull(),
   createdAt: createdAt(),
@@ -236,6 +254,11 @@ export const finding = pgTable(
     cvssVersion: text('cvss_version'),
     cvssVector: text('cvss_vector'),
     cvssScore: real('cvss_score'),
+
+    // The OWASP Risk Rating factor answers, keyed by factor id. The rating itself is derived rather
+    // than stored, so there is one source of truth and a client asking "why is this high?" gets the
+    // sixteen answers instead of a number.
+    owaspRiskScores: jsonb('owasp_risk_scores'),
 
     cweId: integer('cwe_id'),
     owaspCategory: text('owasp_category'),

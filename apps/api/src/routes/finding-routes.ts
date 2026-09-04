@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { isValidCvssVector, scoreCvss } from '@attestor/findings';
+import { isValidCvssVector, isValidRiskScore, scoreCvss } from '@attestor/findings';
 import { SEVERITIES } from '@attestor/shared';
 import type { ConsoleContext } from '../context.ts';
 import {
@@ -223,11 +223,26 @@ export function registerFindingRoutes(app: FastifyInstance, context: ConsoleCont
           .max(20)
           .optional(),
         cvssVector: z.string().max(200).optional(),
+        owaspRiskScores: z.record(z.string().max(60), z.number().int().min(0).max(9)).optional(),
       })
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
 
     const update: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
+
+    // Every answer has to be one the methodology publishes for that factor. A score a client cannot
+    // find in their own copy of the sheet is a number we cannot defend in front of their engineers,
+    // and the whole reason for offering this alongside CVSS is that it can be argued with.
+    if (parsed.data.owaspRiskScores !== undefined) {
+      const invalid = Object.entries(parsed.data.owaspRiskScores)
+        .filter(([factorId, score]) => !isValidRiskScore(factorId, score))
+        .map(([factorId, score]) => `${factorId}=${score}`);
+      if (invalid.length > 0) {
+        return reply
+          .code(400)
+          .send({ error: `not published options of the OWASP method: ${invalid.join(', ')}` });
+      }
+    }
 
     if (parsed.data.cvssVector !== undefined) {
       if (!isValidCvssVector(parsed.data.cvssVector)) {

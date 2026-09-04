@@ -160,6 +160,7 @@ export async function buildReportData(
     cvssVersion: (item.cvssVersion as Finding['cvssVersion']) ?? undefined,
     cvssVector: item.cvssVector ?? undefined,
     cvssScore: item.cvssScore ?? undefined,
+    owaspRiskScores: (item.owaspRiskScores as Finding['owaspRiskScores']) ?? undefined,
     cweId: item.cweId ?? undefined,
     owaspCategory: item.owaspCategory ?? undefined,
     apiCategory: item.apiCategory ?? undefined,

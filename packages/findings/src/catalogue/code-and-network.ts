@@ -197,7 +197,9 @@ export const networkChecks: Check[] = [
       'An unauthenticated message broker on an internal-only port that is reachable from the office network.',
     automation: 'automated',
     tools: ['nmap'],
-    standards: { owaspTop10: ['A02:2025'], cwe: [200] },
+    // WSTG-CONF-01 asks what is running across the network and how it is configured, and names nmap
+    // as the tool for it. This check is that test, performed with that tool.
+    standards: { wstg: ['WSTG-CONF-01'], owaspTop10: ['A02:2025'], cwe: [200] },
   },
   {
     id: 'network-cve-correlation',

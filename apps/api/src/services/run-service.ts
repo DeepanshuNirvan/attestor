@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { resolvePolicy, windowsToMinutes, type Policy } from '@attestor/policy';
 import type { EngagementScopeContext } from '@attestor/core';
+import { implementedProbesForModule } from '@attestor/core';
 import { adapterFor, adaptersForModule } from '@attestor/scanners';
 import type { ModuleName } from '@attestor/shared';
 import type { Database } from '../db/client.ts';
@@ -127,6 +128,38 @@ export interface QueuedRun {
  * Create the scan run rows for a module. The rows exist before any job is queued, so a crash
  * between "queued" and "started" leaves a visible row in `queued` rather than a silent gap.
  */
+/**
+ * Crawled endpoints that belong to the hosts this run is allowed to touch.
+ *
+ * `discovered_asset` accumulates across an engagement, so a probe that reads it gets endpoints from
+ * every earlier run — including hosts that were in scope then and are not among this run's targets
+ * now. The scope guard catches that, correctly, by refusing the whole probe: one stale URL from a
+ * container that has since been replaced aborted a run that could have tested the real target
+ * perfectly well. Filtering here means the probe examines what it may and says nothing about the
+ * rest, which is what the guard is there to enforce rather than to punish.
+ */
+export function endpointsWithinTargets(
+  endpoints: readonly string[],
+  targets: readonly string[],
+): string[] {
+  const allowed = new Set<string>();
+  for (const target of targets) {
+    try {
+      allowed.add(new URL(/^https?:\/\//.test(target) ? target : `http://${target}`).hostname);
+    } catch {
+      // A target that is not a URL or a host is the scope guard's problem, not this function's.
+    }
+  }
+
+  return endpoints.filter((endpoint) => {
+    try {
+      return allowed.has(new URL(endpoint).hostname);
+    } catch {
+      return false;
+    }
+  });
+}
+
 export async function createRunsForModule(
   database: Database,
   input: {
@@ -140,7 +173,18 @@ export async function createRunsForModule(
   const adapters = adaptersForModule(input.module);
   const runs: QueuedRun[] = [];
 
-  for (const adapter of adapters) {
+  // Probes that run inside the platform sit alongside the container tools rather than in a path of
+  // their own: same row, same status, same coverage accounting. Only implemented ones appear, so a
+  // planned probe cannot produce a run that records itself as having tested anything.
+  const tools: { id: string; coversCheckIds: string[] }[] = [
+    ...adapters.map((adapter) => ({ id: adapter.id, coversCheckIds: adapter.coversCheckIds })),
+    ...implementedProbesForModule(input.module).map((probe) => ({
+      id: probe.id,
+      coversCheckIds: probe.coversCheckIds,
+    })),
+  ];
+
+  for (const adapter of tools) {
     const [row] = await database
       .insert(scanRunTable)
       .values({

@@ -20,6 +20,9 @@ export const HTTPX_JSONL = `
 {"timestamp":"2026-07-13T05:00:01Z","url":"http://legacy.attestor-lab.internal","input":"legacy.attestor-lab.internal","host":"93.184.216.35","port":"80","scheme":"http","status_code":200,"title":"Legacy login","webserver":"Apache/2.4.41","content_length":1024}
 {"timestamp":"2026-07-13T05:00:02Z","url":"http://redirects.attestor-lab.internal","input":"redirects.attestor-lab.internal","scheme":"http","status_code":301,"location":"https://redirects.attestor-lab.internal/","content_length":0}
 {"timestamp":"2026-07-13T05:00:03Z","input":"dead.attestor-lab.internal","failed":true}
+{"timestamp":"2026-07-13T05:00:04Z","url":"https://juice.attestor-lab.internal/robots.txt","input":"https://juice.attestor-lab.internal","scheme":"https","status_code":200,"path":"/robots.txt","content_type":"text/plain","content_length":62,"body":"User-agent: *\\nDisallow: /admin-v2/\\nDisallow: /internal/backup\\n"}
+{"timestamp":"2026-07-13T05:00:05Z","url":"https://juice.attestor-lab.internal/sitemap.xml","input":"https://juice.attestor-lab.internal","scheme":"https","status_code":404,"path":"/sitemap.xml","content_length":153,"body":"<html><head><title>404 Not Found</title></head></html>"}
+{"timestamp":"2026-07-13T05:00:06Z","url":"https://juice.attestor-lab.internal/security.txt","input":"https://juice.attestor-lab.internal","scheme":"https","status_code":404,"path":"/security.txt","content_length":153,"body":"<html><head><title>404 Not Found</title></head></html>"}
 `;
 
 export const NAABU_JSONL = `
@@ -108,9 +111,66 @@ export const ZAP_REPORT_JSON = JSON.stringify({
   ],
 });
 
+/**
+ * Real dalfox output, captured from the pinned image against a reflecting target.
+ *
+ * Three lines on purpose. The first is dalfox 3.x's run summary, which has no `type` and must not
+ * become a finding — a parser that took every JSON line would file "scan completed" as a
+ * cross-site scripting vulnerability. The second is a real 3.x finding. The third is a 2.x-shaped
+ * line with `poc_type`, kept because the image tag moves and a parser that only understands the
+ * version installed today is a parser that silently stops finding anything after an image update.
+ */
 export const DALFOX_JSONL = `
-{"type":"V","inject_type":"inHTML-URL","poc_type":"plain","method":"GET","data":"https://juice.attestor-lab.internal/rest/products/search?q=%3Cscript%3Ealert%281%29%3C%2Fscript%3E","param":"q","payload":"<script>alert(1)</script>","evidence":"12 line:  <script>alert(1)</script>","cwe":"CWE-79","severity":"High","message_id":42,"message_str":"Triggered XSS Payload (found DOM Object)"}
+{"meta":{"dalfox_version":"3.2.1","dedup_mode":"exact","findings_count":1,"incomplete":false,"scan_duration_ms":16616,"target_summary":[{"findings_count":1,"status":"findings","target":"http://reflect.attestor-lab.internal/search?q=test"}],"targets":["/out/urls.txt"],"targets_deduplicated":0,"total_requests":167}}
+{"confidence":"high","confidence_reason":"payload reached an executable position in the parsed response","cwe":"CWE-79","data":"https://juice.attestor-lab.internal/rest/products/search?q=%3Csvg%20onload%3Dalert%281%29%20class%3Ddlx55a08e9d%3E","detection_method":"reflection","evidence":"DOM verification successful for param q (DOM marker)","inject_type":"inHTML","location":"Query","message_id":606,"message_str":"Triggered XSS Payload (DOM marker): q=<svg onload=alert(1) class=dlx55a08e9d>","method":"GET","param":"q","payload":"<svg onload=alert(1) class=dlx55a08e9d>","severity":"High","type":"V","type_description":"Vulnerable - dalfox asserts this input is exploitable; act on it"}
 {"type":"G","inject_type":"grep","method":"GET","data":"https://juice.attestor-lab.internal/","message_str":"Found Grep: Email address"}
+`;
+
+/**
+ * Real katana output, captured from the pinned image crawling a live application. Two script
+ * bundles and a stylesheet are included on purpose: they are endpoints, and the replay list has to
+ * exclude them or the access control matrix spends its budget on static files.
+ */
+/**
+ * Real dnsx output, captured from the pinned image in the hardened container configuration.
+ *
+ * Four names on purpose: a domain whose SPF refuses everything, its DMARC name set to reject, a
+ * domain with no SPF at all, and a `_dmarc` name that does not exist. Between them they exercise
+ * every branch, including the two that must produce nothing.
+ */
+/**
+ * Real ffuf output, captured from the pinned image against a seeded server. Five results, of which
+ * two are findings, one is a redirect worth knowing about, and one is a directory that is inventory
+ * rather than a vulnerability — reporting "the /assets directory exists" is how a report gets long
+ * and stops being read.
+ */
+export const FFUF_JSON = JSON.stringify({
+  commandline: 'ffuf -w /out/paths.txt:FUZZ -w /out/targets.txt:TARGET -u TARGETFUZZ',
+  time: '2026-08-28T19:50:00Z',
+  results: [
+    { input: { FUZZ: '.env', TARGET: 'https://app.attestor-lab.internal/' }, url: 'https://app.attestor-lab.internal/.env', status: 200, length: 39, words: 2, lines: 3, content_type: 'text/plain' },
+    { input: { FUZZ: 'backup.zip', TARGET: 'https://app.attestor-lab.internal/' }, url: 'https://app.attestor-lab.internal/backup.zip', status: 200, length: 20481, words: 1, lines: 1, content_type: 'application/zip' },
+    { input: { FUZZ: 'admin', TARGET: 'https://app.attestor-lab.internal/' }, url: 'https://app.attestor-lab.internal/admin', status: 301, length: 169, words: 5, lines: 8, redirectlocation: '/admin/' },
+    { input: { FUZZ: 'assets', TARGET: 'https://app.attestor-lab.internal/' }, url: 'https://app.attestor-lab.internal/assets', status: 301, length: 169, words: 5, lines: 8 },
+    { input: { FUZZ: 'actuator/heapdump', TARGET: 'https://app.attestor-lab.internal/' }, url: 'https://app.attestor-lab.internal/actuator/heapdump', status: 403, length: 0, words: 0, lines: 0 },
+  ],
+});
+
+export const DNSX_JSONL = `
+{"host":"example.com","ttl":77,"a":["104.20.23.154","172.66.147.243"],"txt":["v=spf1 -all","_k2n1y4vw3qtb4skdx9e7dxt97qrmmq9"],"mx":[""],"status_code":"NOERROR"}
+{"host":"_dmarc.example.com","ttl":300,"txt":["v=DMARC1;p=reject;sp=reject;adkim=s;aspf=s"],"status_code":"NOERROR"}
+{"host":"legacy.attestor-lab.internal","ttl":300,"a":["93.184.216.35"],"txt":["google-site-verification=abc"],"status_code":"NOERROR"}
+{"host":"_dmarc.legacy.attestor-lab.internal","ttl":300,"txt":[],"status_code":"NXDOMAIN"}
+{"host":"permissive.attestor-lab.internal","ttl":300,"a":["93.184.216.36"],"txt":["v=spf1 include:_spf.example.net ?all"],"status_code":"NOERROR"}
+{"host":"_dmarc.permissive.attestor-lab.internal","ttl":300,"txt":["v=DMARC1; p=none; rua=mailto:reports@attestor-lab.internal"],"status_code":"NOERROR"}
+`;
+
+export const KATANA_JSONL = `
+{"timestamp":"2026-08-28T18:17:54.605295725Z","request":{"method":"GET","endpoint":"https://juice.attestor-lab.internal"},"response":{"status_code":200,"headers":{"Content-Type":"text/html; charset=UTF-8"},"content_length":80117}}
+{"timestamp":"2026-08-28T18:17:55.606906530Z","request":{"method":"GET","endpoint":"https://juice.attestor-lab.internal/main.js","tag":"script","attribute":"src","source":"https://juice.attestor-lab.internal"},"response":{"status_code":200,"headers":{"Content-Type":"application/javascript; charset=UTF-8"},"content_length":457995}}
+{"timestamp":"2026-08-28T18:17:55.664459156Z","request":{"method":"GET","endpoint":"https://juice.attestor-lab.internal/styles.css","tag":"link","attribute":"href","source":"https://juice.attestor-lab.internal"},"response":{"status_code":200,"headers":{"Content-Type":"text/css; charset=UTF-8"},"content_length":685248}}
+{"timestamp":"2026-08-28T18:17:56.101288400Z","request":{"method":"GET","endpoint":"https://juice.attestor-lab.internal/rest/products/search?q=apple","tag":"a","attribute":"href","source":"https://juice.attestor-lab.internal"},"response":{"status_code":200,"headers":{"Content-Type":"application/json; charset=utf-8"},"content_length":2044}}
+{"timestamp":"2026-08-28T18:17:56.402911700Z","request":{"method":"GET","endpoint":"https://juice.attestor-lab.internal/api/BasketItems/12","tag":"a","attribute":"href","source":"https://juice.attestor-lab.internal"},"response":{"status_code":200,"headers":{"Content-Type":"application/json; charset=utf-8"},"content_length":311}}
 `;
 
 export const SEMGREP_JSON = JSON.stringify({
@@ -375,40 +435,16 @@ export const MOBSF_JSON = JSON.stringify({
   },
 });
 
-export const SCHEMATHESIS_JSON = JSON.stringify({
-  results: [
-    {
-      method: 'GET',
-      path: '/orders/{orderId}',
-      verbose_name: 'GET /orders/{orderId}',
-      has_failures: true,
-      checks: [
-        {
-          name: 'not_a_server_error',
-          value: 'failure',
-          message: 'Received a 500 response for orderId=-1',
-          example: { path: '/orders/-1', method: 'GET' },
-        },
-        { name: 'status_code_conformance', value: 'success' },
-      ],
-    },
-    {
-      method: 'POST',
-      path: '/orders',
-      verbose_name: 'POST /orders',
-      has_failures: true,
-      checks: [
-        {
-          name: 'response_schema_conformance',
-          value: 'failure',
-          message: 'Response contains properties not declared in the schema: internalRiskScore',
-          example: { path: '/orders', method: 'POST' },
-        },
-      ],
-    },
-    { method: 'GET', path: '/health', has_failures: false, checks: [] },
-  ],
-});
+/**
+ * Captured from schemathesis 4.25.2 running against a live VAmPI, trimmed to one failing
+ * scenario and one passing one. The events are keyed by name and carry the failure's own
+ * severity, which is why the adapter does not have to guess at one.
+ */
+export const SCHEMATHESIS_NDJSON = `{"Initialize":{"schemathesis_version":"4.25.2","seed":1}}
+{"ScenarioFinished":{"status":"failure","recorder":{"label":"POST /books/v1","checks":{"qvEwk4":[{"name":"content_type_conformance","status":"failure","failure_info":{"failure":{"type":"UndefinedContentType","operation":"POST /books/v1","title":"Undocumented Content-Type","message":"Received: application/problem+json\\nDocumented: application/json","case_id":null,"severity":"medium"}}},{"name":"response_schema_conformance","status":"failure","failure_info":{"failure":{"type":"JsonSchemaError","operation":"POST /books/v1","title":"Response violates schema","message":"401 is not of type \\"string\\"\\n\\nValidated against the response schema for status code 401.\\n\\nSchema at /properties/status:\\n\\n    {\\n        \\"type\\": \\"string\\",\\n        \\"enum\\": [\\n            \\"fail\\"\\n        ],\\n        \\"example\\": \\"fail\\"\\n    }\\n\\nValue:\\n\\n    401","case_id":null,"severity":"high"}}},{"name":"not_a_server_error","status":"success"}]},"interactions":{"qvEwk4":{"request":{"method":"POST","uri":"http://192.168.65.254:3013/books/v1"},"response":{"status_code":401}}}}}}
+{"ScenarioFinished":{"status":"success","recorder":{"label":"GET /books/v1","checks":{},"interactions":{}}}}
+{"EngineFinished":{"stop_reason":"completed"}}
+`;
 
 export const NMAP_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <nmaprun scanner="nmap" args="nmap -sV -oX -" start="1784000000" version="7.95">

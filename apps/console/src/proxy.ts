@@ -28,6 +28,9 @@ const PORTAL_PREFIXES = [
   '/questionnaire',
   '/account',
   '/invitation',
+  // Public on the portal: a client fills this in before they have an account. It must 404 on the
+  // console, where a staff member has no reason to open it and a stray link should not resolve.
+  '/credentials',
 ];
 
 export default function proxy(request: NextRequest): NextResponse {

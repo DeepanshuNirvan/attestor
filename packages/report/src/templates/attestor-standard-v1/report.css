@@ -476,6 +476,7 @@ section.continues {
 .state-tested { color: var(--accent); }
 .state-partiallyTested { color: var(--medium); }
 .state-notTested { color: var(--ink-faint); }
+.state-notApplicable { color: var(--ink-faint); font-style: italic; }
 
 /* Attack narrative */
 

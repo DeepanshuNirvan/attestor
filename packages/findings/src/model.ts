@@ -56,6 +56,13 @@ export const findingSchema = z.object({
   cvssVector: z.string().optional(),
   cvssScore: z.number().min(0).max(10).optional(),
 
+  /**
+   * OWASP Risk Rating factor answers, keyed by factor id. The rating is derived from these by
+   * `owaspRiskRating`, never stored, so the two can never disagree — and a client who asks why a
+   * finding is rated as it is gets the sixteen answers rather than a number they cannot check.
+   */
+  owaspRiskScores: z.record(z.string(), z.number().int().min(0).max(9)).optional(),
+
   cweId: z.number().int().positive().optional(),
   owaspCategory: z.string().optional(),
   apiCategory: z.string().optional(),

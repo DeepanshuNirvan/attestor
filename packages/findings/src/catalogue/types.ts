@@ -61,6 +61,49 @@ export const AUTOMATION_LABELS: Record<AutomationLevel, string> = {
   manual: 'Manual',
 };
 
+/**
+ * Things a target either has or does not have.
+ *
+ * No two clients are built the same. One authenticates with a JWT and another with a server-side
+ * session; one exposes GraphQL and another has never heard of it; most have no payment flow at all.
+ * A check written for a feature the target does not have must not fail the run, and must not quietly
+ * pass either — "we tested your GraphQL authorisation" is a false statement about an application
+ * with no GraphQL.
+ *
+ * Each key is something a run can actually establish by looking, which is the whole constraint on
+ * this list: a feature nothing can detect would only ever be `unknown`, and would buy nothing.
+ */
+export const TARGET_FEATURES = [
+  'login',
+  'registration',
+  'passwordReset',
+  'mfa',
+  'oauth',
+  'saml',
+  'jwt',
+  'cookieSession',
+  'restApi',
+  'graphql',
+  'soapXml',
+  'websocket',
+  'fileUpload',
+  'payment',
+  'adminInterface',
+  'multiTenant',
+  'cloudStorage',
+  'tls',
+] as const;
+
+export type TargetFeature = (typeof TARGET_FEATURES)[number];
+
+/**
+ * `present` and `absent` are both findings of fact. `unknown` means nothing looked, or what looked
+ * could not tell — and it is the default, because absence of evidence is not evidence of absence.
+ * Only `absent` may downgrade a check to "not applicable"; `unknown` leaves it as untested, which is
+ * the honest answer when nobody checked.
+ */
+export type TargetFeatureState = 'present' | 'absent' | 'unknown';
+
 export interface CheckStandards {
   wstg?: string[];
   asvs?: string[];
@@ -85,4 +128,11 @@ export interface Check {
   /** Tool ids from packages/scanners. Empty for checks that are purely manual. */
   tools: string[];
   standards: CheckStandards;
+  /**
+   * Features the target must have for this check to mean anything. Omitted means the check applies
+   * to every target — most do. When every feature named here was looked for and found absent, the
+   * coverage matrix records the check as not applicable, with what was looked for, rather than as a
+   * gap in the testing.
+   */
+  appliesWhen?: TargetFeature[];
 }

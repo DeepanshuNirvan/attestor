@@ -6,6 +6,8 @@
  * identifier absent from these tables fails validation rather than printing a broken reference.
  */
 
+import { wstgTest } from './wstg.ts';
+
 export interface StandardEntry {
   id: string;
   title: string;
@@ -105,7 +107,7 @@ export const ASVS_CHAPTERS: StandardEntry[] = [
 
 export const ASVS_VERSION = '5.0.0';
 
-/** WSTG 4.2 categories. Test ids are `WSTG-<CAT>-<NN>`. */
+/** WSTG categories. Test ids are `WSTG-<CAT>-<NN>`; the tests themselves live in `wstg.ts`. */
 export const WSTG_CATEGORIES: StandardEntry[] = [
   { id: 'INFO', title: 'Information Gathering' },
   { id: 'CONF', title: 'Configuration and Deployment Management Testing' },
@@ -121,13 +123,20 @@ export const WSTG_CATEGORIES: StandardEntry[] = [
   { id: 'APIT', title: 'API Testing' },
 ];
 
-export const WSTG_VERSION = '4.2';
+/** The current stable checklist, which supersedes 4.2. See `wstg.ts` for the tests and the source. */
+export const WSTG_VERSION = 'stable (2026-08)';
 
-const WSTG_ID = /^WSTG-(INFO|CONF|IDNT|ATHN|ATHZ|SESS|INPV|ERRH|CRYP|BUSL|CLNT|APIT)-\d{2}$/;
 const ASVS_ID = /^v5\.0\.0-\d{1,2}\.\d{1,2}\.\d{1,2}$/;
 
+/**
+ * Whether this is a real WSTG test, not merely a well-shaped string.
+ *
+ * The previous version of this matched `WSTG-<CAT>-<NN>` with a regex, which accepts `WSTG-INPV-99`
+ * and `WSTG-CLNT-42` — neither of which exists. A mistyped reference in the catalogue printed into
+ * a client's report as an OWASP citation that leads nowhere.
+ */
 export function isWstgId(value: string): boolean {
-  return WSTG_ID.test(value);
+  return wstgTest(value) !== undefined;
 }
 
 export function isAsvsRequirement(value: string): boolean {

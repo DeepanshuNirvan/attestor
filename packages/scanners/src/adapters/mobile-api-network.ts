@@ -3,6 +3,7 @@ import {
   hostList,
   normaliseSeverity,
   recordAsEvidence,
+  parseJsonLines,
   parseJsonObject,
   splitTarget,
   type DiscoveredAsset,
@@ -212,25 +213,49 @@ curl -sS -X POST --data "hash=$HASH" -H "Authorization: $MOBSF_API_KEY" \\
   },
 };
 
-interface SchemathesisCheck {
-  name?: string;
-  value?: string;
+/**
+ * Schemathesis 4 writes NDJSON events, one JSON object per line, each keyed by the event name.
+ *
+ * The shape below is what the tool actually emitted against a live API, not what its documentation
+ * describes. The one that matters is `ScenarioFinished`: it carries the operation label, every check
+ * that ran against every generated case, and the request and response of each interaction. A failed
+ * check names its own severity, which is worth more than a severity we would guess.
+ *
+ * The previous version of this adapter parsed a `{ results: [...] }` report that the tool has not
+ * produced for two major versions, and asked for it with a flag that no longer exists — so every
+ * schemathesis run in the platform's history exited 2 on its first argument and API schema testing
+ * never once happened.
+ */
+interface SchemathesisFailure {
+  type?: string;
+  operation?: string;
+  title?: string;
   message?: string;
-  example?: { path?: string; method?: string; query?: Record<string, unknown>; body?: unknown };
+  severity?: string;
 }
 
-interface SchemathesisResult {
-  method?: string;
-  path?: string;
-  verbose_name?: string;
-  has_failures?: boolean;
-  checks?: SchemathesisCheck[];
-  errors?: { exception?: string; example?: { path?: string; method?: string } }[];
+interface SchemathesisCheckResult {
+  name?: string;
+  status?: string;
+  failure_info?: { failure?: SchemathesisFailure };
 }
 
-interface SchemathesisOutput {
-  results?: SchemathesisResult[];
-  generic_errors?: { exception?: string }[];
+interface SchemathesisInteraction {
+  request?: { method?: string; uri?: string };
+  response?: { status_code?: number };
+}
+
+interface SchemathesisScenario {
+  status?: string;
+  recorder?: {
+    label?: string;
+    checks?: Record<string, SchemathesisCheckResult[]>;
+    interactions?: Record<string, SchemathesisInteraction>;
+  };
+}
+
+interface SchemathesisEvent {
+  ScenarioFinished?: SchemathesisScenario;
 }
 
 /** Schemathesis check names map cleanly onto the API Top 10 and the catalogue. */
@@ -258,7 +283,36 @@ const SCHEMATHESIS_CHECK_MAP: Record<string, { checkId: string; apiCategory: str
       cwe: 20,
     },
     ignored_auth: { checkId: 'api-authentication-mechanisms', apiCategory: 'API2:2023', cwe: 306 },
+    positive_data_acceptance: {
+      checkId: 'api-injection-through-schema',
+      apiCategory: 'API8:2023',
+      cwe: 20,
+    },
+    response_headers_conformance: {
+      checkId: 'api-content-type-handling',
+      apiCategory: 'API8:2023',
+      cwe: 436,
+    },
+    allow_header_conformance: { checkId: 'web-http-methods', apiCategory: 'API8:2023', cwe: 650 },
+    unsupported_method: { checkId: 'web-http-methods', apiCategory: 'API8:2023', cwe: 650 },
+    missing_required_header: {
+      checkId: 'api-injection-through-schema',
+      apiCategory: 'API8:2023',
+      cwe: 20,
+    },
+    // Stateful checks. A resource that answers after it was deleted, or that never becomes
+    // available, is an object-level authorisation question rather than a schema one.
+    use_after_free: { checkId: 'api-bola', apiCategory: 'API1:2023', cwe: 416 },
+    ensure_resource_availability: { checkId: 'api-bola', apiCategory: 'API1:2023', cwe: 639 },
   };
+
+/** Schemathesis rates its own failures. Its words map onto ours without a guess in between. */
+function severityFrom(failure: SchemathesisFailure): 'low' | 'medium' | 'high' {
+  const value = (failure.severity ?? '').toLowerCase();
+  if (value === 'high' || value === 'critical') return 'high';
+  if (value === 'medium') return 'medium';
+  return 'low';
+}
 
 export const schemathesisAdapter: ScannerAdapter = {
   id: 'schemathesis',
@@ -272,83 +326,136 @@ export const schemathesisAdapter: ScannerAdapter = {
     'api-excessive-data-exposure',
     'api-authentication-mechanisms',
     'api-resource-consumption',
+    // The stateful and method checks land on these, so the coverage matrix should credit them.
+    'api-bola',
+    'web-http-methods',
   ],
 
-  buildInvocation: ({ policy, targets }) => ({
-    command: [
-      'run',
-      '/out/openapi.json',
-      '--url',
-      targets[0] ?? '',
-      '--checks',
-      'all',
-      '--report',
-      'json',
-      '--report-json-path',
-      '/out/schemathesis.json',
-      '--max-examples',
-      policy.intensity === 'thorough' ? '100' : '30',
-      '--workers',
-      String(policy.rateLimits.concurrency),
-      '--request-timeout',
-      '20',
-      // Deterministic runs, so a finding reported today can be reproduced tomorrow.
-      '--seed',
-      '1',
-      ...(policy.readOnlyMode ? ['--include-method', 'GET', '--include-method', 'HEAD'] : []),
-    ],
-    outputFile: 'schemathesis.json',
-  }),
+  // Schemathesis exits 1 when its checks fail, which is exactly the run worth keeping. Treating
+  // that as a failed run threw away every engagement where the API had a problem and kept only the
+  // ones where it did not — the precise opposite of what the tool is for. 2 stays a failure: that
+  // is a usage error, and it is how this adapter was broken for its whole life.
+  successExitCodes: [1],
+
+  /**
+   * Nothing to test without a schema, and guessing where one lives is exactly the behaviour this
+   * product refuses. The path is named in the policy and fetched from the target itself, so the
+   * document the tool reads is inside the same authorisation as everything else it touches.
+   */
+  cannotRunBecause: (policy) =>
+    policy.checks.openApiSchemaPath === ''
+      ? 'No OpenAPI schema was named. Set checks.openApiSchemaPath to the path the target serves ' +
+        'its specification from, for example /openapi.json, or ask the client for the document.'
+      : undefined,
+
+  buildInvocation: ({ policy, targets }) => {
+    const target = targets[0] ?? '';
+    const base = target.replace(/\/+$/, '');
+    const path = policy.checks.openApiSchemaPath;
+
+    return {
+      command: [
+        'run',
+        // The schema is read from the target over the network rather than from a file the platform
+        // writes, because the file the previous version pointed at was never written by anything.
+        `${base}${path.startsWith('/') ? path : `/${path}`}`,
+        '--url',
+        target,
+        '--checks',
+        'all',
+        // NDJSON is the machine-readable report this version produces. `--report json` and
+        // `--report-json-path` do not exist, and asking for them exits 2 before a request is sent.
+        '--report',
+        'ndjson',
+        '--report-ndjson-path',
+        '/out/schemathesis.ndjson',
+        '--max-examples',
+        policy.intensity === 'thorough' ? '100' : '30',
+        '--workers',
+        String(policy.rateLimits.concurrency),
+        // The platform's rate limit, not the tool's default, in the units it accepts.
+        '--rate-limit',
+        `${Math.max(1, Math.round(policy.rateLimits.perTargetRequestsPerSecond))}/s`,
+        '--request-timeout',
+        '20',
+        // Deterministic runs, so a finding reported today can be reproduced tomorrow.
+        '--seed',
+        '1',
+        ...(policy.readOnlyMode ? ['--include-method', 'GET', '--include-method', 'HEAD'] : []),
+      ],
+      outputFile: 'schemathesis.ndjson',
+    };
+  },
 
   parse: (raw, context: ParseContext): RawFinding[] => {
-    const output = parseJsonObject<SchemathesisOutput>(raw);
-    if (!output?.results) return [];
-
+    const { host } = splitTarget(context.defaultAsset);
     const findings: RawFinding[] = [];
 
-    for (const result of output.results) {
-      if (!result.has_failures) continue;
-      const { host } = splitTarget(context.defaultAsset);
+    // One finding per distinct failure per operation. The same schema violation is reported against
+    // every generated case that hit it, and a report with the same defect forty times is unreadable.
+    const seen = new Set<string>();
 
-      for (const check of result.checks ?? []) {
-        if ((check.value ?? '').toLowerCase() !== 'failure') continue;
-        const mapped = SCHEMATHESIS_CHECK_MAP[check.name ?? ''] ?? {
-          checkId: 'api-injection-through-schema',
-          apiCategory: 'API8:2023',
-        };
+    for (const event of parseJsonLines<SchemathesisEvent>(raw)) {
+      const scenario = event.ScenarioFinished;
+      if (!scenario || scenario.status !== 'failure') continue;
 
-        findings.push({
-          source: 'tool',
-          evidenceText: recordAsEvidence(check),
-          toolName: 'schemathesis',
-          toolFindingRef: check.name ?? 'schemathesis-check',
-          checkId: mapped.checkId,
-          apiCategory: mapped.apiCategory,
-          title: `${result.method ?? 'GET'} ${result.path ?? '/'}: ${check.name ?? 'check'} failed`,
-          description: check.message ?? '',
-          severity: check.name === 'not_a_server_error' ? 'medium' : 'low',
-          cvssVersion: context.cvssVersion,
-          cweId: mapped.cwe,
-          affectedAssets: [
-            { value: host, location: result.path, method: result.method },
-          ],
-          businessImpact: '',
-          likelihood: '',
-          attackerPrerequisites: '',
-          reproductionSteps: check.example
-            ? [
-                `Send ${check.example.method ?? result.method ?? 'GET'} ${check.example.path ?? result.path ?? '/'} with the generated case recorded in the evidence.`,
-              ]
-            : [],
-          remediation: '',
-          references: [
-            {
-              title: 'OWASP API Security Top 10',
-              url: 'https://owasp.org/API-Security/editions/2023/en/0x11-t10/',
-            },
-          ],
-          evidence: [],
-        });
+      const label = scenario.recorder?.label ?? '';
+      const [labelMethod, labelPath] = label.split(' ');
+
+      const checksByCase: Record<string, SchemathesisCheckResult[]> = scenario.recorder?.checks ?? {};
+      for (const [caseId, checks] of Object.entries(checksByCase)) {
+        const interaction = scenario.recorder?.interactions?.[caseId];
+
+        for (const check of checks) {
+          if (check.status !== 'failure') continue;
+          const failure = check.failure_info?.failure;
+          if (!failure) continue;
+
+          const operation = failure.operation ?? label;
+          const key = `${failure.type ?? check.name ?? 'unknown'}|${operation}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          const mapped = SCHEMATHESIS_CHECK_MAP[check.name ?? ''] ?? {
+            checkId: 'api-injection-through-schema',
+            apiCategory: 'API8:2023',
+          };
+          const method = interaction?.request?.method ?? labelMethod ?? 'GET';
+          const path = labelPath ?? '/';
+
+          findings.push({
+            source: 'tool',
+            evidenceText: recordAsEvidence({ check, failure, interaction }),
+            toolName: 'schemathesis',
+            toolFindingRef: `${failure.type ?? check.name ?? 'check'} ${operation}`,
+            checkId: mapped.checkId,
+            apiCategory: mapped.apiCategory,
+            title: `${operation}: ${failure.title ?? check.name ?? 'check failed'}`,
+            description: failure.message ?? '',
+            severity: severityFrom(failure),
+            cvssVersion: context.cvssVersion,
+            cweId: mapped.cwe,
+            affectedAssets: [{ value: host, location: path, method }],
+            businessImpact: '',
+            likelihood: '',
+            attackerPrerequisites: '',
+            reproductionSteps: [
+              `Send ${method} ${interaction?.request?.uri ?? path} with the generated case recorded in the evidence.`,
+              interaction?.response?.status_code === undefined
+                ? 'Compare the response against the operation definition in the schema.'
+                : `Observe the ${interaction.response.status_code} response and compare it against the operation definition in the schema.`,
+            ],
+            remediation:
+              'Make the implementation and the specification agree. Where the specification is right, fix the handler; where the implementation is right, publish the change, because clients generated from a stale document will send requests the API will not accept and trust responses it does not return.',
+            references: [
+              {
+                title: 'OWASP API Security Top 10',
+                url: 'https://owasp.org/API-Security/editions/2023/en/0x11-t10/',
+              },
+            ],
+            evidence: [],
+          });
+        }
       }
     }
 

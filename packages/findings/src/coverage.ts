@@ -1,5 +1,10 @@
 import type { ModuleName } from '@attestor/shared';
-import { checkCatalogue, type Check } from './catalogue/index.ts';
+import {
+  checkCatalogue,
+  type Check,
+  type TargetFeature,
+  type TargetFeatureState,
+} from './catalogue/index.ts';
 
 /**
  * The coverage matrix.
@@ -10,7 +15,50 @@ import { checkCatalogue, type Check } from './catalogue/index.ts';
  * "partially tested" with the abort reason attached.
  */
 
-export type CoverageState = 'tested' | 'partiallyTested' | 'notTested';
+/**
+ * `notApplicable` is deliberately distinct from `notTested`. "We did not test your payment flow"
+ * and "you have no payment flow" are different sentences, and printing the first when the second is
+ * true makes the report look like a gap where there is none — or worse, invites the client to
+ * believe something was checked that was not there to check.
+ */
+export type CoverageState = 'tested' | 'partiallyTested' | 'notTested' | 'notApplicable';
+
+/**
+ * What this particular target turned out to have.
+ *
+ * Everything defaults to `unknown`, which is the safe answer: a check whose feature was never
+ * looked for stays untested rather than being written off. Only a feature actively established as
+ * absent takes a check out of the matrix.
+ */
+export type TargetProfile = Partial<Record<TargetFeature, TargetFeatureState>>;
+
+export function featureState(profile: TargetProfile, feature: TargetFeature): TargetFeatureState {
+  return profile[feature] ?? 'unknown';
+}
+
+/**
+ * Whether a check has nothing to test on this target.
+ *
+ * Every feature it names must have been looked for and found absent. One `present` or one `unknown`
+ * and the check stands: a check that applies to either a REST API or GraphQL is still worth running
+ * when only one of the two was ruled out.
+ */
+export function checkIsNotApplicable(
+  check: Check,
+  profile: TargetProfile,
+): { notApplicable: false } | { notApplicable: true; reason: string } {
+  const features = check.appliesWhen ?? [];
+  if (features.length === 0) return { notApplicable: false };
+  if (!features.every((feature) => featureState(profile, feature) === 'absent')) {
+    return { notApplicable: false };
+  }
+
+  const names = features.join(', ');
+  return {
+    notApplicable: true,
+    reason: `This check applies to targets that use ${names}. The assessment looked and found none, so there was nothing here to test.`,
+  };
+}
 
 export interface CoverageEntry {
   check: Check;
@@ -34,6 +82,12 @@ export interface CoverageInput {
   /** Checks a human recorded as covered by manual work. */
   manuallyCovered: Map<string, string>;
   findingCountByCheckId: Map<string, number>;
+  /**
+   * What the target turned out to have. Omitted means nothing was established, which leaves every
+   * check applicable — the conservative reading, and the one that never claims a client had no
+   * GraphQL when nobody looked.
+   */
+  targetProfile?: TargetProfile;
 }
 
 export function buildCoverageMatrix(input: CoverageInput): CoverageEntry[] {
@@ -78,6 +132,22 @@ export function buildCoverageMatrix(input: CoverageInput): CoverageEntry[] {
 
     const manualNote = input.manuallyCovered.get(check.id);
     const completedRunIds = completedByCheck.get(check.id) ?? [];
+
+    // Checked after the run results, not before them: if a run did cover this check and produced
+    // findings, the target plainly has the feature and the profile was wrong. Evidence wins.
+    if (completedRunIds.length === 0 && !manualNote && findingCount === 0) {
+      const applicability = checkIsNotApplicable(check, input.targetProfile ?? {});
+      if (applicability.notApplicable) {
+        return {
+          check,
+          state: 'notApplicable',
+          reason: applicability.reason,
+          scanRunIds: [],
+          findingCount,
+        };
+      }
+    }
+
     if (completedRunIds.length > 0 || manualNote) {
       return {
         check,
@@ -115,6 +185,8 @@ export interface CoverageSummary {
   tested: number;
   partiallyTested: number;
   notTested: number;
+  /** Nothing on this target to test. Not a gap, and reported separately from one. */
+  notApplicable: number;
   total: number;
   /** Entries missing a reason. The pre-release checklist blocks on this being empty. */
   missingReasons: string[];
@@ -125,6 +197,7 @@ export function summariseCoverage(entries: CoverageEntry[]): CoverageSummary {
     tested: 0,
     partiallyTested: 0,
     notTested: 0,
+    notApplicable: 0,
     total: entries.length,
     missingReasons: [],
   };
@@ -132,7 +205,10 @@ export function summariseCoverage(entries: CoverageEntry[]): CoverageSummary {
     if (entry.state === 'tested') summary.tested += 1;
     else {
       if (entry.state === 'partiallyTested') summary.partiallyTested += 1;
+      else if (entry.state === 'notApplicable') summary.notApplicable += 1;
       else summary.notTested += 1;
+      // Every state but `tested` owes the reader a reason, `notApplicable` included — "you have no
+      // GraphQL" is exactly the sentence a client needs to see rather than a blank cell.
       if (!entry.reason) summary.missingReasons.push(entry.check.id);
     }
   }

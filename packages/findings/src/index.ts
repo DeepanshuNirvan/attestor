@@ -1,5 +1,6 @@
 export * from './model.ts';
 export * from './cvss.ts';
+export * from './owasp-risk-rating.ts';
 export * from './dedupe.ts';
 export * from './diff.ts';
 export * from './coverage.ts';

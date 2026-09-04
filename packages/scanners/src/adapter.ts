@@ -1,6 +1,6 @@
 import type { ModuleName, Severity } from '@attestor/shared';
 import type { RawFinding } from '@attestor/findings';
-import type { Policy } from '@attestor/policy';
+import type { AuthProfile, Policy } from '@attestor/policy';
 
 /**
  * The adapter contract.
@@ -14,12 +14,49 @@ import type { Policy } from '@attestor/policy';
  * assert on what comes out.
  */
 
+/**
+ * A credential this run may use, joined to the policy auth profile it satisfies.
+ *
+ * **No secret value is ever on this object.** A secret field arrives as `${ENV_NAME}` — a reference
+ * to a variable the runner puts in the tool container's environment and registers with the
+ * redaction filter. That is what lets `buildInvocation` stay a pure function that can be tested,
+ * printed and stored: everything it produces, including the files it writes into the run directory,
+ * is safe to keep.
+ *
+ * A tool that cannot resolve an environment variable itself must not be given a credential this
+ * way. Putting the value into `command` instead would write a client's password into the audit
+ * log, which records the command line of every launch.
+ */
+export interface RunCredential {
+  credentialSetId: string;
+  /** The policy auth profile this satisfies. */
+  profileId: string;
+  roleName: string;
+  authType: AuthProfile['type'];
+  /** The second account for the role. Access control testing compares one against the other. */
+  isSecondary: boolean;
+  loginUrl?: string;
+  sessionIndicator?: AuthProfile['sessionIndicator'];
+  /** How often to re-confirm the session is alive, in requests. */
+  sessionCheckEveryRequests: number;
+  /** Fields that are not secret, in the clear: a username, a header name, a cookie name. */
+  fields: Record<string, string>;
+  /** Secret fields, each value a `${ENV_NAME}` reference rather than the secret itself. */
+  secretRefs: Record<string, string>;
+}
+
 export interface AdapterContext {
   policy: Policy;
   /** Hostnames or addresses the run was authorised against, already scope-checked. */
   targets: string[];
   /** Where the tool wrote its output inside the container. */
   outputPath: string;
+  /**
+   * Credentials available to this run. Empty when the engagement has none, when the policy has no
+   * auth profiles, or on a dry run — so every adapter must still produce a working unauthenticated
+   * invocation.
+   */
+  credentials?: RunCredential[];
 }
 
 export interface ToolInvocation {
@@ -40,7 +77,33 @@ export interface ScannerAdapter {
   modules: ModuleName[];
   /** Catalogue check ids this tool contributes to, which drives the coverage matrix. */
   coversCheckIds: string[];
+  /**
+   * Whether this tool does anything with a credential. False for most: a port scanner and a TLS
+   * checker have no notion of a logged-in user. The worker reads it before opening the vault, so a
+   * run that cannot use a client's password never decrypts one.
+   */
+  usesCredentials?: boolean;
   /** Build the command line for a run. */
+  /**
+   * Exit codes that mean the tool did its job, beyond the usual zero.
+   *
+   * Most tools exit zero whether or not they found anything, and for those a non-zero exit means
+   * the run did not happen and its checks must not count as covered. A few report findings through
+   * the exit code instead: schemathesis exits 1 precisely when its checks fail, which is the case
+   * we most want to keep. Without this, the runs that found something were the runs thrown away.
+   */
+  successExitCodes?: number[];
+
+  /**
+   * Why this tool cannot run under this policy, if it cannot.
+   *
+   * Some tools need something the engagement has not supplied — an API schema, a mobile binary, a
+   * cloud credential — and starting them anyway produces a failed run whose reason is a stack trace.
+   * Returning a sentence here makes the run an aborted one carrying that sentence, which is what a
+   * client reads in the coverage matrix instead of a silent gap. Omit it when a tool always applies.
+   */
+  cannotRunBecause?: (policy: Policy) => string | undefined;
+
   buildInvocation: (context: AdapterContext) => ToolInvocation;
   /** Convert raw output into normalised findings. Pure; never touches the network or the clock. */
   parse: (raw: string, context: ParseContext) => RawFinding[];

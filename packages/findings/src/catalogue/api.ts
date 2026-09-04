@@ -24,7 +24,7 @@ export const apiChecks: Check[] = [
     example:
       'A `/v1/` route still live after the `/v2/` migration, without the object-level authorisation that v2 added.',
     automation: 'automated',
-    tools: ['kiterunner', 'ffuf', 'katana'],
+    tools: ['ffuf', 'katana'],
     standards: { wstg: ['WSTG-APIT-01'], apiTop10: ['API9:2023'], cwe: [1059, 285] },
   },
   {
@@ -39,6 +39,9 @@ export const apiChecks: Check[] = [
     automation: 'assisted',
     tools: ['accessControlMatrix', 'schemathesis'],
     standards: {
+      // WSTG numbers this APIT-02. The access control matrix performs it and has found one against
+      // a live target; it read as a gap only because the id was never written down here.
+      wstg: ['WSTG-APIT-02'],
       apiTop10: ['API1:2023'],
       owaspTop10: ['A01:2025'],
       asvs: ['v5.0.0-8.1.2'],
@@ -152,7 +155,13 @@ export const apiChecks: Check[] = [
       'Introspection disabled but suggestion messages still naming every mutation, including the internal-only ones.',
     automation: 'automated',
     tools: ['nuclei', 'zap'],
-    standards: { apiTop10: ['API8:2023', 'API9:2023'], owaspTop10: ['A02:2025'], cwe: [200] },
+    // WSTG numbers the GraphQL tests APIT-99.
+    standards: {
+      wstg: ['WSTG-APIT-99'],
+      apiTop10: ['API8:2023', 'API9:2023'],
+      owaspTop10: ['A02:2025'],
+      cwe: [200],
+    },
   },
   {
     id: 'api-graphql-query-abuse',
@@ -280,8 +289,8 @@ export const apiChecks: Check[] = [
       'Where gRPC or another binary protocol is in scope, check reflection exposure, per-method authorisation, message size limits and transport security.',
     example:
       'Server reflection enabled in production, listing every internal service method to any client that can reach the port.',
-    automation: 'assisted',
-    tools: ['mitmproxy'],
+    automation: 'manual',
+    tools: [],
     standards: { apiTop10: ['API9:2023', 'API5:2023'], owaspTop10: ['A02:2025'], cwe: [200, 285] },
   },
   {
@@ -293,8 +302,8 @@ export const apiChecks: Check[] = [
       'Compare the endpoints the mobile application uses against the web API, since mobile-specific endpoints are frequently older and less strictly controlled.',
     example:
       'A mobile-only login endpoint without the rate limiting and device checks the web login has.',
-    automation: 'assisted',
-    tools: ['mitmproxy', 'kiterunner'],
+    automation: 'manual',
+    tools: [],
     standards: { apiTop10: ['API9:2023'], owaspTop10: ['A02:2025'], cwe: [1059] },
   },
 ];

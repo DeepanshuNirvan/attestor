@@ -41,7 +41,20 @@ interface HttpxResult {
   failed?: boolean;
   cdn_name?: string;
   a?: string[];
+  /** Present when `-path` was used. `/` is the ordinary root probe. */
+  path?: string;
+  /** Present when `-include-response` was used. */
+  body?: string;
 }
+
+/**
+ * Files a site publishes about itself, probed alongside the root in the same run.
+ *
+ * Four extra requests per host, which is nothing, and they answer WSTG-INFO-03 directly: what a
+ * site says about itself in the files it serves to anybody. A host with none of them returns 404
+ * four times and produces no findings, which is the normal case and must stay silent.
+ */
+const METAFILE_PATHS = ['/robots.txt', '/sitemap.xml', '/security.txt', '/.well-known/security.txt'];
 
 interface NaabuResult {
   host?: string;
@@ -92,6 +105,61 @@ export const subfinderAdapter: ScannerAdapter = {
       .map((host) => ({ kind: 'host', value: host, host })),
 };
 
+/**
+ * A published metafile, and what it gives away.
+ *
+ * Reported at `info`, because publishing a robots.txt is not a vulnerability. What makes it worth a
+ * row in the report is the paths it names: `Disallow: /admin-v2/` is an administrative interface
+ * advertised to everyone who asks, and a client reading their own report is often seeing that line
+ * for the first time in years.
+ */
+function metafileFinding(
+  result: HttpxResult,
+  host: string,
+  path: string,
+  context: ParseContext,
+): RawFinding {
+  const body = result.body ?? '';
+  const named = [...body.matchAll(/^\s*(?:Disallow|Allow|Sitemap)\s*:\s*(\S+)/gim)]
+    .map((match) => match[1])
+    .filter((value): value is string => value !== undefined && value !== '/')
+    .slice(0, 25);
+
+  const isRobots = path.endsWith('robots.txt');
+  const description = isRobots
+    ? `The site publishes ${path}. It asks crawlers not to visit certain paths, which makes it a public list of the paths the operator considers sensitive.${named.length > 0 ? ` It names: ${named.join(', ')}.` : ''}`
+    : `The site publishes ${path}, which describes its structure or its security contacts to anyone who asks.${named.length > 0 ? ` It names: ${named.join(', ')}.` : ''}`;
+
+  return {
+    source: 'tool',
+    evidenceText: recordAsEvidence({ ...result, body: body.slice(0, 4000) }),
+    toolName: 'httpx',
+    toolFindingRef: path,
+    checkId: 'recon-webserver-metafiles',
+    title: `${path} is published and names ${named.length} path${named.length === 1 ? '' : 's'}`,
+    description,
+    severity: 'info',
+    cvssVersion: context.cvssVersion,
+    cweId: 200,
+    wstgId: 'WSTG-INFO-03',
+    affectedAssets: [{ value: host, location: path }],
+    businessImpact: '',
+    likelihood: '',
+    attackerPrerequisites: '',
+    reproductionSteps: [`Request ${path} on ${host} and read the paths it names.`],
+    remediation: isRobots
+      ? 'Do not use robots.txt to hide anything. A path that must not be reached needs authorisation on the server; naming it here only tells an attacker where to look. Remove entries pointing at administrative or internal paths and protect those paths properly.'
+      : 'Review what this file discloses and confirm every detail in it is intended to be public.',
+    references: [
+      {
+        title: 'OWASP WSTG: Review Webserver Metafiles for Information Leakage',
+        url: 'https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage',
+      },
+    ],
+    evidence: [],
+  };
+}
+
 export const httpxAdapter: ScannerAdapter = {
   id: 'httpx',
   displayName: 'httpx',
@@ -100,6 +168,7 @@ export const httpxAdapter: ScannerAdapter = {
     'recon-http-probing',
     'recon-technology-inventory',
     'recon-virtual-host-discovery',
+    'recon-webserver-metafiles',
     'web-credentials-over-encrypted-channel',
   ],
 
@@ -120,6 +189,14 @@ export const httpxAdapter: ScannerAdapter = {
       '-follow-redirects',
       '-max-redirects',
       '3',
+      // The root plus the files a site publishes about itself, in one run. `/` has to be listed
+      // explicitly: passing `-path` replaces the root probe rather than adding to it, and without
+      // it every service would lose its status, title and technology inventory.
+      '-path',
+      ['/', ...METAFILE_PATHS].join(','),
+      // Needed to read what a metafile actually says. A robots.txt is only interesting for the
+      // paths it names, and reporting that it exists without them tells a client nothing.
+      '-include-response',
       '-rate-limit',
       String(Math.max(1, Math.round(policy.rateLimits.globalRequestsPerSecond))),
       '-threads',
@@ -127,6 +204,10 @@ export const httpxAdapter: ScannerAdapter = {
       '-timeout',
       '10',
       '-silent',
+      // Two calls to somebody who is not the client, refused. The version check is one; the other
+      // is the 92.6 MB classification model httpx fetches from huggingface whenever `-json` is
+      // asked for, which the worker heads off by mounting a provisioned copy at the tool's home.
+      '-disable-update-check',
     ],
     outputFile: 'httpx.jsonl',
     inputFiles: [{ name: 'hosts.txt', contents: `${targets.join('\n')}\n` }],
@@ -139,6 +220,16 @@ export const httpxAdapter: ScannerAdapter = {
       const url = result.url ?? result.input ?? '';
       if (url === '' || result.failed) continue;
       const { host } = splitTarget(url);
+      const path = result.path ?? '/';
+      const status = result.status_code ?? 0;
+
+      if (path !== '/') {
+        // A metafile probe. Only a 2xx is a file; the 404s are the ordinary answer for a host that
+        // publishes none of them, and they must produce nothing at all.
+        if (status < 200 || status >= 300) continue;
+        findings.push(metafileFinding(result, host, path, context));
+        continue;
+      }
 
       // An application that answers on plain HTTP without redirecting is a real finding, not
       // inventory: credentials submitted to it travel in the clear.
@@ -182,6 +273,9 @@ export const httpxAdapter: ScannerAdapter = {
     for (const result of parseJsonLines<HttpxResult>(raw)) {
       const url = result.url ?? result.input;
       if (!url || result.failed) continue;
+      // Inventory is per service, not per probed path. Without this the metafile probes would add
+      // four more "url" assets and repeat the technology list for every host.
+      if ((result.path ?? '/') !== '/') continue;
       const { host, port } = splitTarget(url);
       assets.push({
         kind: 'url',

@@ -17,6 +17,26 @@ import { LEGAL_BLOCKS, mandatoryBlocksFor } from './legal/blocks.ts';
 const goldenPath = fileURLToPath(new URL('./__golden__/sample-report.html', import.meta.url));
 
 describe('renderReportHtml', () => {
+  it('prints the OWASP risk rating beside CVSS, with the factors that produced it', async () => {
+    const html = await renderReportHtml(buildSampleReportData());
+    expect(html).toContain('OWASP risk rating');
+    // The reader must be able to check the arithmetic: the derived rating and the answers behind it.
+    expect(html).toContain('Scored against the OWASP Risk Rating Methodology');
+    expect(html).toContain('Ease of exploit');
+    // Likelihood 7.00 (high) against impact 5.50 (medium) is High on the published matrix.
+    expect(html).toContain('OWASP High');
+  });
+
+  it('says nothing at all about a finding nobody has risk-rated', async () => {
+    // An unanswered form must never render as a low risk. The section is absent instead.
+    const data = buildSampleReportData();
+    const html = await renderReportHtml({
+      ...data,
+      findings: data.findings.map((finding) => ({ ...finding, owaspRiskScores: undefined })),
+    });
+    expect(html).not.toContain('OWASP risk rating');
+  });
+
   it('matches the golden file', async () => {
     const html = await renderReportHtml(buildSampleReportData());
 

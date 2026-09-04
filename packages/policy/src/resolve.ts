@@ -150,10 +150,25 @@ function warningsFor(policy: Policy): string[] {
       );
     }
     if (policy.accessControlMatrix.enabled && !profile.secondaryCredentialSetId) {
+      // Deliberately about the policy, not about the vault: resolution has no database and cannot
+      // see what the client submitted. A second account submitted for the same role is picked up
+      // automatically at run time, so this must not claim there is only one — it says what this
+      // file names, which is all it knows.
       warnings.push(
-        `Role "${profile.roleName}" has only one account. Horizontal access control cannot be tested for it; ask the client for a second account.`,
+        `Role "${profile.roleName}" names no second account. Horizontal access control needs two: a second account submitted for this role will be used automatically, otherwise ask the client for one.`,
       );
     }
+  }
+
+  if (!policy.checks.nucleiSeverities.includes('info')) {
+    // Trimming `info` looks like noise reduction and is a coverage change. Every exposure, metafile
+    // and exposed-panel template nuclei ships carries that severity, so a run without it can no
+    // longer perform checks the catalogue says nuclei automates — and an absent finding is
+    // indistinguishable from a check nobody ran. Said out loud here so the decision is a decision.
+    warnings.push(
+      'nuclei informational templates are excluded. Metafile, exposure and exposed-panel checks all ' +
+        'carry that severity, so they will not run and the coverage matrix cannot count them.',
+    );
   }
 
   if (policy.ai.agenticEnabled && policy.ai.spendCeilingUsd === 0) {

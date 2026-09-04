@@ -14,6 +14,7 @@ import type { FastifyInstance } from 'fastify';
 const UUID_PARAMETERS = new Set([
   'id',
   'authorisationId',
+  'credentialSetId',
   'findingId',
   'invitationId',
   'reportId',

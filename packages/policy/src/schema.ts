@@ -83,6 +83,32 @@ export const authProfileSchema = z.object({
   /** Reference into the credential vault. Never a value. */
   credentialSetId: z.string().min(1).optional(),
   loginUrl: z.string().optional(),
+  /**
+   * How to obtain a session by calling the application directly, for tests that replay requests
+   * rather than drive a browser — access control comparison, chiefly.
+   *
+   * Optional, and absent is a normal answer: an API key or a bearer token needs no login at all,
+   * and an application whose only way in is a browser form is tested through the browser instead.
+   * When it is absent the replay tests simply have no session for that role and say so, rather
+   * than guessing at field names and locking the client's account out.
+   */
+  apiLogin: z
+    .object({
+      /** Defaults to `loginUrl` when omitted. */
+      url: z.string().optional(),
+      usernameField: z.string().min(1),
+      passwordField: z.string().min(1),
+      /**
+       * Dotted path to the token in the JSON response, e.g. `authentication.token`. Omit when the
+       * application answers with a session cookie, which is used automatically.
+       */
+      tokenPath: z.string().optional(),
+      /** Header the token is presented in. */
+      tokenHeader: z.string().default('authorization'),
+      /** `{token}` is replaced with the value found at `tokenPath`. */
+      tokenTemplate: z.string().default('Bearer {token}'),
+    })
+    .optional(),
   /** Playwright script path for scriptedLogin, relative to the engagement's script directory. */
   scriptPath: z.string().optional(),
   /** How to tell the session is still alive. At least one is required for anything but `none`. */
@@ -230,9 +256,48 @@ export const policySchema = z.object({
       exclude: z.array(z.string()).default([]),
       /** nuclei template selection. */
       nucleiTags: z.array(z.string()).default([]),
+      /**
+       * `info` is included, and that is deliberate.
+       *
+       * Leaving it out looked tidy and quietly removed a whole class of check from every run: the
+       * exposure and metafile templates — robots.txt, security.txt, sitemap, exposed panels — are
+       * all `info`, so the platform shipped for months unable to perform them however the policy was
+       * written. Informational results are candidates like any other and a person decides whether
+       * they reach the report, so the cost of including them is triage time and the cost of
+       * excluding them was coverage nobody could see was missing.
+       */
       nucleiSeverities: z
         .array(z.enum(['critical', 'high', 'medium', 'low', 'info']))
-        .default(['critical', 'high', 'medium', 'low']),
+        .default(['critical', 'high', 'medium', 'low', 'info']),
+      /**
+       * Endpoints to measure throttling on, beyond the login the auth profile already names.
+       *
+       * Named rather than discovered on purpose. Which endpoint matters is a judgement about the
+       * business — an OTP request costs the client money per message, a password reset emails a real
+       * person, a search is expensive to run — and a probe that guessed would either miss the one
+       * that matters or hammer one that should never have been touched.
+       */
+      rateLimitEndpoints: z
+        .array(
+          z.object({
+            url: z.string().min(1),
+            method: z.enum(['GET', 'POST']).default('GET'),
+            /** What this endpoint does, for the finding. `the one-time code request`, say. */
+            description: z.string().default(''),
+          }),
+        )
+        .default([]),
+      /** Requests sent in the burst. Small enough to stay polite, large enough to see a limit. */
+      rateLimitBurst: z.number().int().min(5).max(200).default(30),
+      /**
+       * Where the target serves its OpenAPI document, as a path on the target itself.
+       *
+       * A path rather than a URL on purpose: the schema is then fetched from a host that is already
+       * inside the engagement's authorisation, and no separate scope decision is needed for it.
+       * Empty means the client has not given us one, and schemathesis refuses to run rather than
+       * guessing at `/openapi.json` and reporting whatever it finds there.
+       */
+      openApiSchemaPath: z.string().max(200).default(''),
     })
     .prefault({}),
   authProfiles: z.array(authProfileSchema).default([]),

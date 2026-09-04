@@ -1,7 +1,14 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { CoverageEntry, Finding } from '@attestor/findings';
-import { CATEGORY_LABELS, COMPLIANCE_CONTROLS, FRAMEWORK_LABELS, countBySeverity } from '@attestor/findings';
+import {
+  CATEGORY_LABELS,
+  COMPLIANCE_CONTROLS,
+  FRAMEWORK_LABELS,
+  OWASP_RISK_FACTORS,
+  countBySeverity,
+  owaspRiskRating,
+} from '@attestor/findings';
 import { fillPlaceholders, legalBlock, mandatoryBlocksFor } from './legal/blocks.ts';
 
 /**
@@ -385,6 +392,7 @@ function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
     tested: 'Tested',
     partiallyTested: 'Partially tested',
     notTested: 'Not tested',
+    notApplicable: 'Not present',
   } as const;
 
   const sections = [...byCategory.entries()]
@@ -409,16 +417,19 @@ function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
 
   const tested = data.coverage.filter((entry) => entry.state === 'tested').length;
   const partial = data.coverage.filter((entry) => entry.state === 'partiallyTested').length;
-  const notTested = data.coverage.length - tested - partial;
+  const notPresent = data.coverage.filter((entry) => entry.state === 'notApplicable').length;
+  const notTested = data.coverage.length - tested - partial - notPresent;
 
   return `<section id="coverage">
   <h2>${heading(numbers, 'coverage')}</h2>
   <p>This matrix is generated from what actually executed during the engagement. It is not a statement of intent: a check appears as tested only where a completed run or a recorded manual test covered it, and anything less carries the reason.</p>
+  <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
   <table>
     <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
     <tbody>
       <tr><td>Tested</td><td class="numeric">${tested}</td></tr>
       <tr><td>Partially tested</td><td class="numeric">${partial}</td></tr>
+      <tr><td>Not present in this application</td><td class="numeric">${notPresent}</td></tr>
       <tr><td>Not tested</td><td class="numeric">${notTested}</td></tr>
     </tbody>
   </table>
@@ -459,10 +470,52 @@ function evidenceHtml(evidence: ReportEvidence[]): string {
     .join('\n');
 }
 
+const OWASP_SEVERITY_LABEL: Record<string, string> = {
+  note: 'Note',
+  low: 'Low',
+  moderate: 'Moderate',
+  high: 'High',
+  critical: 'Critical',
+};
+
+const RISK_FACTOR_LABEL = new Map(OWASP_RISK_FACTORS.map((factor) => [factor.id, factor.label]));
+
+/**
+ * The OWASP Risk Rating, printed beside CVSS rather than instead of it.
+ *
+ * The two disagree usefully. CVSS scores the class of flaw; this scores what it means for this
+ * client, and the sixteen answers are printed with it so the reader can argue with the reasoning
+ * rather than with the number. A finding nobody has rated this way simply omits the section — an
+ * unanswered form must never be shown as a low risk.
+ */
+function owaspRiskHtml(scores: Record<string, number> | undefined): string {
+  if (scores === undefined || Object.keys(scores).length === 0) return '';
+
+  const rating = owaspRiskRating(scores);
+  const rows = Object.entries(scores)
+    .map(
+      ([id, score]) =>
+        `<tr><td>${escapeHtml(RISK_FACTOR_LABEL.get(id) ?? id)}</td><td class="numeric">${score}</td></tr>`,
+    )
+    .join('\n');
+
+  return `<h5>OWASP risk rating</h5>
+  <p>Likelihood ${rating.likelihood.toFixed(2)} (${rating.likelihoodLevel}), impact ${rating.impact.toFixed(2)} (${rating.impactLevel}), giving an overall rating of <strong>${OWASP_SEVERITY_LABEL[rating.severity] ?? rating.severity}</strong>. Scored against the OWASP Risk Rating Methodology; each factor below is a published option of that method.</p>
+  <table>
+    <thead><tr><th>Factor</th><th class="numeric">Score</th></tr></thead>
+    <tbody>
+${rows}
+    </tbody>
+  </table>`;
+}
+
 function findingHtml(finding: ReportFinding, index: number): string {
   const badges = [
     finding.cvssScore !== undefined ? `<span class="tag">${finding.cvssScore.toFixed(1)}</span>` : '',
     finding.cvssVector ? `<span class="tag">${escapeHtml(finding.cvssVector)}</span>` : '',
+    finding.owaspRiskScores && Object.keys(finding.owaspRiskScores).length > 0
+      ? `<span class="tag">OWASP ${OWASP_SEVERITY_LABEL[owaspRiskRating(finding.owaspRiskScores).severity]}</span>`
+      : '',
     finding.cweId ? `<span class="tag">CWE-${finding.cweId}</span>` : '',
     finding.owaspCategory ? `<span class="tag">${escapeHtml(finding.owaspCategory)}</span>` : '',
     finding.apiCategory ? `<span class="tag">${escapeHtml(finding.apiCategory)}</span>` : '',
@@ -544,6 +597,8 @@ function findingHtml(finding: ReportFinding, index: number): string {
 
   <h5>References</h5>
   ${references ? `<ul>${references}</ul>` : '<p class="none">None.</p>'}
+
+  ${owaspRiskHtml(finding.owaspRiskScores)}
 
   ${successRate}
   ${override}

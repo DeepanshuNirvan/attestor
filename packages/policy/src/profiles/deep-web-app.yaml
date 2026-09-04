@@ -7,8 +7,6 @@ phases:
   preLogin: true
   postLogin: true
 readOnlyMode: false
-checks:
-  nucleiSeverities: [critical, high, medium, low, info]
 rateLimits:
   globalRequestsPerSecond: 12
   perTargetRequestsPerSecond: 5

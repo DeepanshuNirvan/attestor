@@ -1,4 +1,5 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
@@ -7,6 +8,7 @@ import {
   engagePanicStop,
   missingPreFlightItems,
   unknownPreFlightItems,
+  CREDENTIAL_KIND_IDS,
   validateScopeItem,
   PRE_FLIGHT_CHECKLIST,
   type TransitionContext,
@@ -670,25 +672,123 @@ export function registerEngagementRoutes(
     return reply.send({ ok: true, kind: parsed.data.kind, receivedAt: parsed.data.receivedAt });
   });
 
-  /** A one-time link the client uses to submit credentials without them travelling through email. */
+  /**
+   * A one-time link the client uses to submit credentials without them travelling through email.
+   *
+   * The link says what it is asking for — which accounts, for which role, and what kind of login
+   * each is — so the client sees the two or three boxes that login needs rather than a blank form.
+   * Ask for two accounts per role you intend to test access control on: comparing what one user can
+   * see of another's data is the whole technique, and it is impossible with one account.
+   */
   app.post('/engagements/:id/credential-link', { preHandler: guard }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const parsed = z
+      .object({
+        expiresInHours: z.number().int().positive().max(336).default(72),
+        accounts: z
+          .array(
+            z.object({
+              label: z.string().min(1).max(120),
+              roleName: z.string().min(1).max(60),
+              kind: z.enum(CREDENTIAL_KIND_IDS as [string, ...string[]]),
+              isSecondary: z.boolean().default(false),
+            }),
+          )
+          .min(1)
+          .max(20),
+      })
+      .safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
     const token = newSessionToken();
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + parsed.data.expiresInHours * 60 * 60 * 1000);
+    // Random, not derived from the position and role. A slot is what a submission is filed under,
+    // and deriving it made two links for the same engagement share slot names — so asking a client
+    // for a support account could silently overwrite the standard user account from an earlier
+    // link. Within one link a resubmission still replaces, which is the behaviour that matters.
+    const requested = parsed.data.accounts.map((account) => ({
+      slot: randomUUID(),
+      ...account,
+    }));
 
     await context.database.insert(credentialIntakeLink).values({
       engagementId: id,
       tokenHash: hashToken(token),
+      requested,
       expiresAt,
       createdBy: actorIdOf(request),
     });
 
-    // Returned once, here. The hash is what is stored, so this link cannot be recovered later.
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'credentialSet.linkIssued',
+      subjectType: 'engagement',
+      subjectId: id,
+      metadata: { accounts: requested.map((entry) => entry.label), expiresAt },
+      ...requestContext(request),
+    });
+
+    // Returned once, here. Only the hash is stored, so this link cannot be recovered later — send
+    // it yourself, through a channel you trust. A lost link means a new one, which is the right
+    // trade.
     return reply.send({
       url: `${context.config.PORTAL_ORIGIN}/credentials/${token}`,
       expiresAt,
+      requested,
     });
   });
+
+  /**
+   * Stop using a credential.
+   *
+   * A client withdraws an account, or the account is locked, or it was the wrong one — after this
+   * the tool runner will not open it, because the run resolver excludes revoked rows. The value is
+   * not destroyed here: the row and its audit trail stay until the engagement closes, and closure
+   * is what shreds the key salt and makes it unreadable for good.
+   *
+   * Re-submitting through the intake link produces a working credential again, which is why there
+   * is no un-revoke.
+   */
+  app.post(
+    '/engagements/:id/credentials/:credentialSetId/revoke',
+    { preHandler: guard },
+    async (request, reply) => {
+      const { id, credentialSetId } = request.params as { id: string; credentialSetId: string };
+      const parsed = z
+        .object({ reason: z.string().max(500).default('') })
+        .safeParse(request.body ?? {});
+      if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+      const [revoked] = await context.database
+        .update(credentialSet)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(credentialSet.id, credentialSetId),
+            eq(credentialSet.engagementId, id),
+            isNull(credentialSet.revokedAt),
+          ),
+        )
+        .returning({ id: credentialSet.id, label: credentialSet.label });
+
+      // The engagement id is part of the match, so a credential belonging to another engagement is
+      // "not found" rather than revoked — the same answer as one that does not exist.
+      if (!revoked) return reply.code(404).send({ error: 'not found' });
+
+      await context.auditLog.record({
+        actorId: actorIdOf(request),
+        actorKind: 'staff',
+        action: 'credentialSet.revoked',
+        subjectType: 'credentialSet',
+        subjectId: revoked.id,
+        metadata: { engagementId: id, label: revoked.label, reason: parsed.data.reason },
+        ...requestContext(request),
+      });
+
+      return reply.send({ ok: true, label: revoked.label });
+    },
+  );
 
   app.post('/engagements/:id/acknowledge', { preHandler: guard }, async (request, reply) => {
     const { id } = request.params as { id: string };

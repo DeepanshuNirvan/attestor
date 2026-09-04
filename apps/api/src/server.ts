@@ -9,6 +9,7 @@ import { buildQueues, type Queues } from './queue.ts';
 import { registerAiRoutes } from './routes/ai-routes.ts';
 import { registerAuthRoutes } from './routes/auth-routes.ts';
 import { registerClientRoutes } from './routes/client-routes.ts';
+import { registerCredentialIntakeRoutes } from './routes/credential-intake-routes.ts';
 import { registerEngagementRoutes } from './routes/engagement-routes.ts';
 import { registerFindingRoutes } from './routes/finding-routes.ts';
 import { registerPlatformRoutes } from './routes/platform-routes.ts';
@@ -86,6 +87,7 @@ export async function buildConsoleServer(
   registerAiRoutes(app, context);
   registerAuthRoutes(app, context);
   registerClientRoutes(app, context);
+  registerCredentialIntakeRoutes(app, context);
   registerEngagementRoutes(app, context, queues);
   registerFindingRoutes(app, context);
   registerReportRoutes(app, context);

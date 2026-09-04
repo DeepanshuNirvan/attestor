@@ -4,6 +4,9 @@ The file to read first in a new session. It says what this is, what it is not, h
 to run it, what has actually been verified, and the mistakes that are easy to make in it.
 
 `docs/BUILD-STATUS.md` is the live state of the work. This document is the stable picture behind it.
+`docs/OPERATOR-HANDBOOK.md` is the same ground in plain English, for running the firm rather than
+changing the code — read that one for client onboarding and for how to verify a client owns what
+they gave you.
 
 ---
 
@@ -40,7 +43,7 @@ apps/website/     Astro static site. Services, published prices, sample report, 
 apps/api/         Fastify: console API (8080), portal API (8081), workers
 apps/console/     Next.js. BOTH UI surfaces from one codebase, gated by ATTESTOR_SURFACE
 packages/shared/  Redaction, masking, logging, config, ids. Depends on nothing
-packages/findings/ 210-check catalogue, CVSS 3.1 + 4.0, dedupe, diff, coverage matrix
+packages/findings/ 235-check catalogue, CVSS 3.1 + 4.0, OWASP risk rating, dedupe, diff, coverage
 packages/policy/  Policy schema, layer resolution, five profiles
 packages/core/    Scope guard, state machine, container runner, audit log, AI assist
 packages/scanners/ One adapter per tool. `parse` is a pure function over a string
@@ -111,8 +114,8 @@ What each step needs, as HTTP:
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 
-Migrations, buckets, the workspace and the nuclei template pack are all init containers the stack
-depends on, so this one command is the whole boot.
+Migrations, buckets, the workspace, the nuclei template pack and the httpx classification model are
+all init containers the stack depends on, so this one command is the whole boot.
 
 ```bash
 node scripts/pin-tool-images.mjs --pull
@@ -167,8 +170,45 @@ Read this section before changing anything in the run path. Every line here cost
   as uid 1000 and the socket is 0660 root-owned.
 - **`HOME` is set for tool containers** by the runner. UID 65532 has no passwd entry, so a tool that
   keeps config under `$HOME` otherwise falls back to `/`, which is read-only.
+- **`HOME` is not enough for ZAP.** The JVM reads `user.home` from the passwd file, not from the
+  environment, so under uid 65532 it is `?` and ZAP resolves its home to `/zap/?/.ZAP/` against a
+  read-only root filesystem and exits before reading its plan. The adapter passes
+  `-dir /tmp/zap-home`, which also keeps ZAP's session database — containing the login request, and
+  so the client's password — in memory rather than on a disk.
+- **A secret reaches a tool only through the container's environment.** `ToolRunRequest.secrets` is
+  the one path: the runner registers each value with the redaction filter for the life of the run
+  and puts it in the container's environment. Never the command line — the audit log records the
+  command of every launch. An adapter sees `${ENV_NAME}` references and never a value, which is what
+  makes `buildInvocation` output safe to write to disk.
+- **ZAP substitutes `${...}` in a user's credentials and nowhere else.** Verified by running it: the
+  same placeholder in a `replacer` job's `replacementString` is sent to the target literally. That is
+  why an API key or bearer token is stored but not presented — carrying one would mean writing the
+  value into the plan file.
 - **nuclei ships no templates** and `-disable-update-check` stops it fetching any. The pack is
   provisioned once into the shared workspace and mounted read-only at `/templates`.
+- **httpx fetches a 92.6 MB model from huggingface at startup whenever `-json` is asked for**, which
+  the adapter always asks for. It is provisioned the same way and mounted read-only at the tool's
+  `$HOME/.dit`. Both packs live in `DATA_PACK_MOUNTS` in the scan worker, and both exist so that
+  nothing inside a tool container talks to a third party in the middle of a client engagement.
+- **A policy that trims `info` off `nucleiSeverities` removes a whole class of check.** Every
+  exposure, metafile and exposed-panel template nuclei ships carries that severity. `resolvePolicy`
+  warns about it and no shipped profile does it, but a hand-written layer still can.
+- **A probe that reports `skipped` is an aborted run, not a completed one.** The same rule as a tool
+  that exits non-zero, for the same reason: a run recorded as completed hands its `coversCheckIds`
+  to the coverage matrix as tested.
+- **A non-zero exit is a failure unless the adapter says otherwise.** `successExitCodes` is the
+  exception, and only schemathesis has one: it exits 1 exactly when its checks fail, so the ordinary
+  rule threw away every run that found something and kept only the quiet ones.
+- **A tool that cannot run under this policy says so and does not start.** `cannotRunBecause` returns
+  a sentence — schemathesis with no `checks.openApiSchemaPath`, for instance — and the run is aborted
+  carrying it, so the client reads why rather than finding a hole where the API testing should be.
+- **The probes read crawled endpoints, narrowed to this run's targets.** `discovered_asset`
+  accumulates across an engagement, so without the filter one URL from a host that has since left
+  the target list makes the scope guard refuse the whole probe, and nothing gets tested at all.
+- **Every finding may carry an OWASP risk rating beside its CVSS vector.** Sixteen factor answers,
+  stored raw; the rating is derived by `owaspRiskRating` and never stored, so the two cannot
+  disagree. An unanswered factor is left out of its average rather than scored zero — a half-filled
+  form must not argue the risk is lower than anybody has established.
 - **A non-zero exit is `failed`, not `completed`.** A tool that never started must not have its
   `coversCheckIds` counted as tested — that is how a report ends up lying about coverage.
 - **Playwright ignores `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.** The PDF pipeline reads
@@ -266,7 +306,15 @@ Operators must be told this in advance or they will file it as a restore failure
 - Surface gating in both directions, the CSP with its per-request nonce, all security headers.
 - Security regression across authentication, session, MFA, TOTP single-use, origin, malformed input,
   rate limiting, portal isolation and error bodies.
-- 357 unit and property tests, and the 31-test integration suite including the live run; lint, both
+- **Credential intake, end to end**: the console mints a link, the client fills the portal page with
+  no account, the value is sealed, the console lists it without a value, and revoking it takes it out
+  of the next run. Refusals checked too — a missing box, a field the form never offered, a bad token,
+  and the page 404ing on the console surface.
+- **An authenticated ZAP scan**, using the plan the product generates, in a container with the same
+  hardening the runner applies — uid 65532, read-only root, tmpfs, per-run network. It signed into a
+  live Juice Shop with the password from the vault, crawled as that user, exited 0 and produced a
+  report. The password appears in neither the plan file on disk nor the report.
+- 377 unit and property tests, and the 31-test integration suite including the live run; lint, both
   typechecks, the claim check, all three builds.
 
 ### Not verified
@@ -277,6 +325,18 @@ Operators must be told this in advance or they will file it as a restore failure
   render with a visible draft banner. This is the one thing you cannot ship without.
 - **Eleven of forty-one tool images cannot be pulled** — the tags do not resolve. Those tools are
   silently absent from every run because the runner refuses an unpinned image.
+- **The whole of the OWASP Web Security Testing Guide is accounted for**: 106 of 109 covered, three
+  recorded as deliberate decisions with reasons a client can read, and no unexplained gap. The
+  catalogue-integrity test holds that at zero and fails the build if it rises.
+- **The OWASP Risk Rating calculator reproduces the worked example in the client's own copy of the
+  workbook**, to the second decimal place, which is the only test of it that matters.
+- **An API key, bearer token or session cookie is stored but never presented by a tool**, and
+  nothing verifies a credential before a run — a mistyped password shows up as an empty
+  authenticated scan.
+- **The authenticated scan has not been driven through the worker against a live target.** The plan
+  the product generates was run against one, in a container configured exactly as the runner
+  configures it; what has not been exercised together is that plus the worker's own container
+  networking, because a tool container cannot reach the internal test-target network.
 - Off-host log shipping and alerting: the two real gaps in the ASVS self-assessment, in V16.
 - Mobile, cloud, code and LLM modules have not been driven end to end against a live target. Recon,
   web and network have.

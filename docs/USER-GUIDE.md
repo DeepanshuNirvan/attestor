@@ -315,7 +315,7 @@ enables.
 
 ## 6. What the platform tests
 
-**210 checks** in a catalogue that drives both the coverage matrix and the public
+**235 checks** in a catalogue that drives both the coverage matrix and the public
 `/what-we-test` page. They are the same list, which is the point.
 
 | Module | Checks |
@@ -542,7 +542,7 @@ apps/api/              Console API, portal API, workers
   src/workers/         scan, retention, retainer
 apps/console/          Both UI surfaces, gated by ATTESTOR_SURFACE
 packages/core/         Scope guard, state machine, container runner, audit log, AI assist
-packages/findings/     210-check catalogue, CVSS, dedupe, diff, coverage matrix
+packages/findings/     235-check catalogue, CVSS, OWASP risk rating, dedupe, diff, coverage
 packages/policy/       Schema, resolution, five profiles, cloud provider policies
 packages/scanners/     One adapter per tool, pure parsers, fixtures
 packages/report/       Renderer, legal blocks, checklist, PDF, golden file

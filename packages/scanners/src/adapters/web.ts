@@ -6,6 +6,7 @@ import {
   parseJsonObject,
   splitTarget,
   type ParseContext,
+  type RunCredential,
   type ScannerAdapter,
 } from '../adapter.ts';
 
@@ -15,7 +16,105 @@ import {
  * ZAP is driven through its automation framework rather than through the classic CLI flags: the
  * plan is a YAML file we generate, which is the only way to express an authenticated context, a
  * scope, an exclusion list and a rate limit in one place that the tool actually honours.
+ *
+ * The authenticated context is the reason the whole credential path exists. Everything behind a
+ * login — the account pages, the ordering flow, the admin screens, every access control question —
+ * is invisible to an unauthenticated scan, and an unauthenticated scan of an application that has
+ * a login is a scan of its login page.
  */
+
+/** Credential kinds that are a login to perform, rather than a token to present. */
+const LOGIN_AUTH_TYPES = new Set(['formLogin', 'scriptedLogin', 'otpAssisted', 'oauth2']);
+
+/** The ZAP user name. One per plan: a context carries a single authentication method. */
+const ZAP_USER = 'primary';
+
+interface ZapLogin {
+  username: string;
+  loginUrl: string;
+  credential: RunCredential;
+}
+
+/**
+ * Choose the credential this plan logs in with.
+ *
+ * One, not several: a ZAP context has exactly one authentication method, so a second role means a
+ * second run rather than a second user. The primary account is preferred over the second account
+ * for the same role, because the second exists to be compared against the first.
+ *
+ * A login needs somewhere to go, and `loginUrl` comes from the policy's auth profile rather than
+ * from the client — asking a client for their login page is asking them to answer a question we
+ * can see for ourselves, and getting it wrong silently produces an unauthenticated scan that looks
+ * like an authenticated one.
+ */
+function zapLogin(credentials: readonly RunCredential[] = []): ZapLogin | null {
+  for (const credential of credentials) {
+    if (credential.isSecondary) continue;
+    if (!LOGIN_AUTH_TYPES.has(credential.authType)) continue;
+    if (credential.secretRefs.password === undefined) continue;
+
+    const username =
+      credential.fields.email ?? credential.fields.username ?? credential.fields.mobile;
+    if (username === undefined || credential.loginUrl === undefined) continue;
+
+    return { username, loginUrl: credential.loginUrl, credential };
+  }
+  return null;
+}
+
+/**
+ * The context's authentication block.
+ *
+ * `browser` rather than `form`: it drives a real browser at the login page and finds the fields
+ * itself, which is what makes this work on a single-page application whose login form does not
+ * exist in the served HTML — and those are most of them now. It also means the tester does not have
+ * to supply field selectors that break the next time the client ships a redesign.
+ *
+ * `autodetect` session management for the same reason: the session may be a cookie, a bearer token
+ * in a header, or both, and ZAP works it out from what the login actually did.
+ *
+ * Every secret is a `${...}` reference resolved by ZAP from the container's environment, so this
+ * file — which is written to disk and mounted into the container — never holds a client's password.
+ * This is verified behaviour, not an assumption: substitution happens for user credentials, and
+ * does *not* happen for job parameters, which is why nothing here puts a secret in a job.
+ */
+function authenticationBlock(login: ZapLogin): string {
+  const { credential } = login;
+  const totpSecret = credential.secretRefs.totpSecret;
+  const loggedOut = credential.sessionIndicator?.loggedOutText;
+
+  return `      authentication:
+        method: browser
+        parameters:
+          loginPageUrl: "${login.loginUrl}"
+          browserId: firefox-headless${
+            loggedOut === undefined
+              ? ''
+              : `
+        verification:
+          method: response
+          loggedOutRegex: "${loggedOut.replace(/"/g, '\\"')}"
+          pollFrequency: ${credential.sessionCheckEveryRequests}
+          pollUnits: requests`
+          }
+      sessionManagement:
+        method: autodetect
+      users:
+        - name: ${ZAP_USER}
+          credentials:
+            username: "${login.username}"
+            password: "${credential.secretRefs.password}"${
+              totpSecret === undefined
+                ? ''
+                : `
+            totp:
+              secret: "${totpSecret}"
+              period: 30
+              digits: 6
+              algorithm: SHA1`
+            }
+`;
+}
 
 interface ZapAlertInstance {
   uri?: string;
@@ -93,6 +192,27 @@ function zapCweFromString(value: string | undefined): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+/**
+ * Why the active scan policy turns off exactly one rule, by threshold, quoted.
+ *
+ * 40044 is Exponential Entity Expansion — the billion-laughs XML bomb, and the only rule in ZAP's
+ * release set that attacks availability rather than confidentiality or integrity. This platform does
+ * not perform denial of service in any form, so it is off in every policy.
+ *
+ * Those four lines used to be wrong in three independent ways, and any one of them alone was enough
+ * to make ZAP finish the plan, write a complete report, and exit 2 with a warning:
+ *
+ *   - the ids named were 20000 and 20001, the retired alpha denial-of-service rules, which are not
+ *     in the release set and have not been for years;
+ *   - the values were bare `off`, which YAML 1.1 reads as the boolean false;
+ *   - one of them was `strength`, and ZAP's strength enum has no off at all — Low, Medium, High,
+ *     Insane and Default is the whole of it. A rule is disabled by its threshold.
+ *
+ * The worker reads a non-zero exit as a run that did not happen, correctly, so every ZAP active scan
+ * in the platform's history was recorded as failed and its findings discarded — by the safety rail
+ * itself, which meanwhile excluded nothing. The unit test asserted the plan contained `id: 20000`,
+ * so it passed on the strength of the mistake being present.
+ */
 export const zapAdapter: ScannerAdapter = {
   id: 'zap',
   displayName: 'OWASP ZAP',
@@ -120,18 +240,44 @@ export const zapAdapter: ScannerAdapter = {
     'web-error-handling',
     'web-clickjacking',
     'web-ssrf',
+    // Named against a rule in the release set, which is the whole policy this adapter enables:
+    // ServerSideInclude, XpathInjection, FormatString and PaddingOracle are active rules; Jso,
+    // InfoSessionIdUrl, LinkTarget, UserControlledHTMLAttributes, UserControlledJavascriptEvent and
+    // UserControlledCharset are passive ones. Each was already running on every web engagement and
+    // the catalogue simply never said so.
+    'web-server-side-includes',
+    'web-xpath-injection',
+    'web-format-string-injection',
+    'web-padding-oracle',
+    'web-deserialisation',
+    'web-exposed-session-variables',
+    'web-reverse-tabnabbing',
+    'web-html-injection',
+    'web-client-side-javascript-execution',
+    'web-client-side-resource-manipulation',
     'api-error-verbosity',
     'api-cors-and-preflight',
   ],
+
+  usesCredentials: true,
 
   /**
    * The automation plan. Everything the engagement's policy decides — scope, exclusions, rate,
    * authentication, read-only behaviour — is expressed here rather than scattered across flags.
    */
-  buildInvocation: ({ policy, targets }) => {
+  buildInvocation: ({ policy, targets, credentials }) => {
     const contextUrls = targets.map((target) =>
       target.includes('://') ? target : `https://${target}`,
     );
+
+    const login = zapLogin(credentials);
+    // Every crawling and scanning job runs as this user when there is one. A job that leaves it out
+    // browses as a stranger, which is how an "authenticated" scan quietly covers nothing.
+    const asUser =
+      login === null
+        ? ''
+        : `
+      user: ${ZAP_USER}`;
 
     const excludePaths = [...policy.exclusions.paths, ...policy.forbiddenActions].map(
       (pattern) => `    - ".*${pattern.replace(/\*+/g, '.*')}.*"`,
@@ -146,7 +292,7 @@ ${contextUrls.map((url) => `        - "${url}"`).join('\n')}
 ${contextUrls.map((url) => `        - "${url}.*"`).join('\n')}
       excludePaths:
 ${excludePaths.length > 0 ? excludePaths.join('\n') : '        - "(?!)"'}
-  parameters:
+${login === null ? '' : authenticationBlock(login)}  parameters:
     failOnError: false
     progressToStdout: true
 
@@ -158,7 +304,7 @@ jobs:
 
   - type: spider
     parameters:
-      context: engagement
+      context: engagement${asUser}
       maxDuration: 20
       maxDepth: 8
       maxChildren: 60
@@ -166,7 +312,7 @@ jobs:
 
   - type: spiderAjax
     parameters:
-      context: engagement
+      context: engagement${asUser}
       maxDuration: 20
       maxCrawlDepth: 6
       browserId: firefox-headless
@@ -181,7 +327,7 @@ ${
     ? '  # readOnlyMode: the active scan is omitted entirely, so no state-changing request is sent.'
     : `  - type: activeScan
     parameters:
-      context: engagement
+      context: engagement${asUser}
       maxRuleDurationInMins: 5
       maxScanDurationInMins: 90
       threadPerHost: ${policy.rateLimits.concurrency}
@@ -190,13 +336,9 @@ ${
       defaultStrength: ${policy.intensity === 'thorough' ? 'high' : 'medium'}
       defaultThreshold: medium
       rules:
-        # Denial-of-service rules are excluded outright and are never enabled by any policy.
-        - id: 20000
-          strength: off
-          threshold: off
-        - id: 20001
-          strength: off
-          threshold: off`
+        # Exponential Entity Expansion. Availability is never a target; see the adapter.
+        - id: 40044
+          threshold: "off"`
 }
 
   - type: report
@@ -207,7 +349,18 @@ ${
 `;
 
     return {
-      command: ['zap.sh', '-cmd', '-autorun', '/out/zap-plan.yaml'],
+      // `-dir` is not optional here. The container runs as uid 65532, which has no passwd entry, so
+      // the JVM reports `user.home` as "?" and ZAP resolves its home directory to `/zap/?/.ZAP/`
+      // against a read-only root filesystem: it prints "Unable to create home directory" and exits
+      // before reading the plan. Every ZAP run in this platform failed that way.
+      //
+      // It points at the tmpfs rather than at `/out`, because ZAP's home holds the session database
+      // — which contains the login request, and therefore the client's password in the clear. On
+      // the tmpfs that never reaches a disk and dies with the container.
+      //
+      // ponytail: 512m of tmpfs is the ceiling. A very large site could fill it mid-scan; move the
+      // home to `/out` and accept the on-disk session if that ever happens.
+      command: ['zap.sh', '-cmd', '-dir', '/tmp/zap-home', '-autorun', '/out/zap-plan.yaml'],
       outputFile: 'zap-report.json',
       inputFiles: [{ name: 'zap-plan.yaml', contents: plan }],
     };
@@ -292,22 +445,33 @@ export const dalfoxAdapter: ScannerAdapter = {
   coversCheckIds: ['web-reflected-xss', 'web-dom-xss', 'web-prototype-pollution'],
 
   buildInvocation: ({ policy, targets }) => ({
+    // The binary, then dalfox's own `file` sub-command. `hahwul/dalfox` declares no ENTRYPOINT —
+    // its `CMD` is `./dalfox`, which the runner replaces — so the first element here is what Docker
+    // execs. Without the path every dalfox run died at container creation with
+    // `exec: "file": executable file not found in $PATH`, and the relative `./dalfox` would not
+    // resolve either because the runner sets the working directory to /out.
     command: [
+      '/app/dalfox',
       'file',
-      '/out/urls.txt',
       '--format',
       'jsonl',
       '--output',
       '/out/dalfox.jsonl',
       '--silence',
       '--no-color',
-      '--skip-bav',
-      '--worker',
+      // The WAF probe sends unsolicited malformed requests to fingerprint a filter. Not our job,
+      // and the noise it makes is the kind a client's monitoring reports as an attack.
+      '--skip-waf-probe',
+      '--workers',
       String(policy.rateLimits.concurrency),
-      '--delay',
-      String(Math.max(0, Math.round(1000 / policy.rateLimits.perTargetRequestsPerSecond))),
+      // Requests per second across every worker, which is what the policy actually promises the
+      // client. dalfox defaults to 50 workers and no cap, so leaving this out is how a scan that
+      // was sold as polite arrives as a burst.
+      '--rate-limit',
+      String(policy.rateLimits.perTargetRequestsPerSecond),
       '--timeout',
       '15',
+      '/out/urls.txt',
     ],
     outputFile: 'dalfox.jsonl',
     inputFiles: [{ name: 'urls.txt', contents: `${targets.join('\n')}\n` }],

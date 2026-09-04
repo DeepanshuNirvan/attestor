@@ -6,6 +6,8 @@ import { StopControl } from '@/components/stop-control';
 import { StateControl } from '@/components/state-control';
 import { PreFlightChecklist, type PreFlightItem } from '@/components/pre-flight-checklist';
 import { PaymentControl } from '@/components/payment-control';
+import { CredentialRequest, type CredentialKindOption } from '@/components/credential-request';
+import { revokeCredential } from '@/app/actions';
 import { ScopeEditor } from '@/components/scope-editor';
 import { tryGet } from '@/lib/api';
 
@@ -90,6 +92,7 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
   const data = await tryGet<EngagementDetail>(`/engagements/${id}`);
   if (data === null) redirect('/login');
   const preFlight = await tryGet<PreFlightResponse>(`/engagements/${id}/pre-flight-checklist`);
+  const credentialKinds = await tryGet<{ kinds: CredentialKindOption[] }>('/credential-kinds');
   if (!data.engagement) notFound();
 
   const { engagement, panicStop } = data;
@@ -292,8 +295,8 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
           </p>
           {data.credentials.length === 0 ? (
             <p className="muted small">
-              None submitted. Generate a one-time intake link so the client can submit them without
-              sending them through email.
+              None submitted yet. Ask for them below — the client fills in a form rather than sending
+              a password through email or chat.
             </p>
           ) : (
             <table>
@@ -303,8 +306,9 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
                   <th>Role</th>
                   <th>Type</th>
                   <th>Second account</th>
-                  <th>Verified</th>
+                  <th>Status</th>
                   <th>Expires</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -317,15 +321,39 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
                     <td className="small">
                       {credential.shreddedAt
                         ? 'Shredded'
-                        : credential.lastVerifiedAt
-                          ? formatDateTime(credential.lastVerifiedAt)
-                          : 'Not verified'}
+                        : credential.revokedAt
+                          ? `Revoked ${formatDateTime(credential.revokedAt)}`
+                          : 'Stored'}
                     </td>
                     <td className="small">{formatDateTime(credential.expiresAt)}</td>
+                    <td>
+                      {credential.revokedAt === null && credential.shreddedAt === null ? (
+                        <form action={revokeCredential.bind(null, id, credential.id)}>
+                          <button type="submit">Stop using</button>
+                        </form>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+        
+          <h3>Ask for test accounts</h3>
+          <p className="muted small">
+            Name the accounts you need and how each one signs in. The client gets a link showing
+            exactly those boxes. Ask for two accounts per role you will test access control on.
+          </p>
+          <p className="muted small">
+            A stored credential is only used if the engagement policy has an{' '}
+            <code>authProfiles</code> entry with the same <strong>role</strong> and a{' '}
+            <code>loginUrl</code>. Without one the scan runs signed out and finds nothing behind the
+            login.
+          </p>
+          {credentialKinds === null ? (
+            <p className="muted small">The list of login types could not be loaded.</p>
+          ) : (
+            <CredentialRequest engagementId={id} kinds={credentialKinds.kinds} />
           )}
         </section>
 

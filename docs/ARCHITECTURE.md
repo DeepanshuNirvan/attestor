@@ -94,7 +94,7 @@ The bottom of the stack. Nothing depends on anything else.
 
 | Path | What it holds |
 | --- | --- |
-| `catalogue/` | **210 checks** across eight module files, plus the types and the index |
+| `catalogue/` | **235 checks** across eight module files, plus the types and the index |
 | `standards/catalogues.ts` | ASVS 5.0.0 chapters, WSTG 4.2 categories, OWASP lists, MASVS groups |
 | `standards/compliance.ts` | ISO 27001 Annex A, SOC 2, PCI DSS 4.0.1, DPDP Act mappings |
 | `model.ts` | The `Finding` shape everything else agrees on |

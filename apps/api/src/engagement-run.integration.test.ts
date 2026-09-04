@@ -38,6 +38,13 @@ const TARGET_CONTAINER = 'attestor-test-juice-shop-1';
  */
 const TEMPLATE_PACK = '/tmp/attestor/nuclei-templates';
 
+/**
+ * The httpx classification model, provisioned by the `httpx-model-init` service into the same
+ * workspace, for the same reason and resolved the same way. Without it httpx fetches 92.6 MB from
+ * huggingface at startup — third-party egress in the middle of a client engagement.
+ */
+const HTTPX_MODEL_PACK = '/tmp/attestor/httpx-dit';
+
 async function containerAddress(container: string): Promise<string> {
   const template = '{{(index .NetworkSettings.Networks "' + TARGET_NETWORK + '").IPAddress}}';
   const { stdout } = await run('docker', ['inspect', '-f', template, container]);
@@ -195,6 +202,9 @@ describe('an engagement run against the vulnerable stack', () => {
         targets: [targetIp],
         command: invocation.command,
         outputDirectory,
+        // Mounted exactly as the worker mounts it. The assertion below is the point: without this,
+        // asking httpx for JSON makes it fetch a model from huggingface before it probes anything.
+        readOnlyMounts: [{ hostPath: HTTPX_MODEL_PACK, containerPath: '/home/nonroot/.dit' }],
       },
       {
         scopeContext,
@@ -211,6 +221,9 @@ describe('an engagement run against the vulnerable stack', () => {
     expect(outcome.status).toBe('completed');
     if (outcome.status !== 'completed') return;
     expect(outcome.result.timedOut).toBe(false);
+    // Nothing left for a third party. httpx announces the fetch on stderr when it makes one, so the
+    // absence of that line is the evidence that the client's engagement stayed between us and them.
+    expect(outcome.result.stderr).not.toContain('huggingface.co');
 
     const raw = await readFile(path.join(outputDirectory, invocation.outputFile), 'utf8');
     const assets = httpx.parseAssets?.(raw) ?? [];

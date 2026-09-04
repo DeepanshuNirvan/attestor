@@ -37,7 +37,7 @@ export const mobileChecks: Check[] = [
     example:
       'Session tokens written to shared preferences in plain text and included in device backups.',
     automation: 'assisted',
-    tools: ['mobsf', 'frida', 'objection'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-STORAGE-1', 'MASVS-STORAGE-2'], owaspTop10: ['A04:2025'], cwe: [312, 922] },
   },
   {
@@ -50,7 +50,7 @@ export const mobileChecks: Check[] = [
     example:
       'The full authentication response, including the refresh token, written to the device log on failure.',
     automation: 'assisted',
-    tools: ['mobsf', 'frida'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-STORAGE-2', 'MASVS-PRIVACY-1'], owaspTop10: ['A09:2025'], cwe: [532] },
   },
   {
@@ -75,8 +75,8 @@ export const mobileChecks: Check[] = [
       'Determine whether pinning is implemented, whether it covers all hosts, and how much effort a bypass takes on an instrumented device.',
     example:
       'Pinning present on the main API host but absent on the payment host, which is the one that matters.',
-    automation: 'assisted',
-    tools: ['frida', 'objection', 'mitmproxy'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-NETWORK-2'], owaspTop10: ['A04:2025'], cwe: [295] },
   },
   {
@@ -89,7 +89,7 @@ export const mobileChecks: Check[] = [
     example:
       'An exported activity that displays account details when started with a user identifier, callable by any installed app.',
     automation: 'assisted',
-    tools: ['mobsf', 'objection'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-PLATFORM-1'], owaspTop10: ['A01:2025'], cwe: [926, 927] },
   },
   {
@@ -101,8 +101,8 @@ export const mobileChecks: Check[] = [
       'Test whether deep links can trigger authenticated actions, carry unvalidated parameters into a WebView, or be claimed by another application.',
     example:
       'A deep link that opens an arbitrary URL inside the authenticated WebView, with the session cookie attached.',
-    automation: 'assisted',
-    tools: ['objection', 'frida'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-PLATFORM-1', 'MASVS-PLATFORM-2'], owaspTop10: ['A01:2025'], cwe: [939, 601] },
   },
   {
@@ -115,7 +115,7 @@ export const mobileChecks: Check[] = [
     example:
       'A JavaScript bridge exposing a method that reads local files, reachable from any page the WebView loads.',
     automation: 'assisted',
-    tools: ['mobsf', 'frida'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-PLATFORM-2'], owaspTop10: ['A05:2025'], cwe: [749, 79] },
   },
   {
@@ -127,8 +127,8 @@ export const mobileChecks: Check[] = [
       'Test login, token storage, refresh, logout, session expiry and whether authentication state can be restored from local data alone.',
     example:
       'A session restored from a locally stored flag, so editing that value signs the user back in without a token.',
-    automation: 'assisted',
-    tools: ['frida', 'objection'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-AUTH-1'], owaspTop10: ['A07:2025'], cwe: [287, 603] },
   },
   {
@@ -140,8 +140,8 @@ export const mobileChecks: Check[] = [
       'Check whether biometric or PIN gating is enforced by the operating system with a cryptographic result, or only by an application-level boolean that can be patched.',
     example:
       'A biometric prompt whose success callback sets a variable, bypassable by hooking one method.',
-    automation: 'assisted',
-    tools: ['frida', 'objection'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-AUTH-2', 'MASVS-AUTH-3'], owaspTop10: ['A07:2025'], cwe: [287] },
   },
   {
@@ -166,8 +166,8 @@ export const mobileChecks: Check[] = [
       'Run the application on an instrumented device to observe network calls, inspect objects in memory, and confirm what the static analysis suggested.',
     example:
       'A card number held in memory long after the payment screen closes, recoverable from a heap dump.',
-    automation: 'assisted',
-    tools: ['frida', 'objection'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-RESILIENCE-4'], owaspTop10: ['A04:2025'], cwe: [316] },
   },
   {
@@ -179,8 +179,8 @@ export const mobileChecks: Check[] = [
       'Assess whether integrity checks exist, what they do when they fail, and how much effort a bypass takes. Reported as a resilience observation, not as a vulnerability in itself.',
     example:
       'Root detection that logs and continues, which provides no protection but does provide a false sense of it.',
-    automation: 'assisted',
-    tools: ['frida', 'objection'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-RESILIENCE-1', 'MASVS-RESILIENCE-2'], cwe: [693] },
   },
   {
@@ -193,7 +193,7 @@ export const mobileChecks: Check[] = [
     example:
       'The account balance screen captured into the task-switcher snapshot, visible to anyone who picks up the device.',
     automation: 'assisted',
-    tools: ['mobsf', 'objection'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-PLATFORM-3', 'MASVS-PRIVACY-1'], cwe: [200] },
   },
   {
@@ -244,8 +244,8 @@ export const mobileChecks: Check[] = [
       'Test how the application handles untrusted input from intents, deep links, QR codes, push payloads, clipboard content and files.',
     example:
       'A QR scanner that passes the decoded value straight into a WebView load.',
-    automation: 'assisted',
-    tools: ['objection', 'frida'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-CODE-4'], owaspTop10: ['A05:2025'], cwe: [20] },
   },
   {
@@ -257,8 +257,8 @@ export const mobileChecks: Check[] = [
       'Intercept the application\'s traffic and feed the captured endpoints into the API module, so the backend is tested rather than only the client.',
     example:
       'A mobile-only endpoint returning the full user record where the app displays only the name.',
-    automation: 'assisted',
-    tools: ['mitmproxy', 'frida'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-NETWORK-1'], apiTop10: ['API3:2023'], cwe: [213] },
   },
   {
@@ -270,8 +270,8 @@ export const mobileChecks: Check[] = [
       'Check whether notifications carry sensitive content to the lock screen and whether notification payloads are trusted as instructions by the application.',
     example:
       'A one-time code delivered in full to the lock screen, readable without unlocking the device.',
-    automation: 'assisted',
-    tools: ['objection'],
+    automation: 'manual',
+    tools: [],
     standards: { masvs: ['MASVS-PLATFORM-3', 'MASVS-PRIVACY-2'], cwe: [200] },
   },
   {
@@ -283,7 +283,7 @@ export const mobileChecks: Check[] = [
       'Assess how readable the decompiled application is and whether business logic that should be server-side is recoverable from the client.',
     example:
       'A pricing algorithm fully readable in the decompiled code, including the internal discount thresholds.',
-    automation: 'assisted',
+    automation: 'manual',
     tools: ['jadx', 'apktool'],
     standards: { masvs: ['MASVS-RESILIENCE-3'], cwe: [656] },
   },

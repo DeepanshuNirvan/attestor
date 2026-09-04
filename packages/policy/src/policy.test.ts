@@ -129,7 +129,7 @@ describe('warnings', () => {
     expect(warnings.join(' ')).toContain('session indicator');
   });
 
-  it('warns when a role has only one account, because horizontal access control needs two', () => {
+  it('warns when a role names no second account, because horizontal access control needs two', () => {
     const { warnings } = resolvePolicy([
       {
         name: 'global',
@@ -191,6 +191,28 @@ describe('profiles', () => {
     const { policy } = await loadProfile('quick-external');
     expect(policy.readOnlyMode).toBe(true);
     expect(policy.phases.postLogin).toBe(false);
+  });
+
+  it('says so out loud when a policy layer drops nuclei informational templates', () => {
+    const { warnings } = resolvePolicy([
+      { name: 'engagement', yamlSource: `modules: [web]
+checks:
+  nucleiSeverities: [critical, high]
+` },
+    ]);
+    expect(warnings.join(' ')).toContain('informational templates are excluded');
+  });
+
+  it('no profile drops nuclei informational templates', async () => {
+    // Every exposure, metafile and exposed-panel template nuclei ships is `info`, and the catalogue
+    // claims nuclei automates checks that only those templates can perform. A profile that trims
+    // `info` off the severity list therefore removes a whole class of check from the run while the
+    // report goes on saying the check was covered. Three profiles were doing exactly that, which is
+    // invisible from the outside: an absent finding and an unperformed check look identical.
+    for (const id of PROFILE_IDS) {
+      const { policy } = await loadProfile(id);
+      expect(policy.checks.nucleiSeverities, id).toContain('info');
+    }
   });
 });
 

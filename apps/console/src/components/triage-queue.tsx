@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { confirmFindings, discardFindings, markFalsePositive } from '@/app/actions';
 import { Severity } from '@/components/shell';
@@ -238,7 +239,13 @@ export function TriageQueue({
                   <td>
                     <Severity value={candidate.severity} />
                   </td>
-                  <td>{candidate.title}</td>
+                  <td>
+                    {/* The way through to the one-finding view, where the work no tool does gets
+                        done. Kept as an ordinary link so the keyboard flow above is untouched. */}
+                    <Link href={`/engagements/${engagementId}/findings/${candidate.id}`}>
+                      {candidate.title}
+                    </Link>
+                  </td>
                   <td className="mono small">
                     {asset ? `${asset.value}${asset.location ?? ''}` : '—'}
                     {asset?.parameter ? ` (${asset.parameter})` : ''}
