@@ -576,6 +576,17 @@ section.continues {
   }
 }
 
+/*
+ * Checks that were tested and found nothing. Named in a run-on line rather than a row each: the
+ * coverage matrix stays complete without spending a page per category on empty cells.
+ */
+.coverage-clean {
+  font-size: 8.5pt;
+  line-height: 1.45;
+  color: #33383f;
+  margin: 2pt 0 8pt;
+}
+
 </style>
 </head>
 <body>
@@ -636,7 +647,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
     </tbody>
   </table>
   <h3>Handling</h3>
-  <p>This document contains information about unresolved security weaknesses in systems belonging to Sample Retail Private Limited. Store it in access-controlled storage, distribute it on a need-to-know basis, and do not publish or quote from it without written consent.</p>
+  <p>This document describes unfixed security weaknesses in systems belonging to Sample Retail Private Limited. Keep it in access-controlled storage. Share it only with people who need it. Do not publish or quote from it without written consent.</p>
 </section>
 
 <section id="executive-summary">
@@ -689,7 +700,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <tr><td>A03:2025</td><td class="numeric">1</td></tr></tbody></table>
   <h3>Findings by asset</h3>
   <table><thead><tr><th>Asset</th><th class="numeric">Findings</th></tr></thead><tbody><tr><td>juice.attestor-lab.internal</td><td class="numeric">15</td></tr></tbody></table>
-  <p class="callout">Remediation order in section 9 is not the same as severity order. Several findings that are individually minor are steps in the chain described in section 7, and fixing them is cheap.</p>
+  <p class="callout">Fix things in the order given in section 9, which is not severity order. Some low-severity findings are steps in the chain shown in section 7 and are cheap to close.</p>
 </section>
 <section id="scope">
   <h2>3. Scope</h2>
@@ -727,7 +738,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <section id="methodology">
   <h2>4. Methodology</h2>
   <p>Testing followed OWASP Web Security Testing Guide 4.2, OWASP Application Security Verification Standard 5.0, OWASP Top 10:2025, OWASP API Security Top 10:2023, NIST SP 800-115, PTES.</p>
-  <p>The engagement ran in four phases: unauthenticated discovery and enumeration; automated scanning under agreed rate limits; human validation of every candidate finding; and human-led testing of access control, business logic and multi-step flows. Automated tooling was used to obtain coverage. Every finding in this report was reproduced by a tester before it was included, and findings that came only from a tool and could not be reproduced are not present.</p>
+  <p>The work ran in four phases. First, discovery and enumeration without credentials. Second, automated scanning within the agreed rate limits. Third, a tester checked every candidate finding by hand. Fourth, a tester tested access control, business logic and multi-step flows directly. Tools were used for coverage, not for conclusions. A tester reproduced every finding in this report. Anything a tool reported that could not be reproduced was left out.</p>
   <h3>Tools used</h3>
   <table>
     <thead><tr><th>Tool</th><th>Version</th><th>Used for</th></tr></thead>
@@ -740,13 +751,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <tr><td>testssl.sh</td><td>3.2</td><td>TLS configuration review</td></tr></tbody>
   </table>
   <h3>Severity model</h3>
-  <p>Severities are derived from CVSS 4.0. The vector string is printed with every finding so the score can be recomputed. Where a tester has overridden a computed severity because the business context changes the impact, the finding records the reason.</p>
+  <p>Severities come from CVSS 4.0. Each finding prints its vector string, so you can recompute the score yourself. Where a tester changed a computed severity because the business context changes the impact, the finding says why.</p>
   <h3>Excluded techniques</h3>
-  <p>Denial-of-service, distributed denial-of-service, stress, load and volumetric testing were not performed and are not offered. Destructive actions, mass extraction of production personal data, social engineering of personnel and physical intrusion were not performed.</p>
+  <p>We did not run denial-of-service, stress, load or volumetric tests. We do not offer them. We did not take destructive actions, extract production personal data in bulk, social-engineer staff, or attempt physical entry.</p>
 </section>
 <section id="coverage">
   <h2>5. Coverage matrix</h2>
-  <p>This matrix is generated from what actually executed during the engagement. It is not a statement of intent: a check appears as tested only where a completed run or a recorded manual test covered it, and anything less carries the reason.</p>
+  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not.</p>
   <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
   <table>
     <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
@@ -758,75 +769,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
     </tbody>
   </table>
   <h3>Information gathering</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (11):</strong> Application entry point and execution path mapping; Webserver metafile review; Subdomain and hostname enumeration; DNS record review; Subdomain takeover; HTTP service discovery and fingerprinting; Content and path discovery; JavaScript endpoint and secret extraction; Virtual host discovery; Technology and version inventory; Attack surface change detection.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Application entry point and execution path mapping</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Webserver metafile review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Subdomain and hostname enumeration</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>DNS record review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Subdomain takeover</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>HTTP service discovery and fingerprinting</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Content and path discovery</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>JavaScript endpoint and secret extraction</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Virtual host discovery</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Technology and version inventory</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Attack surface change detection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Search engine and public source discovery</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
@@ -846,15 +792,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Network and infrastructure</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (1):</strong> Port and service enumeration.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Port and service enumeration</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>HTTP request smuggling and desynchronisation</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>No proxy or CDN sits in front of the staging environment, so the class does not apply here.</td>
@@ -892,39 +833,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Cryptography</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (5):</strong> TLS configuration and certificate review; Sensitive data exposure in transit; Weak cryptographic storage; Padding oracle and ciphertext manipulation; Use of predictable randomness.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>TLS configuration and certificate review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Sensitive data exposure in transit</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Weak cryptographic storage</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Padding oracle and ciphertext manipulation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Use of predictable randomness</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Cryptographic implementation review</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>The mobile module was not in scope for this engagement.</td>
@@ -944,73 +856,20 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Configuration and deployment</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (10):</strong> SPF, DKIM and DMARC review; Exposed version control and build artefacts; CORS policy review; HTTP method handling; File extension and backup file handling; Administrative interface exposure; Caching of authenticated responses; Host header handling; Application platform configuration; API CORS and pre-flight consistency.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>SPF, DKIM and DMARC review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Exposed version control and build artefacts</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>HTTP security header configuration</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
       </tr>
 <tr>
-        <td>CORS policy review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>HTTP method handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>File extension and backup file handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Administrative interface exposure</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Caching of authenticated responses</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Host header handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Rate limiting on sensitive endpoints</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Application platform configuration</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
       </tr>
 <tr>
         <td>Path confusion and route resolution</td>
@@ -1023,24 +882,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
         <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>API CORS and pre-flight consistency</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
 <h3>Cloud</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (1):</strong> Exposed cloud storage discovery.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Exposed cloud storage discovery</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Account, subscription and project inventory</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>The cloud module was not in scope for this engagement.</td>
@@ -1180,21 +1028,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Supply chain and code</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (2):</strong> Credentials exposed in public sources; Third-party script inclusion and subresource integrity.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Credentials exposed in public sources</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Third-party script inclusion and subresource integrity</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Model and plugin supply chain</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>The llm module was not in scope for this engagement.</td>
@@ -1256,36 +1093,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Session management</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (6):</strong> Cookie attribute review; Session token generation and entropy; Session fixation; Cross-site request forgery; Logout and session-riding side effects; Session identifiers and sensitive values in URLs.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Cookie attribute review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Session token generation and entropy</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Session fixation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Session timeout and termination</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Cross-site request forgery</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1301,18 +1115,6 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
-        <td>Logout and session-riding side effects</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Session identifiers and sensitive values in URLs</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Session hijacking exposure</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
@@ -1320,42 +1122,19 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Authentication</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (6):</strong> Default and weak credentials on exposed components; Registration process review; Credentials transmitted over an encrypted channel; Authentication bypass; API authentication mechanisms; Token lifecycle and revocation.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Default and weak credentials on exposed components</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Username and account enumeration</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
       </tr>
 <tr>
-        <td>Registration process review</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Credentials transmitted over an encrypted channel</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Password policy and credential strength</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Authentication bypass</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1419,18 +1198,6 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
-        <td>API authentication mechanisms</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Token lifecycle and revocation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Mobile authentication and session handling</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>The mobile module was not in scope for this engagement.</td>
@@ -1450,6 +1217,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Access control</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (11):</strong> Vertical access control across roles; Tenant isolation in multi-tenant applications; Forced browsing to unlinked functionality; Privilege escalation through request parameters; Server-side request forgery; Uploaded file access control; Broken object level authorisation; Broken function level authorisation; Object property level authorisation; GraphQL field and node authorisation; Authentication and authorisation of the model endpoint.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
@@ -1459,22 +1227,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
-        <td>Vertical access control across roles</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Horizontal access control between users</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Tenant isolation in multi-tenant applications</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
       </tr>
 <tr>
         <td>Path traversal and local file access</td>
@@ -1483,63 +1239,9 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">1</td>
       </tr>
 <tr>
-        <td>Forced browsing to unlinked functionality</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Privilege escalation through request parameters</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Server-side request forgery</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Uploaded file access control</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Role definitions and the permission model</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Broken object level authorisation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Broken function level authorisation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Object property level authorisation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>GraphQL field and node authorisation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Authentication and authorisation of the model endpoint</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1550,6 +1252,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Input validation</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (18):</strong> NoSQL and ORM injection; OS command injection; Reflected cross-site scripting; Server-side template injection; XML external entity processing; Insecure deserialisation; File upload handling; Open redirection; HTTP header and response splitting; LDAP and directory injection; Mass assignment and object property binding; CSV and spreadsheet formula injection; HTTP parameter pollution; Server-side include injection; XPath injection; Format string injection; Schema-driven injection and type confusion; Content type and parser handling.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
@@ -1559,106 +1262,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">1</td>
       </tr>
 <tr>
-        <td>NoSQL and ORM injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>OS command injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Reflected cross-site scripting</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Stored cross-site scripting</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Server-side template injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>XML external entity processing</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Insecure deserialisation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>File upload handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Open redirection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>HTTP header and response splitting</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>LDAP and directory injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Mass assignment and object property binding</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>CSV and spreadsheet formula injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>HTTP parameter pollution</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Server-side include injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>XPath injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Format string injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
       </tr>
 <tr>
         <td>IMAP and SMTP injection through mail features</td>
@@ -1670,18 +1277,6 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td>Incubated and delayed-execution vulnerabilities</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Schema-driven injection and type confusion</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Content type and parser handling</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1698,27 +1293,10 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Client-side</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> DOM-based cross-site scripting; Prototype pollution; Clickjacking and UI redress; WebSocket security; Source maps and build artefacts in production; Reverse tabnabbing on outbound links; HTML injection; Client-side JavaScript execution from controllable input; Client-side resource manipulation.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>DOM-based cross-site scripting</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Prototype pollution</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Clickjacking and UI redress</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Cross-origin messaging</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
@@ -1731,42 +1309,6 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
-        <td>WebSocket security</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Source maps and build artefacts in production</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Reverse tabnabbing on outbound links</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>HTML injection</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Client-side JavaScript execution from controllable input</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Client-side resource manipulation</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>CSS injection</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
@@ -1774,79 +1316,21 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Business logic</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> Workflow and process bypass; Coupon and promotion abuse; Race conditions on limited resources; Function and transaction limits; Integrity checks on submitted data; Automated abuse of sensitive business flows; Chaining of low-severity findings; Process timing and ordering; Payment flow integrity.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Workflow and process bypass</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Price, quantity and discount manipulation</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Coupon and promotion abuse</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Race conditions on limited resources</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Function and transaction limits</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Integrity checks on submitted data</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Automated abuse of sensitive business flows</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Chaining of low-severity findings</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Process timing and ordering</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Payment flow integrity</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
 <h3>Error handling</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (2):</strong> Error handling and information disclosure; API error verbosity.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Error handling and information disclosure</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Behaviour under failure of a dependency</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
@@ -1859,12 +1343,6 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">0</td>
       </tr>
 <tr>
-        <td>API error verbosity</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Logging and error handling review in source</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>The code module was not in scope for this engagement.</td>
@@ -1872,66 +1350,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>API</h3>
+    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> API specification import and coverage; Endpoint inventory, versioning and deprecated routes; Excessive data exposure in responses; Unrestricted resource consumption; API rate limiting and quota enforcement; GraphQL introspection and schema exposure; GraphQL query depth, aliasing and batching abuse; Webhook delivery and receipt security; Idempotency and request replay.</p>
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>API specification import and coverage</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Endpoint inventory, versioning and deprecated routes</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Excessive data exposure in responses</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Unrestricted resource consumption</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>API rate limiting and quota enforcement</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>GraphQL introspection and schema exposure</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>GraphQL query depth, aliasing and batching abuse</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Webhook delivery and receipt security</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Unsafe consumption of third-party APIs</td>
         <td><span class="coverage-state state-notTested">Not tested</span></td>
         <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Idempotency and request replay</td>
-        <td><span class="coverage-state state-tested">Tested</span></td>
-        <td></td>
         <td class="numeric">0</td>
       </tr>
 <tr>
@@ -1948,6 +1373,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>Mobile</h3>
+    
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
@@ -2060,6 +1486,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
       </tr></tbody>
     </table>
 <h3>LLM and AI</h3>
+    
     <table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
@@ -2260,7 +1687,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 </section>
 <section id="findings">
   <h2>7. Detailed findings</h2>
-  <p>Ordered by severity, then by reference. Every finding here was reproduced by a tester.</p>
+  <p>Ordered by severity, then by reference. A tester reproduced every finding here.</p>
 </section>
 <article class="finding" id="ATT-2026-000-001">
   <header class="finding-header">
@@ -2867,7 +2294,7 @@ evidence captured: 1 object</pre></figure>
 </article>
 <section id="positive-observations">
   <h2>8. Positive observations</h2>
-  <p>Controls found to be working. These are recorded because a report that lists only failures gives a distorted picture of the system and of the team that built it.</p>
+  <p>Controls we found working. A report that lists only failures gives a false picture of the system and of the people who built it.</p>
   <ul>
 <li>Passwords are stored using a modern password hashing function with per-user salts. Nothing in the storage path required change.</li>
 <li>TLS is correctly configured on the public listener: TLS 1.2 and 1.3 only, no weak cipher suites, and a valid certificate chain with 74 days to expiry.</li>
@@ -2877,7 +2304,7 @@ evidence captured: 1 object</pre></figure>
 </section>
 <section id="recommendations">
   <h2>9. Strategic recommendations</h2>
-  <p>Grouped by root cause rather than by finding, because several findings frequently share one fix.</p>
+  <p>Grouped by root cause, not by finding. Several findings often share a single fix.</p>
   <h3>First 30 days</h3><ul>
 <li>Parameterise every raw query in the codebase, not only the login handler. Static analysis will find the rest in an afternoon.</li>
 <li>Pin token verification to one algorithm, rotate the signing key, and invalidate live sessions.</li>

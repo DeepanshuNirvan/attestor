@@ -277,7 +277,7 @@ function documentControlHtml(data: ReportData): string {
     </tbody>
   </table>
   <h3>Handling</h3>
-  <p>This document contains information about unresolved security weaknesses in systems belonging to ${escapeHtml(data.clientLegalName)}. Store it in access-controlled storage, distribute it on a need-to-know basis, and do not publish or quote from it without written consent.</p>
+  <p>This document describes unfixed security weaknesses in systems belonging to ${escapeHtml(data.clientLegalName)}. Keep it in access-controlled storage. Share it only with people who need it. Do not publish or quote from it without written consent.</p>
 </section>`;
 }
 
@@ -334,7 +334,7 @@ function riskOverviewHtml(data: ReportData, numbers: SectionNumbers): string {
   <table><thead><tr><th>Category</th><th class="numeric">Findings</th></tr></thead><tbody>${categoryRows}</tbody></table>
   <h3>Findings by asset</h3>
   <table><thead><tr><th>Asset</th><th class="numeric">Findings</th></tr></thead><tbody>${assetRows}</tbody></table>
-  <p class="callout">Remediation order in section ${numbers.get('recommendations')} is not the same as severity order. Several findings that are individually minor are steps in the chain described in section ${numbers.get('findings')}, and fixing them is cheap.</p>
+  <p class="callout">Fix things in the order given in section ${numbers.get('recommendations')}, which is not severity order. Some low-severity findings are steps in the chain shown in section ${numbers.get('findings')} and are cheap to close.</p>
 </section>`;
 }
 
@@ -367,16 +367,16 @@ function methodologyHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="methodology">
   <h2>${heading(numbers, 'methodology')}</h2>
   <p>Testing followed ${escapeHtml(data.methodology.join(', '))}.</p>
-  <p>The engagement ran in four phases: unauthenticated discovery and enumeration; automated scanning under agreed rate limits; human validation of every candidate finding; and human-led testing of access control, business logic and multi-step flows. Automated tooling was used to obtain coverage. Every finding in this report was reproduced by a tester before it was included, and findings that came only from a tool and could not be reproduced are not present.</p>
+  <p>The work ran in four phases. First, discovery and enumeration without credentials. Second, automated scanning within the agreed rate limits. Third, a tester checked every candidate finding by hand. Fourth, a tester tested access control, business logic and multi-step flows directly. Tools were used for coverage, not for conclusions. A tester reproduced every finding in this report. Anything a tool reported that could not be reproduced was left out.</p>
   <h3>Tools used</h3>
   <table>
     <thead><tr><th>Tool</th><th>Version</th><th>Used for</th></tr></thead>
     <tbody>${toolRows}</tbody>
   </table>
   <h3>Severity model</h3>
-  <p>Severities are derived from CVSS ${escapeHtml(data.cvssVersion)}. The vector string is printed with every finding so the score can be recomputed. Where a tester has overridden a computed severity because the business context changes the impact, the finding records the reason.</p>
+  <p>Severities come from CVSS ${escapeHtml(data.cvssVersion)}. Each finding prints its vector string, so you can recompute the score yourself. Where a tester changed a computed severity because the business context changes the impact, the finding says why.</p>
   <h3>Excluded techniques</h3>
-  <p>Denial-of-service, distributed denial-of-service, stress, load and volumetric testing were not performed and are not offered. Destructive actions, mass extraction of production personal data, social engineering of personnel and physical intrusion were not performed.</p>
+  <p>We did not run denial-of-service, stress, load or volumetric tests. We do not offer them. We did not take destructive actions, extract production personal data in bulk, social-engineer staff, or attempt physical entry.</p>
 </section>`;
 }
 
@@ -395,9 +395,22 @@ function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
     notApplicable: 'Not present',
   } as const;
 
+  // A check that was tested, found nothing and carries no reason has three empty cells in a
+  // four-column table, and there are usually about a hundred of them. They are named in a list
+  // instead of a row each: every check is still accounted for by name and state, in a couple of
+  // lines rather than a couple of pages. Anything with a finding, a reason, or a state other than
+  // tested keeps its row, because those are the rows a reader actually stops on.
   const sections = [...byCategory.entries()]
     .map(([, entries]) => {
-      const rows = entries
+      const clean = entries.filter(
+        (entry) =>
+          entry.state === 'tested' &&
+          entry.findingCount === 0 &&
+          (entry.reason ?? '') === '',
+      );
+      const detailed = entries.filter((entry) => !clean.includes(entry));
+
+      const rows = detailed
         .map(
           (entry) => `<tr>
         <td>${escapeHtml(entry.check.title)}</td>
@@ -407,11 +420,25 @@ function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
       </tr>`,
         )
         .join('\n');
-      return `<h3>${escapeHtml(CATEGORY_LABELS[entries[0]!.check.category])}</h3>
-    <table>
+
+      const table =
+        detailed.length === 0
+          ? ''
+          : `<table>
       <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+
+      const cleanLine =
+        clean.length === 0
+          ? ''
+          : `<p class="coverage-clean"><strong>Tested, nothing found (${clean.length}):</strong> ${clean
+              .map((entry) => escapeHtml(entry.check.title))
+              .join('; ')}.</p>`;
+
+      return `<h3>${escapeHtml(CATEGORY_LABELS[entries[0]!.check.category])}</h3>
+    ${cleanLine}
+    ${table}`;
     })
     .join('\n');
 
@@ -422,7 +449,7 @@ function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
 
   return `<section id="coverage">
   <h2>${heading(numbers, 'coverage')}</h2>
-  <p>This matrix is generated from what actually executed during the engagement. It is not a statement of intent: a check appears as tested only where a completed run or a recorded manual test covered it, and anything less carries the reason.</p>
+  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not.</p>
   <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
   <table>
     <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
@@ -625,7 +652,7 @@ function findingsHtml(data: ReportData, numbers: SectionNumbers): string {
 
   return `<section id="findings">
   <h2>${heading(numbers, 'findings')}</h2>
-  <p>Ordered by severity, then by reference. Every finding here was reproduced by a tester.</p>
+  <p>Ordered by severity, then by reference. A tester reproduced every finding here.</p>
 </section>
 ${ordered.map((finding, index) => findingHtml(finding, index)).join('\n')}`;
 }
@@ -633,7 +660,7 @@ ${ordered.map((finding, index) => findingHtml(finding, index)).join('\n')}`;
 function positivesHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="positive-observations">
   <h2>${heading(numbers, 'positiveObservations')}</h2>
-  <p>Controls found to be working. These are recorded because a report that lists only failures gives a distorted picture of the system and of the team that built it.</p>
+  <p>Controls we found working. A report that lists only failures gives a false picture of the system and of the people who built it.</p>
   ${list(data.positiveObservations)}
 </section>`;
 }
@@ -644,7 +671,7 @@ function roadmapHtml(data: ReportData, numbers: SectionNumbers): string {
     .join('\n');
   return `<section id="recommendations">
   <h2>${heading(numbers, 'recommendations')}</h2>
-  <p>Grouped by root cause rather than by finding, because several findings frequently share one fix.</p>
+  <p>Grouped by root cause, not by finding. Several findings often share a single fix.</p>
   ${blocks}
 </section>`;
 }

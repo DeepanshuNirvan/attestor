@@ -14,8 +14,8 @@ import { site } from '../data/site';
       <p class="eyebrow">About</p>
       <h1>A small firm that does one thing</h1>
       <p class="lede">
-        {site.brandName} assesses the security of software and the infrastructure it runs on, and
-        writes it down so that somebody who was not there can act on it. That is the whole business.
+        {site.brandName} tests the security of software and the infrastructure it runs on, then
+        writes the results up so someone who was not there can act on them.
       </p>
     </div>
   </section>
@@ -31,9 +31,9 @@ import { site } from '../data/site';
           site.founder.awaitingOwner ? (
             <div class="draft-notice">
               <p>
-                Founder biography, credentials and published work will appear here. We are not going
-                to fill this section with stock phrases in the meantime — ask on the scoping call and
-                you will get a straight answer about who will be on your engagement.
+                Founder biography, credentials and published work will appear here. We would rather
+                leave it blank than fill it with stock phrases. Ask on the scoping call and we will
+                tell you who will be working on your engagement.
               </p>
             </div>
           ) : (
@@ -69,9 +69,9 @@ import { site } from '../data/site';
       <div>
         <ul class="rule-list">
           <li>
-            <strong>Independence.</strong> We do not design, build, operate or maintain any system we
-            assess, and we hold no interest in any client beyond the engagement fee. This is what
-            makes the report usable as third-party evidence.
+            <strong>Independence.</strong> We do not design, build, operate or maintain any system
+            we assess, and we hold no interest in any client beyond the engagement fee. That is what
+            lets your customer treat the report as independent evidence.
           </li>
           <li>
             <strong>Professional indemnity insurance.</strong>{' '}
@@ -80,21 +80,21 @@ import { site } from '../data/site';
               : `${site.professionalIndemnity.coverAmount} of cover, named in the engagement documents.`}
           </li>
           <li>
-            <strong>Not CERT-In empanelled.</strong> Stated plainly because it matters and because it
-            takes thirty seconds to verify. Empanelment is required for statutory audits at banks,
+            <strong>Not CERT-In empanelled.</strong> We say so plainly, and you can verify it on the
+            CERT-In site in under a minute. Empanelment is required for statutory audits at banks,
             NBFCs, payment aggregators, SEBI-regulated entities, insurers, government bodies and
             critical infrastructure. It is not required for SaaS, product companies, ecommerce, ISO
             27001 or SOC 2 work, enterprise questionnaires, or any client outside India.
           </li>
           <li>
-            <strong>No certification claims of any kind.</strong> We do not hold accreditations we
-            have not earned and we do not imply them. If a page on this site ever says otherwise, it
-            is a mistake and we want to hear about it.
+            <strong>No certification claims.</strong> We do not claim accreditations we have not
+            earned, and we do not imply them. If a page on this site says otherwise, it is a mistake.
+            Please tell us.
           </li>
           <li>
-            <strong>No client logos on this site.</strong> Not until a client has told us in writing
-            that we may. A "trusted by" strip full of companies who never agreed to appear on it is
-            a lie, and it is the most common one in this industry.
+            <strong>No client logos on this site.</strong> Not unless a client has told us in
+            writing that we may. A "trusted by" strip listing companies who never agreed to appear on
+            it is not evidence of anything.
           </li>
         </ul>
       </div>

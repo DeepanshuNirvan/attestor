@@ -36,7 +36,14 @@ services:
       NODE_ENV: unsafe
     expose: ['3000']
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/rest/admin/application-version']
+      # The image is distroless: no shell, no wget, no curl. Its only executable is the node the
+      # app runs on, so the check is made with that. The previous `wget` check could never pass,
+      # which meant `up -d --wait` failed every time against an application that was serving fine.
+      test:
+        - CMD
+        - /nodejs/bin/node
+        - -e
+        - "fetch('http://127.0.0.1:3000/rest/admin/application-version').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 20
@@ -52,6 +59,15 @@ services:
     environment:
       TZ: UTC
     expose: ['8080']
+    healthcheck:
+      # The image ships its own HEALTHCHECK calling curl, which is not installed in it, so the
+      # container reports unhealthy forever while WebGoat serves normally. Overridden with a check
+      # that uses only what the image has. Tomcat binds 8080 on IPv6 here, so the port is read from
+      # /proc/net/tcp6; 1F90 is 8080 in hex.
+      test: ['CMD-SHELL', 'grep -qi ":1F90" /proc/net/tcp6 || grep -qi ":1F90" /proc/net/tcp']
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
   vampi:
     <<: *target

@@ -2,11 +2,11 @@
 title: Cloud configuration and posture review
 navLabel: Cloud
 order: 2
-audience: For anyone whose infrastructure grew faster than the person configuring it.
+audience: For teams whose infrastructure grew faster than the person configuring it.
 summary: >-
-  A read-only role against your AWS, Azure or GCP account, checked against the benchmarks and
-  analysed for privilege escalation paths and public exposure. Two working days, and nothing in your
-  environment can change because no write call is ever made.
+  A read-only role against your AWS, Azure or GCP account, checked against the published benchmarks
+  and analysed for privilege escalation paths and public exposure. Two working days. Nothing in your
+  environment can change, because no write call is ever made.
 packageIds:
   - cloud-review
 coverageCategories:
@@ -21,44 +21,47 @@ seoDescription: >-
   exposure, logging gaps and encryption, delivered in two working days with exact fix commands.
 ---
 
-This is the highest density of real findings per hour in the whole business, and it is the easiest
-engagement to approve internally, because it cannot break anything.
+A cloud review finds a lot in a short time, and it is easy to get approved internally, because it
+cannot change anything.
 
-You give us a role with read permissions. We assume it, enumerate every account, subscription,
-project and region — including the ones nobody remembers — and check the configuration against the
-benchmarks. Then we do the part the benchmark tools do not: work out which of those findings
-actually chain into a path from a low-privileged identity to administrator.
+You give us a role with read permissions. We assume it, list every account, subscription, project
+and region, including the ones nobody remembers, and check the configuration against the published
+benchmarks. Then we work out which of those findings chain together into a path from a
+low-privileged identity to administrator.
 
-## What comes back
+## What usually comes back
 
-Almost every small cloud account has the same four problems, and yours probably has at least two of
-them: a storage bucket that is public because a support tool needed it in 2024, an IAM role that can
-pass any role to a compute service and is therefore administrator by another name, access keys that
-have not been rotated since the account was created, and management logging enabled in one region
-only.
+Most small cloud accounts have the same four problems, and yours probably has at least two:
 
-None of those is exotic. All of them are the reason cloud incidents look the way they do. We report
-them with the exact command or console change that fixes each one, ordered by what actually reduces
-risk rather than by what the benchmark numbers them.
+- A storage bucket that is public because a support tool needed it once.
+- An IAM role that can pass any role to a compute service, which makes it administrator by another
+  name.
+- Access keys that have not been rotated since the account was created.
+- Management logging switched on in one region only.
 
-## The read-only guarantee is structural
+None of these is unusual. They are the reason most cloud incidents look the way they do. We report
+each one with the exact command or console change that fixes it, ordered by how much risk the fix
+removes rather than by benchmark number.
 
-The role you grant has no write permissions, and the platform that runs the review has no code path
-that issues a write API call. This is not a promise about our carefulness; it is a property of what
-we built. If you want to verify it, the role policy we ask for is the artefact — read it before you
-create it.
+## The review is read-only by design
+
+The role you grant has no write permissions, and the software that runs the review has no code path
+that makes a write API call. You do not have to take our word for it: read the role policy we ask
+for before you create it.
 
 ## Kubernetes
 
 If a cluster is in scope we add benchmark checks against the control plane and nodes, an RBAC review
-looking for the paths from a pod to cluster administrator, and a check on network policy and pod
-security standards. The most common finding is that there is no network policy at all, which means
-every pod can reach every other pod and the metadata endpoint — and that turns any single pod
-compromise into a cluster compromise.
+looking for paths from a pod to cluster administrator, and a check on network policy and pod
+security standards.
 
-## Where this fits
+The most common finding is that there is no network policy at all. That means every pod can reach
+every other pod and the metadata endpoint, so compromising one pod compromises the cluster.
 
-Buy it on its own when your infrastructure has outgrown the person who set it up. Buy it alongside a
-web application audit when the application and the account belong to the same risk conversation,
-which they usually do: an SSRF in the application plus an unprotected metadata endpoint is one
+## When to buy it
+
+Buy it on its own when your infrastructure has outgrown the person who set it up.
+
+Buy it alongside a web application audit when the application and the cloud account are part of the
+same risk. They usually are. An SSRF in the application plus an unprotected metadata endpoint is one
 finding in the report and two teams in the room.

@@ -758,6 +758,26 @@ export async function draftWithAi(
   }
 }
 
+/**
+ * Draft every prose section at once. Each one still arrives as an unapproved draft, so this fills
+ * the blank page and changes nothing about who is answerable for what the report says.
+ */
+export async function autodraftReport(
+  engagementId: string,
+  force = false,
+): Promise<ActionResult> {
+  try {
+    const result = await api.post<{
+      results: { sectionKey: string; status: string; detail?: string }[];
+      estimatedCostUsd: number;
+    }>(`/engagements/${engagementId}/report/autodraft`, { force });
+    revalidatePath(`/engagements/${engagementId}/report`);
+    return { ok: true, detail: result };
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+}
+
 export async function approveSection(
   engagementId: string,
   sectionKey: string,

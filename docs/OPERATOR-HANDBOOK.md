@@ -281,6 +281,9 @@ Both are in `docs/PRODUCT-CONTEXT.md` §5, and both are about how tools actually
 
 ## 6. A client arrives — the full sequence
 
+> For the short version with no detail, read `docs/HOW-A-TEST-RUNS.md`. It is one page and covers
+> the same ground. This section is the one to work through while you actually do it.
+
 A client emails: *"Please test https://app.acme.com, here are the logins."*
 
 **Do not start.** Work through this in order. Steps 1–4 happen before you touch anything.
@@ -661,20 +664,26 @@ Policy resolves in four layers, each overriding the last: **built-in defaults �
 `/what-we-test` page on your website — which is the point: what you advertise and what you measure
 are one list.
 
+A check belongs to every module that runs it, so these add up to more than 235.
+
 | Module | Checks | Roughly |
 | --- | --- | --- |
-| Web | 84 | Injection, access control, authentication, session, headers, TLS, business logic |
-| API | 52 | Object-level authorisation, mass assignment, rate limits, GraphQL, inventory |
+| Web | 108 | Injection, access control, authentication, session, headers, TLS, business logic |
+| API | 62 | Object-level authorisation, mass assignment, rate limits, GraphQL, inventory |
 | LLM and AI | 30 | Prompt injection, data leakage, tool abuse, excessive agency |
 | Cloud | 25 | IAM, storage exposure, logging, Kubernetes posture |
 | Mobile | 23 | Storage, crypto, transport, platform, resilience |
+| Recon | 19 | Subdomains, ports, technology, certificates |
 | Code and supply chain | 18 | Static analysis, secrets, dependencies, IaC |
-| Recon | 15 | Subdomains, ports, technology, certificates |
 | Network | 11 | Services, versions, exposed management interfaces |
 
-By how they are done: **85 automated, 99 tool-assisted with human judgement, 26 purely manual.** The
+By how they are done: **91 automated, 75 tool-assisted with human judgement, 69 purely manual.** The
 manual ones are the access control, business logic and chaining checks — the ones that find the
 findings people remember.
+
+These counts come from the catalogue itself and are checked by a test, because the website publishes
+the same numbers straight from the same list. A number typed here by hand once said 85/99/26 while
+the site said 91/75/69.
 
 Everything maps to what a buyer's auditor asks about: OWASP Top 10 2025, API Top 10 2023, LLM Top 10
 2025, ASVS 5.0, WSTG 4.2, MASVS 2.1, CWE, plus ISO 27001, SOC 2, PCI DSS 4.0.1 and the DPDP Act.

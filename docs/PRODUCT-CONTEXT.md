@@ -6,7 +6,8 @@ to run it, what has actually been verified, and the mistakes that are easy to ma
 `docs/BUILD-STATUS.md` is the live state of the work. This document is the stable picture behind it.
 `docs/OPERATOR-HANDBOOK.md` is the same ground in plain English, for running the firm rather than
 changing the code — read that one for client onboarding and for how to verify a client owns what
-they gave you.
+they gave you. `docs/HOW-A-TEST-RUNS.md` is one page, no jargon: what happens between a client
+asking for a test and the report going out. Start there if the run path is what you want.
 
 ---
 

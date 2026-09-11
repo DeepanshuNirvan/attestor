@@ -548,3 +548,14 @@ section.continues {
     display: none;
   }
 }
+
+/*
+ * Checks that were tested and found nothing. Named in a run-on line rather than a row each: the
+ * coverage matrix stays complete without spending a page per category on empty cells.
+ */
+.coverage-clean {
+  font-size: 8.5pt;
+  line-height: 1.45;
+  color: #33383f;
+  margin: 2pt 0 8pt;
+}

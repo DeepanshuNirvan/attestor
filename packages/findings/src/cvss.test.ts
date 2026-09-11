@@ -85,4 +85,16 @@ describe('derivedVectorForSeverity', () => {
       }
     }
   });
+
+  // The version above asserted only that the score was above zero, which every wrong vector also
+  // satisfies: `low` derived a 5.3 on 3.1 and a 6.9 on 4.0, so a finding the tool called low was
+  // written to the database as low with a medium score printed beside it. Assert the band.
+  it('lands in its own band, so severity and score never contradict each other', () => {
+    for (const version of ['3.1', '4.0'] as const) {
+      for (const severity of ['critical', 'high', 'medium', 'low', 'info'] as const) {
+        const scored = scoreCvss(derivedVectorForSeverity(severity, version));
+        expect(scored.severity, `${version} ${severity} scored ${scored.score}`).toBe(severity);
+      }
+    }
+  });
 });

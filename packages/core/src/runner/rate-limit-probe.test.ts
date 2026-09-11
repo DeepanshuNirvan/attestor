@@ -125,4 +125,25 @@ describe('the rate limit probe', () => {
     expect(result.observations[0]?.skipped).toContain('stopped answering');
     expect(result.observations[0]?.throttledAfter).toBeNull();
   });
+
+  /**
+   * Which endpoints get a thirty-request burst is a decision taken in the policy, not something the
+   * probe discovers: repeating a request against a one-time-code endpoint costs the client money
+   * per message, and against a password reset it emails a real person. So an engagement that
+   * configured nothing is the common case, not an error case.
+   *
+   * What must never happen is that it passes quietly. A probe that sends nothing and returns
+   * cleanly hands its `coversCheckIds` to the coverage matrix, and the client's report then says
+   * throttling was tested when nothing was measured at all.
+   */
+  it('sends nothing and says why when no endpoint was configured to measure', async () => {
+    const { context, sent } = contextWith(() => ({ status: 200 }));
+
+    const result = await rateLimitProbe({ targets: [], burst: 30 }).run(context);
+
+    expect(sent).toEqual([]);
+    expect(result.observations).toEqual([]);
+    expect(result.requestsSent).toBe(0);
+    expect(result.skipped).toContain('checks.rateLimitEndpoints');
+  });
 });

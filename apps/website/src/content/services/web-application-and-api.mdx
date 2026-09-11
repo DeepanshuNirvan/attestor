@@ -2,11 +2,10 @@
 title: Web application and API security assessment
 navLabel: Web and API
 order: 1
-audience: For a company that has been sent a security questionnaire, or is about to be.
+audience: For a company that has been sent a security questionnaire, or expects one.
 summary: >-
-  Authenticated, per-role testing of a web application and the API behind it. This is the engagement
-  most companies mean when they say "we need a pentest report", and it is the one an enterprise
-  buyer's security team is actually asking for.
+  Authenticated testing of a web application and the API behind it, role by role. This is the
+  engagement most companies mean when they say they need a pentest report.
 packageIds:
   - web-standard
   - web-complex
@@ -31,50 +30,48 @@ seoDescription: >-
   five working days, one free retest, evidence mapped to OWASP WSTG and ASVS 5.0.
 ---
 
-We test the application the way somebody with an account would attack it, not the way a scanner
-crawls it.
+We test the application the way someone with a login would attack it, not the way a scanner crawls
+it.
 
-That distinction is the whole engagement. An unauthenticated scan finds missing headers and an
-out-of-date library. It does not find that your support role can read an enterprise customer's
-invoices, that the checkout accepts the total from the browser, or that a coupon can be applied
-twice if two requests arrive together. Those are the findings that change what your buyer thinks of
-you, and every one of them requires somebody logged in as two different users at once, comparing
-what each can reach.
+An unauthenticated scan finds missing headers and out-of-date libraries. It does not find that your
+support role can read an enterprise customer's invoices, that the checkout accepts the total sent by
+the browser, or that a coupon can be used twice if two requests arrive at the same moment. Finding
+those needs a tester logged in as two different users at once, comparing what each one can reach.
 
 ## How the five days are spent
 
-Day zero is machine time. Discovery, crawling, the tool suite, evidence capture — all of it runs
-unattended inside your agreed window and rate limits, and none of it produces a finding you will
-ever see. It produces a queue of candidates.
+**Day zero is machine time.** Discovery, crawling, the tool suite and evidence capture all run
+unattended, inside your agreed window and rate limits. This produces a queue of candidates, not
+findings.
 
-Day one is triage. Every candidate gets reproduced by hand or discarded. Tools in this category
-report between forty and seventy per cent false positives; passing that on to you would be charging
-you to read noise.
+**Day one is triage.** A tester reproduces every candidate by hand or discards it. Tools in this
+category report 40 to 70% false positives, and we do not pass those on to you.
 
-Days one to four are the work. Access control across every role pair, both directions — one role
-against another, and one customer against another customer in the same role. Business logic:
-workflow order, price and quantity handling, race conditions on anything limited. Multi-step flows,
-password reset, session handling. And then the part that separates a five-day engagement from a
-one-day scan: working out what several small findings become when chained, and writing that up as a
-narrative with a real business outcome at the end of it.
+**Days one to four are the testing.** Access control across every pair of roles, in both directions:
+one role against another, and one customer against another customer in the same role. Business
+logic: workflow order, price and quantity handling, and race conditions on anything with a limit.
+Multi-step flows, password reset and session handling. Then we work out what several small findings
+add up to when combined, and write that up as a narrative with a business outcome at the end.
 
-Day five is the report and a thirty-minute call with the people who will do the fixing.
+**Day five is the report**, plus a thirty-minute call with the people who will do the fixing.
 
 ## What we need from you
 
-Two accounts per role. Not one — two. Half of access control testing is checking whether customer A
-can reach customer B's data, and that is impossible with a single account per role. If your
-application has customers, admins and support, that is six test accounts. They can be disposable and
-they should be, because we will tell you to rotate them when we finish.
+**Two accounts per role.** Half of access control testing is checking whether customer A can reach
+customer B's data, which is impossible with one account per role. If your application has customers,
+admins and support staff, that is six test accounts. They can be disposable, and they should be. We
+will ask you to rotate them when we finish.
 
-A staging environment that matches production is better than production. If it has to be production,
-say so early: we halve every rate limit, suppress state-changing requests on the first pass, and
-agree a stop-the-test contact who is reachable throughout.
+**A staging environment that matches production**, if you have one. If we have to test production,
+tell us early. We halve every rate limit, suppress state-changing requests on the first pass, and
+agree a contact who can stop the test and is reachable throughout.
 
 ## When to buy the complex tier instead
 
-Four or more roles, multiple tenants, payment or approval workflows, or an application big enough
-that five days would be a fiction. The complex tier is eight days and adds tenant isolation testing
-across separate customer organisations, settlement and approval workflow abuse, and a longer chained
-exploitation phase. If we think you need it we will say so on the scoping call, and if we think you
-do not, we will say that too.
+Buy the complex tier if you have four or more roles, multiple tenants, payment or approval
+workflows, or an application too large to cover in five days. It runs for eight days and adds
+tenant isolation testing across separate customer organisations, settlement and approval workflow
+testing, and a longer phase on chained findings.
+
+We will tell you on the scoping call which tier we think you need, including when that is the
+cheaper one.

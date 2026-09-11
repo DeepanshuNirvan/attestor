@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { stat, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { createLogger, engagementReference, loadSeedConfig } from '@attestor/shared';
@@ -151,6 +151,36 @@ export async function seed(databaseUrl: string, vaultMasterKey: string): Promise
       credentialsPath,
       note: 'Password and MFA enrolment written to that file. Change the password and re-enrol MFA before this touches anything real.',
     });
+  } else {
+    // The account already exists, so the block above did not run and nothing rewrote the
+    // credentials file. If the account has since re-enrolled MFA, the codes in that file stopped
+    // working and nothing said so: sign-in accepts the password, the second factor is refused, and
+    // the file on disk still looks like the answer. Say it plainly instead.
+    const credentialsPath = fileURLToPath(new URL('../../../../.seed-credentials.txt', import.meta.url));
+    const [enrolledAt] = await database
+      .select({ at: staffUser.totpEnrolledAt })
+      .from(staffUser)
+      .where(eq(staffUser.id, ownerId))
+      .limit(1);
+
+    const fileWrittenAt = await stat(credentialsPath).then(
+      (info) => info.mtime,
+      () => null,
+    );
+
+    if (fileWrittenAt === null) {
+      logger.warn('demo staff account exists but its credentials file is gone', {
+        credentialsPath,
+        note: 'Seed does not re-create it: the TOTP secret is sealed and cannot be read back. Re-enrol MFA for that account, or drop the database and seed again.',
+      });
+    } else if (enrolledAt?.at && fileWrittenAt < enrolledAt.at) {
+      logger.warn('demo credentials file is older than the account it describes', {
+        credentialsPath,
+        fileWrittenAt: fileWrittenAt.toISOString(),
+        mfaEnrolledAt: enrolledAt.at.toISOString(),
+        note: 'The codes in that file will be refused. The password still works; the second factor does not. Re-enrol MFA for that account, or drop the database and seed again.',
+      });
+    }
   }
 
   /* Client and engagement ---------------------------------------------------------------- */

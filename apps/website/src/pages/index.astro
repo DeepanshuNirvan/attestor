@@ -13,12 +13,12 @@ const headline = packages.filter((item) =>
 );
 
 const notDoing = [
-  'Guarantee that a system is secure. Nobody can, and a report that says so is worthless to your auditor.',
-  'Certify anything. We are not an accreditation body and we do not hold CERT-In empanelment.',
-  'Test an asset you do not own without written permission from whoever does.',
-  'Start work without a signed authorisation naming the exact assets and the exact window.',
-  'Run denial-of-service, load or volumetric tests. There is no setting in our platform that permits it.',
-  'Fix the code we audited. Fixing what we assessed would compromise the independence the report depends on.',
+  'Guarantee that a system is secure. Nobody can. A report that says so will not help you with an auditor.',
+  'Certify anything. We are not an accreditation body and we are not CERT-In empanelled.',
+  'Test an asset you do not own, without written permission from the owner.',
+  'Start work without a signed authorisation naming the exact assets and the exact dates.',
+  'Run denial-of-service, load or volumetric tests. Our platform has no setting that allows it.',
+  'Fix the code we audited. If we fixed it, we could not independently assess it.',
 ];
 ---
 
@@ -32,14 +32,11 @@ const notDoing = [
   <section class="hero">
     <div class="page">
       <p class="eyebrow">Security assessment · India and international</p>
-      <h1>
-        Somebody asked for a penetration test report.<br />
-        This is where you get one that holds up.
-      </h1>
+      <h1>Security testing with a fixed price and a fixed date.</h1>
       <p class="hero-lede">
-        Web, API, cloud, mobile and LLM assessments with a fixed price, a fixed date and evidence
-        your buyer's security team can actually read. Published prices. One free retest. A one-page
-        attestation letter you can forward without sending anyone your vulnerability list.
+        We test web applications, APIs, cloud accounts, mobile apps and LLM features. You get a
+        report your customer's security team can check, one free retest, and a one-page letter you
+        can forward without sharing the findings themselves. Prices are published below.
       </p>
       <p class="hero-actions">
         <a class="button" href="/contact">Book a scoping call</a>
@@ -74,39 +71,37 @@ const notDoing = [
   <section class="section" aria-labelledby="why-heading">
     <div class="page split">
       <div>
-        <p class="eyebrow">Why this is different</p>
-        <h2 id="why-heading">Automation is our margin, not your product</h2>
+        <p class="eyebrow">How we work</p>
+        <h2 id="why-heading">Tools find candidates. People confirm them.</h2>
       </div>
       <div class="stack">
         <p>
-          Scanners are cheap and you can buy one yourself for ninety dollars a month. What you cannot
-          buy is somebody deciding whether a finding is real, working out what three small findings
-          become when chained, and testing whether your support role can read your enterprise
-          customer's data.
+          You can buy a scanner yourself for about ninety dollars a month. What a scanner cannot do
+          is decide whether a result is real, work out what three small problems add up to when
+          combined, or check whether your support staff can read an enterprise customer's data.
         </p>
         <p>
-          We automate discovery, scanning, evidence capture and report assembly, which is why a web
-          application audit takes five days instead of three weeks. We do not automate the part you
-          are paying for. Every finding in your report was reproduced by a person before it was
-          written down, and anything a tool reported that could not be reproduced is not in there at
-          all.
+          We automate the repetitive parts: discovery, scanning, evidence capture and report
+          assembly. That is why a web application audit takes five days instead of three weeks. A
+          tester reproduced every finding in your report before it was written down. If a tool
+          reported something and we could not reproduce it, it is not in the report.
         </p>
         <ul class="rule-list">
           <li>
-            <strong>Findings are validated, not exported.</strong> Traditional scanning produces
-            40–70% false positives. We do not pass that on to you.
+            <strong>We check findings before we send them.</strong> Scanner output is typically 40
+            to 70% false positives. Sorting that out is our job, not yours.
           </li>
           <li>
             <strong>One cause is one finding.</strong> A missing header on forty endpoints is one
-            finding with forty affected assets, not forty tickets for your team.
+            finding listing forty assets, not forty tickets for your team.
           </li>
           <li>
-            <strong>Remediation is specific to your stack.</strong> Not "sanitise all input" — the
-            actual change, in the actual file, with the reason it is the right fix.
+            <strong>Fixes are written for your stack.</strong> Not "sanitise all input", but the
+            change to make, where to make it, and why that is the right fix.
           </li>
           <li>
-            <strong>The attack narrative is written by hand.</strong> How a low-severity disclosure
-            plus a weak access control became a critical outcome. No tool writes that section.
+            <strong>A person writes the attack narrative.</strong> It shows how a small disclosure
+            and a weak permission check combine into a serious problem. No tool writes that.
           </li>
         </ul>
       </div>
@@ -116,7 +111,7 @@ const notDoing = [
   <section class="section" aria-labelledby="services-heading">
     <div class="page">
       <p class="eyebrow">Services</p>
-      <h2 id="services-heading">Four things most people need, and two they need next year</h2>
+      <h2 id="services-heading">What we test</h2>
       <ul class="service-grid">
         {
           headline.map((item) => (
@@ -154,7 +149,7 @@ const notDoing = [
   <section class="section" aria-labelledby="honest-heading">
     <div class="page split">
       <div>
-        <p class="eyebrow">Straight answers</p>
+        <p class="eyebrow">Limits</p>
         <h2 id="honest-heading">What we will not do</h2>
       </div>
       <div>
@@ -164,10 +159,10 @@ const notDoing = [
           <p>
             {site.brandName} is not CERT-In empanelled. If you are a bank, an NBFC, a payment
             aggregator, a SEBI-regulated entity, an insurer or a government body, your statutory
-            audit must be done by an empanelled organisation and we cannot do it. What we can do is
-            the pre-audit testing and the remediation verification, so that audit passes the first
-            time. If somebody tells you they are empanelled, it takes thirty seconds to check on the
-            CERT-In site. Check.
+            audit has to be done by an empanelled organisation, and we cannot do it. We can do the
+            testing beforehand and verify your fixes, so that audit passes first time. If another
+            firm tells you they are empanelled, you can confirm it on the CERT-In site in under a
+            minute. It is worth doing.
           </p>
         </div>
       </div>
@@ -178,7 +173,7 @@ const notDoing = [
     <div class="page split">
       <div>
         <p class="eyebrow">Working with us from abroad</p>
-        <h2 id="international-heading">The questions international buyers actually ask</h2>
+        <h2 id="international-heading">Common questions from overseas clients</h2>
       </div>
       <dl class="qa">
         <dt>What are your overlap hours?</dt>
@@ -188,13 +183,14 @@ const notDoing = [
         </dd>
         <dt>Who holds our credentials, and for how long?</dt>
         <dd>
-          They go into an encrypted vault through a one-time link, never through email or chat. They
-          are destroyed when the engagement closes, and we tell you to rotate them anyway.
+          You send them through a one-time link into an encrypted vault, never by email or chat.
+          They are destroyed when the engagement closes. Rotate them anyway once we are done.
         </dd>
         <dt>What happens to the evidence?</dt>
         <dd>
-          Masked as it is captured, encrypted at rest, deleted {site.evidenceRetentionDays} days
-          after the report is released, with a written deletion confirmation you can file.
+          It is masked as we capture it, encrypted while stored, and deleted
+          {site.evidenceRetentionDays} days after we release the report. You get a written deletion
+          confirmation to keep on file.
         </dd>
         <dt>Are you insured?</dt>
         <dd>
@@ -206,8 +202,8 @@ const notDoing = [
         </dd>
         <dt>Will you sign our data processing agreement?</dt>
         <dd>
-          Yes, and we bring our own if you would rather start from something. We act as a processor
-          and the obligations are written down, not implied.
+          Yes. We also have our own, if you would rather start from a draft. We act as a processor,
+          and the obligations are written down rather than assumed.
         </dd>
       </dl>
     </div>
@@ -215,10 +211,9 @@ const notDoing = [
 
   <section class="section closing" aria-labelledby="closing-heading">
     <div class="page">
-      <h2 id="closing-heading">Send the scope. You will get a fixed price the same day.</h2>
+      <h2 id="closing-heading">Send us the scope and we will price it the same day.</h2>
       <p class="lede">
-        No discovery process, no three-stage sales cycle. A thirty-minute call, a written scope, a
-        number and a date.
+        One thirty-minute call, then a written scope, a price and a date. No long sales process.
       </p>
       <p class="hero-actions">
         <a class="button" href="/contact">Book a scoping call</a>
@@ -297,15 +292,24 @@ const notDoing = [
     gap: var(--space-l);
   }
 
+  /*
+   * A card is a bordered box with one internal rhythm, not a stack of loose paragraphs under a
+   * rule. Flex column with the summary pushed to the bottom keeps the price and the day count on
+   * the same line across the row however long a name runs.
+   */
   .service-grid li {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--rule);
     border-top: 2px solid var(--ink);
-    padding-top: var(--space-s);
+    background: var(--ground-raised);
+    padding: var(--space-s) var(--space-s) var(--space-m);
     max-width: none;
   }
 
   .service-grid h3 {
     font-size: var(--step-1);
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.25rem;
   }
 
   .service-price {
@@ -332,7 +336,10 @@ const notDoing = [
   .service-grid p:last-child {
     font-size: var(--step--1);
     color: var(--ink-muted);
-    margin: 0;
+    margin: var(--space-2xs) 0 0;
+    padding-top: var(--space-2xs);
+    border-top: 1px solid var(--rule);
+    margin-top: auto;
   }
 
   .service-more {

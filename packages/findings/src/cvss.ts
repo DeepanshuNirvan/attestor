@@ -202,24 +202,30 @@ export function isValidCvssVector(vector: string): boolean {
 /**
  * A conservative vector for a tool finding that has no CVSS of its own, derived from the severity
  * the tool reported. It is marked as derived so a human replaces it before the report goes out.
+ *
+ * Every one of these must score inside the band it claims. Deriving the impact metrics alone from a
+ * single `AV:N/AC:L/PR:N/UI:N` base does not achieve that: low impact reached with no privilege and
+ * no interaction is a *medium* score in both versions, so a finding the tool called low was stored
+ * as low with a 5.3 beside it, and the report printed the contradiction. The exploitability metrics
+ * move with the band for that reason, and `landsInItsOwnBand` in the tests holds it there.
  */
 export function derivedVectorForSeverity(severity: Severity, version: CvssVersion): string {
   if (version === '4.0') {
-    const impact: Record<Severity, string> = {
-      critical: 'VC:H/VI:H/VA:H/SC:L/SI:L/SA:N',
-      high: 'VC:H/VI:L/VA:N/SC:N/SI:N/SA:N',
-      medium: 'VC:L/VI:L/VA:N/SC:N/SI:N/SA:N',
-      low: 'VC:L/VI:N/VA:N/SC:N/SI:N/SA:N',
-      info: 'VC:N/VI:N/VA:N/SC:N/SI:N/SA:N',
+    const derived: Record<Severity, string> = {
+      critical: 'AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:L/SI:L/SA:N',
+      high: 'AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:L/VA:N/SC:N/SI:N/SA:N',
+      medium: 'AV:N/AC:L/AT:N/PR:N/UI:N/VC:L/VI:L/VA:N/SC:N/SI:N/SA:N',
+      low: 'AV:N/AC:H/AT:N/PR:L/UI:N/VC:L/VI:N/VA:N/SC:N/SI:N/SA:N',
+      info: 'AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:N/SA:N',
     };
-    return `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/${impact[severity]}`;
+    return `CVSS:4.0/${derived[severity]}`;
   }
-  const impact: Record<Severity, string> = {
-    critical: 'C:H/I:H/A:H',
-    high: 'C:H/I:L/A:N',
-    medium: 'C:L/I:L/A:N',
-    low: 'C:L/I:N/A:N',
-    info: 'C:N/I:N/A:N',
+  const derived: Record<Severity, string> = {
+    critical: 'AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+    high: 'AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N',
+    medium: 'AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N',
+    low: 'AV:N/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N',
+    info: 'AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:N',
   };
-  return `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/${impact[severity]}`;
+  return `CVSS:3.1/${derived[severity]}`;
 }

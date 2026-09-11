@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import {
   approveSection,
+  autodraftReport,
   draftWithAi,
   generateAttestationLetter,
   generateDeletionConfirmation,
@@ -170,9 +171,46 @@ export function ReportWorkbench({
     });
   }
 
+  /**
+   * Fill every prose section from the confirmed findings in one call. What comes back is drafts —
+   * the approve step below is unchanged and release is still blocked until each one is read.
+   */
+  function onAutodraft() {
+    startTransition(async () => {
+      const result = await autodraftReport(engagementId);
+      if (!result.ok) {
+        setMessage(result.error ?? 'drafting failed');
+        return;
+      }
+      const detail = result.detail as
+        | { results: { sectionKey: string; status: string; detail?: string }[] }
+        | undefined;
+      const rows = detail?.results ?? [];
+      const drafted = rows.filter((row) => row.status === 'drafted').length;
+      const refused = rows.filter((row) => row.status === 'refused');
+      setMessage(
+        refused.length > 0
+          ? `Drafted ${drafted}. Refused: ${refused[0]?.detail ?? 'no reason given'}`
+          : `Drafted ${drafted} sections. Read each one against the evidence, then approve it.`,
+      );
+    });
+  }
+
   return (
     <div className="columns" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(18rem, 1fr)' }}>
       <div className="stack">
+        <section className="panel">
+          <h3>Draft the whole report</h3>
+          <p className="small muted">
+            Writes every prose section from the findings you have confirmed. Sections you have
+            already approved are left alone. Everything it writes arrives as a draft, and release
+            stays blocked until you approve each one. Environments, roles, constraints and manual
+            coverage are records of what you did, so they are never drafted.
+          </p>
+          <button type="button" onClick={onAutodraft} disabled={pending}>
+            Draft every section
+          </button>
+        </section>
         {sectionOrder.map((section) => {
           const record = stored.get(section.key);
           return (
