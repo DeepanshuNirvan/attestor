@@ -479,11 +479,31 @@ export interface ScopeItemValidationContext {
   ownedPrivateRanges?: readonly string[];
 }
 
+/**
+ * Names RFC 6761 reserves for the loopback interface. They are not resolved, ever, by anything —
+ * `localhost` means 127.0.0.1 by definition — so they can be judged at entry with the same
+ * certainty as the address itself.
+ *
+ * Without this, `localhost` was accepted into a scope while `127.0.0.1` was refused, and the run
+ * then failed at the run-time guard on the address the name had always meant. Entry validation
+ * exists precisely so that does not happen. An owned range covering loopback still authorises it,
+ * which is how an operator points an engagement at something published on their own machine.
+ */
+function isLoopbackName(hostname: string): boolean {
+  return hostname === 'localhost' || hostname.endsWith('.localhost');
+}
+
 /** Why this hostname may never be a target, or null. Applies to a plain host, not a pattern. */
 function hostnameIsForbidden(hostname: string, ownedRanges: Cidr[]): string | null {
   const neverTouch = neverTouchHostReason(hostname);
   if (neverTouch) {
     return `"${hostname}" is on the global never-touch list — ${neverTouch} No client authorisation can override this.`;
+  }
+  if (isLoopbackName(hostname)) {
+    const forbidden = forbiddenIpReason('127.0.0.1', ownedRanges);
+    if (forbidden) {
+      return `"${hostname}" is the loopback interface, so ${forbidden.detail}. A container cannot reach your machine's loopback in any case: publish the application on an address the container can route to, and declare that range as client-owned.`;
+    }
   }
   if (isIpAddress(hostname)) {
     const blocked = neverTouchAddressReason(hostname);

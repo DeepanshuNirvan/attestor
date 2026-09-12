@@ -478,6 +478,25 @@ describe('validateScopeItem', () => {
     ).toBeNull();
   });
 
+  /**
+   * `localhost` was accepted while `127.0.0.1` was refused, so a scope could be entered that the
+   * run-time guard would always reject on the address the name had always meant. RFC 6761 makes
+   * the name loopback by definition, so entry time can say so.
+   */
+  it('treats a loopback name exactly as it treats the loopback address', () => {
+    for (const value of ['localhost', 'app.localhost']) {
+      expect(validateScopeItem({ kind: 'domain', value }), value).not.toBeNull();
+      expect(
+        validateScopeItem({ kind: 'domain', value }, { ownedPrivateRanges: ['127.0.0.0/8'] }),
+        `${value} inside a declared range`,
+      ).toBeNull();
+    }
+
+    expect(validateScopeItem({ kind: 'url', value: 'http://localhost:5174' })).not.toBeNull();
+    // Suffix matching must not catch a real domain that merely ends in those letters.
+    expect(validateScopeItem({ kind: 'domain', value: 'notlocalhost.com' })).toBeNull();
+  });
+
   it('rejects typos at entry time, so they are not discovered on test day', () => {
     expect(validateScopeItem({ kind: 'domain', value: 'app client.example' })).not.toBeNull();
     expect(validateScopeItem({ kind: 'wildcard', value: '*client.example' })).not.toBeNull();

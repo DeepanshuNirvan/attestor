@@ -18,6 +18,14 @@ async function buildApp() {
   return app;
 }
 
+/**
+ * Each case here builds a Fastify instance of its own. Under the full suite that competes with
+ * every other file for the machine, and the first `app.ready()` in a worker has taken over eight
+ * seconds on a loaded laptop while taking 400ms on its own — so the 5s default made these two
+ * files flake red for a reason that had nothing to do with what they assert.
+ */
+const APP_BUILD_TIMEOUT_MS = 30_000;
+
 describe('origin guard', () => {
   it('refuses a state-changing request from another origin', async () => {
     const app = await buildApp();
@@ -82,4 +90,4 @@ describe('origin guard', () => {
     expect(response.statusCode).toBe(403);
     await app.close();
   });
-});
+}, APP_BUILD_TIMEOUT_MS);

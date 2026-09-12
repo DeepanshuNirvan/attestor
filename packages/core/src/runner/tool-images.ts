@@ -166,6 +166,16 @@ export const IN_PROCESS_TOOLS: InProcessTool[] = [
     coversCheckIds: ['web-http-methods', 'web-parameter-pollution', 'web-host-header-handling'],
   },
   {
+    id: 'piiExposureProbe',
+    displayName: 'Personal data exposure probe',
+    purpose: 'Readable personal data in URLs the crawl already discovered',
+    implemented: true,
+    modules: ['web', 'api'],
+    // It sends no requests at all — it reads what the crawl found and examines the strings — so it
+    // is safe in read-only mode and adds nothing to a client's traffic.
+    coversCheckIds: ['web-sensitive-data-in-transit'],
+  },
+  {
     id: 'attestorProbes',
     displayName: 'Attestor LLM probe corpus',
     purpose: 'Versioned in-house adversarial prompts',

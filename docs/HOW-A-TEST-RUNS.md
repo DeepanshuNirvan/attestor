@@ -2,8 +2,10 @@
 
 A client says "please test our app". This page is what happens next, with no jargon.
 
-It is deliberately short. `docs/OPERATOR-HANDBOOK.md` §6 is the same sequence with every detail;
-`docs/COMMANDS.md` §8 is the same sequence as `curl`. Read this one first.
+It is deliberately short. `docs/ENGAGEMENT-WALKTHROUGH.md` is the same journey worked through
+against one application with every command and button; `docs/OPERATOR-HANDBOOK.md` §6 is the
+same sequence with every detail; `docs/COMMANDS.md` §8 is the same sequence as `curl`. Read
+this one first.
 
 ---
 
@@ -94,6 +96,7 @@ exactly what is blocking. Nothing is emailed. The client reads it in the portal.
 | Running the tools and capturing evidence | Access control and business logic testing |
 | Masking secrets and personal data in evidence | Working out what small findings chain into |
 | Turning tool output into candidate findings | Approving every word of the report |
+| Spotting readable personal data in URLs | Judging whether a concurrent session is a problem |
 | Writing the first draft of every prose section | Pressing release |
 | Building the coverage matrix from what ran | |
 
@@ -107,6 +110,13 @@ support role can read an enterprise customer's invoices.
 **"If I give it a URL, does it test every endpoint?"** Yes for discovery and scanning. The crawler
 finds the endpoints and the scanning tools and probes work through them, narrowed to the hosts this
 run is allowed to touch.
+
+**"Is the personal data in our requests encrypted?"** On an HTTPS site the request body
+already is, by TLS, and we do not report a finding for the absence of a second layer of
+encryption on top of it. What TLS does not cover is the URL, which is copied into the access
+log, every proxy in between, browser history and the `Referer` header. So the personal-data
+probe reads the endpoints the crawl found and reports readable personal data in a URL. It
+sends no requests, and it reports the masked URL rather than the value.
 
 **"Does it test rate limiting on all of them?"** No, and on purpose. Repeating a request thirty times
 against a one-time-code endpoint costs the client money per message, and against a password reset it

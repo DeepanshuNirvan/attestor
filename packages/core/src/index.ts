@@ -13,6 +13,7 @@ export * from './runner/container-runner.ts';
 export * from './runner/run-tool-for-engagement.ts';
 export * from './runner/run-probe-for-engagement.ts';
 export * from './runner/access-control-matrix.ts';
+export * from './runner/pii-exposure-probe.ts';
 export * from './runner/rate-limit-probe.ts';
 export * from './runner/request-manipulation-probe.ts';
 export * from './ai/ai-assist.ts';

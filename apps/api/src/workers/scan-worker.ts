@@ -13,6 +13,7 @@ import {
 } from '../db/schema.ts';
 import { ingestFindings } from '../services/findings-service.ts';
 import { runAccessControlMatrix } from './access-control-job.ts';
+import { runPiiExposureProbe } from './pii-exposure-job.ts';
 import { runRateLimitProbe } from './rate-limit-job.ts';
 import { runRequestManipulation } from './request-manipulation-job.ts';
 import { openRunCredentials } from '../services/run-credentials.ts';
@@ -467,7 +468,9 @@ async function handleProbeRun(
         ? await runRateLimitProbe(context, shared)
         : input.toolId === 'requestManipulationProbe'
           ? await runRequestManipulation(context, shared)
-          : await runAccessControlMatrix(context, { ...shared, panicStopActive: false });
+          : input.toolId === 'piiExposureProbe'
+            ? await runPiiExposureProbe(context, shared)
+            : await runAccessControlMatrix(context, { ...shared, panicStopActive: false });
 
     if (result.refusal) {
       await context.database
