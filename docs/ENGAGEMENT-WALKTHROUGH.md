@@ -41,26 +41,122 @@ are in this order.
 
 # Phase 0 — Start Attestor
 
+## 0.1 — Things you need installed once
+
+| Tool | Why | Check |
+| --- | --- | --- |
+| Docker Desktop | Runs the platform and every security tool | `docker version` |
+| Node 22+ | Pins the tool images | `node --version` |
+| `jq` | Reads JSON out of the API responses below | `jq --version` |
+| An authenticator app | Both surfaces require a second factor | on your phone |
+
+**`jq` is not installed on Windows by default and every API command below pipes through it.**
+
+```powershell
+winget install jqlang.jq
+```
+
+Close and reopen your terminal afterwards, then confirm:
+
+```bash
+jq --version
+```
+
+If you would rather not install it, drop the `| jq ...` from the end of any command and read the raw
+JSON. Nothing depends on `jq` except readability.
+
+## 0.2 — Create `infra/.env`
+
+**Compose will not start without this.** Five variables are declared as required, and the error you
+get without them names the variable but not this step.
+
+```bash
+cp infra/.env.example infra/.env
+```
+
+Now fill in the blanks. Generate each value with the command in the comment above it in that file.
+The three kinds:
+
+**Passwords that end up inside a connection string** — `POSTGRES_PASSWORD`, `PORTAL_DB_PASSWORD`,
+`REDIS_PASSWORD`, `MINIO_ROOT_PASSWORD`. These must not contain characters that mean something in a
+URL, so use a URL-safe alphabet:
+
+```bash
+openssl rand -base64 48 | tr -d '/+=' | head -c 32; echo
+```
+
+**Keys that never appear in a URL** — `SESSION_SECRET`, and append one to the `attestor-key:` prefix
+already on `MINIO_KMS_SECRET_KEY`:
+
+```bash
+openssl rand -base64 32
+```
+
+**The two 32-byte vault keys** — `VAULT_MASTER_KEY` and `PORTAL_TOTP_KEY`. Generate each separately;
+they must not be the same value:
+
+```bash
+node -e "import('libsodium-wrappers-sumo').then(async s=>{await s.default.ready;console.log(s.default.to_base64(s.default.randombytes_buf(32),s.default.base64_variants.ORIGINAL))})"
+```
+
+Leave `CONSOLE_ORIGIN`, `PORTAL_ORIGIN`, the ports and `DOCKER_SOCKET_GID=0` exactly as they come.
+
+> **Back up `VAULT_MASTER_KEY` separately from the database.** Every stored client credential is
+> derived from it. Losing it makes them unrecoverable, which is by design.
+
+## 0.3 — Start everything
+
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 
-Wait for all nine services to report healthy:
+The first run builds images and takes several minutes. Wait for all nine services to report healthy:
 
 ```bash
 docker compose -f infra/docker-compose.yml ps
 ```
 
-Pin the tool images. **Until this has run, no tool will start** — the runner refuses an image with
-no pinned digest, because a report that names a tool version has to mean it.
+That one command starts everything, including both browser surfaces. There are two, and they are
+separate deployments of the same code:
+
+| Surface | URL | Who signs in |
+| --- | --- | --- |
+| **Staff console** | http://localhost:3000 | You |
+| **Client portal** | http://localhost:3100 | Your client |
+| Console API | http://127.0.0.1:8080 | — |
+| Portal API | http://127.0.0.1:8081 | — |
+| Mailpit (captured mail) | http://localhost:8025 | — |
+
+Check both surfaces answer:
+
+```bash
+curl -sS -o /dev/null -w 'console %{http_code}\n' http://localhost:3000/login
+```
+
+```bash
+curl -sS -o /dev/null -w 'portal  %{http_code}\n' http://localhost:3100/login
+```
+
+Both should be `200`. The portal is the **only** surface a client ever sees. It runs from the same
+codebase with `ATTESTOR_SURFACE=portal` baked in at build time, and a middleware returns 404 for the
+other surface's routes — so a misconfiguration fails closed rather than serving your staff console
+to a client.
+
+## 0.4 — Pin the tool images
+
+**Until this has run, no tool will start** — the runner refuses an image with no pinned digest,
+because a report that names a tool version has to mean it.
 
 ```bash
 node scripts/pin-tool-images.mjs --pull
 ```
 
-Sign in to the console at **http://localhost:3000/login**. Password, then the six-digit code.
+This pulls a lot of images and takes a while on a first run. It writes
+`infra/tool-images.lock.json`.
 
-If this is a brand new install, create the first staff account first:
+## 0.5 — Create your staff account
+
+Only needed once, on a brand new install. It works only while no staff account exists.
 
 ```bash
 curl -sS -c /tmp/attestor.jar -X POST http://127.0.0.1:8080/auth/bootstrap \
@@ -68,15 +164,86 @@ curl -sS -c /tmp/attestor.jar -X POST http://127.0.0.1:8080/auth/bootstrap \
   -d '{"email":"you@attestorsecurity.com","password":"a-long-passphrase","name":"Your Name"}'
 ```
 
-That returns an `otpauth://` URL. Add it to your authenticator, then confirm:
+That returns an `otpauth://` URL. Add it to your authenticator app, then confirm with the code it
+shows:
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/auth/bootstrap/confirm \
   -H 'content-type: application/json' -d '{"code":"123456"}'
 ```
 
+## 0.6 — Sign in
+
+**In the browser:** http://localhost:3000/login — email, password, then the six-digit code.
+
+**For the commands in this document**, you also need a cookie file. Every `curl` below sends
+`-b /tmp/attestor.jar`, and that file is created by signing in. Two calls, because the session does
+nothing until the second factor is satisfied:
+
+```bash
+curl -sS -c /tmp/attestor.jar -X POST http://127.0.0.1:8080/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"you@attestorsecurity.com","password":"a-long-passphrase"}'
+```
+
+```bash
+curl -sS -b /tmp/attestor.jar -c /tmp/attestor.jar -X POST http://127.0.0.1:8080/auth/mfa \
+  -H 'content-type: application/json' \
+  -d '{"code":"123456"}'
+```
+
+Use the code your authenticator is showing at that moment. The first call answers
+`{"mfaRequired":true}` and the second answers with your account. Confirm it worked:
+
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/auth/me
+```
+
+Three possible answers, and each tells you what to do:
+
+| Response | Meaning |
+| --- | --- |
+| Your account details | Signed in. Every command in this document will work |
+| `{"error":"not signed in"}` | No cookie file. Run both calls above |
+| `{"error":"multi-factor authentication is required"}` | The second call did not happen, or the code was stale. Run it again |
+
+Sessions expire. When a command starts returning `401`, run those two calls again.
+
 **In production:** the console is reachable only over WireGuard, never from the internet. Only the
 portal faces the internet.
+
+## 0.7 — Finding the ids the commands need
+
+Commands below say `<client-id>`, `<id>` (the engagement) and `<report-id>`. Each is returned when
+you create the thing, and you can always look them up again:
+
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/clients | jq -r '.clients[] | "\(.id)  \(.name)"'
+```
+
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/engagements | jq -r '.engagements[] | "\(.id)  \(.reference)  \(.state)"'
+```
+
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/engagements/<id>/reports | jq -r '.reports[] | "\(.id)  \(.kind) v\(.version)  releasedAt=\(.releasedAt)"'
+```
+
+They are also in the URL bar when you open the thing in the console.
+
+## 0.8 — Stopping
+
+Stop the platform, keeping all data:
+
+```bash
+docker compose -f infra/docker-compose.yml down
+```
+
+**Destroy the database, object store and every engagement in it** — only when you want a clean slate:
+
+```bash
+docker compose -f infra/docker-compose.yml down -v
+```
 
 ---
 
@@ -404,11 +571,33 @@ curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/cre
 Credential kinds available: `emailPassword`, `usernamePassword`, `mobileOtp`, `oauth2`, `apiKey`,
 `bearerToken`, `sessionCookie`. Yours is `emailPassword`.
 
-The response contains a link. **Send it to the client yourself.** It is shown once; only a hash is
-stored and no endpoint reads it back. Lost link means a new link, which is the correct trade.
+The response contains a `url`, built from `PORTAL_ORIGIN`. Locally that is:
 
-The client opens it on the portal and sees only the boxes that kind of login needs. When they
-submit, you see in the console that the credential set exists — never its contents.
+```
+http://localhost:3100/credentials/<token>
+```
+
+**Send it to the client yourself.** It is shown once; only a hash is stored and no endpoint reads
+it back. A lost link means a new link, which is the correct trade.
+
+### What the client does
+
+They open the link in a browser. **No account and no login is needed** — the token in the URL is
+the authorisation, which is why it expires and is single-use.
+
+They see one box per account you asked for, and only the fields that kind of login needs. For
+`emailPassword` that is an email and a password; for `mobileOtp` it is a number and a note about
+who to call for the code. They fill in the six accounts and submit.
+
+After that you can see in the console that the credential set exists, its label, and its role.
+**You never see the values**, and no route in either API returns them. The only thing that ever
+opens them is the worker, in memory, at run time.
+
+Check they arrived:
+
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/engagements/<id> | jq '.credentialSets'
+```
 
 Tell the client: **use throwaway accounts, and rotate them when we finish.** You will remind them
 again at closure.
@@ -793,7 +982,11 @@ curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/sta
 
 # Phase 14 — Release, and the client portal
 
-### Record the balance, then release
+Up to now the client has seen nothing. Releasing is what makes the report appear in their portal.
+
+## 14.1 — Record the balance
+
+The release gate blocks until the balance is recorded.
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/payment \
@@ -801,7 +994,11 @@ curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/pay
   -d '{"kind":"balance","amount":92500,"reference":"INV-2026-044"}'
 ```
 
-Press **Release**, or:
+## 14.2 — Release the report
+
+In the console: **Engagements → your engagement → Report → Release**. Enter the recipient addresses.
+
+Or:
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/reports/<report-id>/release \
@@ -812,9 +1009,32 @@ curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/reports/<report-id>/
 Release re-runs the **entire checklist server-side**. A green screen is not the gate; the server is.
 If it refuses, the response lists exactly what is blocking.
 
-**Nothing is emailed.** The notification is queued for a person to read and send.
+**Nothing is emailed.** The notification is queued for a person to read and send. Check the queue:
 
-### Invite the client to the portal
+```bash
+curl -sS -b /tmp/attestor.jar http://127.0.0.1:8080/notifications | jq
+```
+
+Approve it, and mark it sent once you have actually sent it:
+
+```bash
+curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/notifications/<id>/approve
+```
+
+```bash
+curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/notifications/<id>/mark-sent
+```
+
+Locally, anything the platform does send goes to **Mailpit** rather than a real inbox. Open
+**http://localhost:8025** to read what would have gone out. Nothing leaves your machine during
+development, which matters because the notification queue holds client-facing drafts.
+
+## 14.3 — Invite the client to the portal
+
+This is a separate step from releasing. Releasing publishes the report; the invitation is what gives
+a human an account to read it with.
+
+In the console: **Clients → Northwind Retail → Invite a user.** Or:
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/clients/<client-id>/invitations \
@@ -822,52 +1042,175 @@ curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/clients/<client-id>/
   -d '{"email":"cto@northwind.example","role":"clientOwner"}'
 ```
 
-Returns `acceptUrl` **once**. Send it yourself. The client opens it on the portal —
-**http://localhost:3100** locally, `https://portal.attestorsecurity.com` in production — sets a
-password and enrols their own MFA.
+The response contains `acceptUrl`, built from `PORTAL_ORIGIN`. Locally:
 
-### What the client sees
+```
+http://localhost:3100/invitation/<token>
+```
 
-| Section | Pages |
+**It is returned once.** Only a hash is stored and no endpoint reads it back, so copy it now and
+send it to the client through a channel you trust. Lost link means a new invitation.
+
+Roles you can invite:
+
+| Role | Can do |
 | --- | --- |
-| Your security | Dashboard, Findings, Reports and documents |
-| Working with us | Retests, Questionnaire answers, Account |
+| `clientOwner` | Everything, including inviting and deactivating their own colleagues |
+| `clientMember` | Read findings and reports, comment, request a retest |
 
-They see the released report, every finding with its evidence, the coverage matrix, and the
-attestation letter. They do **not** see anything from an unreleased engagement.
+## 14.4 — What the client does, step by step
 
-### The attestation letter
+This is the part to walk a real client through on the phone the first time. It takes about three
+minutes.
+
+**Step 1 — they open the link.** `http://localhost:3100/invitation/<token>`. No account needed yet;
+the token in the URL is the authorisation. It expires in seven days and is single-use.
+
+**Step 2 — they choose a password.** The form asks for their name, their email address (the one the
+invitation was sent to) and a password twice.
+
+**Step 3 — they enrol an authenticator.** The page shows a **base32 key and an `otpauth://` URL**.
+There is **no QR code** — tell them to open their authenticator app, choose "enter a setup key
+manually", and type the key shown.
+
+**Step 4 — they enter a six-digit code** to prove the authenticator works.
+
+**The account does not exist until step 4 completes.** A second factor a client can postpone is a
+second factor a client never enables, so there is no way to skip it.
+
+**Step 5 — they land on the sign-in page** and log in properly for the first time:
+email, password, then a six-digit code. Portal login is two calls under the hood, exactly like the
+console: the session does nothing until the second factor is satisfied.
+
+**Step 6 — they accept the portal terms.** A one-time screen. Until they accept, the portal shows
+the terms and nothing else.
+
+## 14.5 — What the client sees once they are in
+
+**http://localhost:3100**
+
+| Section | Page | What is on it |
+| --- | --- | --- |
+| Your security | **Dashboard** | Open findings by severity, engagement state, what needs them |
+| | **Findings** | Every confirmed finding, with evidence, reproduction steps and the fix |
+| | **Reports and documents** | The released report as HTML and PDF, and the attestation letter |
+| Working with us | **Retests** | Request a retest once findings are marked fixed |
+| | **Questionnaire answers** | Pre-written answers for the security questionnaires their customers send |
+| | **Account** | Change password, see active sessions, sign out everywhere, manage colleagues |
+
+They see the released report, every confirmed finding with its evidence, the coverage matrix, and
+the attestation letter.
+
+They do **not** see: anything from an unreleased engagement, any candidate finding you discarded,
+any other client's data, or the console. The portal API scopes every query to their own client id —
+there is a test suite dedicated to exactly that (`portal-scoping.test.ts`).
+
+### Reading and downloading the report
+
+**Reports and documents → the report → View** renders it in the browser.
+**Download** streams the PDF.
+
+Every download is recorded. You can see who read what and when:
+
+```bash
+docker compose -f infra/docker-compose.yml exec postgres \
+  psql -U attestor -d attestor -c "select * from report_download order by created_at desc limit 10;"
+```
+
+That record is worth having. "We never received it" is a conversation the log ends.
+
+## 14.6 — Checking the client experience yourself
+
+You cannot easily be both staff and client in one browser — the two surfaces set their own session
+cookies on different ports, so they do not actually collide, but it is confusing.
+
+The clean way: open the portal in a **private window** and accept an invitation you sent to an
+address you control. That is the client experience exactly, with no shortcuts, and it is worth doing
+once before you send a real client a link.
+
+If you want the portal without the whole engagement, the seed builds one:
+
+```bash
+docker compose -f infra/docker-compose.yml exec api pnpm --filter @attestor/api seed
+```
+
+It prints a line like `open /invitation/<token> on the portal to accept it`. That token is minted
+**only on a fresh seed** — if the demo engagement already exists, the seed stops early and mints
+nothing. Use 14.3 to issue a new one instead.
+
+## 14.7 — The attestation letter
 
 A one-page letter saying an assessment was performed, by whom, when, and against what. **No finding
-detail.** This is the document the client forwards to their own customers instead of sending
-somebody their vulnerability list.
+detail at all.** This is what the client forwards to their own customers instead of sending somebody
+their vulnerability list.
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/attestation-letter
 ```
 
+It appears in the client's **Reports and documents** page beside the report.
+
 ---
 
 # Phase 15 — Retest
 
-The client fixes things and requests a retest from the portal. It appears in your console under
-**Retests**.
+Every engagement includes one free retest inside the agreed window. This is the half of the job an
+auditor cares most about, because it is the evidence that findings were actually closed.
+
+## 15.1 — The client asks, from the portal
+
+They fix things, then on the portal go to **Findings**, mark the ones they believe are fixed, and
+then **Retests → Request a retest**, with a note saying what changed.
+
+The portal checks they are eligible first — there is no point requesting a retest with nothing
+marked fixed, and the free window has an end date.
+
+That lands in your console under **Retests**, and in your notification queue.
+
+## 15.2 — You run it
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/state \
   -H 'content-type: application/json' -d '{"to":"retestPending","reason":"client reports fixes deployed"}'
 ```
 
-Re-run the modules, then mark each finding as fixed, partially fixed or still present. Generate a
-retest report:
+Re-run the same modules you ran the first time, with the same policy. Using a different scope or a
+lighter policy makes the retest meaningless as evidence.
+
+```bash
+curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/runs \
+  -H 'content-type: application/json' \
+  -d '{"modules":["recon","web","api"],"dryRun":false}'
+```
+
+Then verify each previously-open finding **by hand** and set its status:
+
+```bash
+curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/findings/<finding-id>/confirm \
+  -H 'content-type: application/json' \
+  -d '{"status":"fixed","note":"Re-tested 2026-10-02. The endpoint now returns 403 for a user outside the tenant."}'
+```
+
+A finding is `fixed`, `partiallyFixed` or still `open`. Say which, with a sentence of evidence. "The
+client says it is fixed" is not a retest.
+
+## 15.3 — The retest report
 
 ```bash
 curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/report \
   -H 'content-type: application/json' -d '{"kind":"retest"}'
 ```
 
-This is the document an ISO 27001 or PCI DSS auditor actually wants. Without it, PCI DSS 11.4.4 is
-not satisfied.
+Release it the same way as Phase 14.2. It appears in the client's portal beside the first report.
+
+This is the document an ISO 27001 or PCI DSS auditor actually wants. ISO 27001 A.8.8 asks to see the
+finding, the decision, the fix **and the verification**. Without a retest report, PCI DSS 11.4.4 is
+not satisfied at all.
+
+```bash
+curl -sS -b /tmp/attestor.jar -X POST http://127.0.0.1:8080/engagements/<id>/state \
+  -H 'content-type: application/json' -d '{"to":"retestComplete","reason":"retest report released"}'
+```
 
 ---
 

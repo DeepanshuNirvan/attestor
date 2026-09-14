@@ -60,6 +60,34 @@ export interface BuildReportInput {
   now?: Date;
 }
 
+/**
+ * What the retest said about this finding.
+ *
+ * The renderer has printed a "Retest result" block for every finding since it was written, and
+ * nothing ever set the field, so a retest report — the document an ISO 27001 or PCI DSS auditor
+ * actually asks for — carried no retest result at all. It is derived here from the columns that
+ * already record what happened rather than stored as a seventh state to keep in step with them.
+ *
+ * Only a retest report gets one. On an assessment there has been no retest to report, and printing
+ * "not retested" against every finding of a first assessment is noise.
+ *
+ * `regressed` is the one worth separating out: a finding that was fixed before the retest and is
+ * open after it is a different conversation from one that was never fixed. It points at the release
+ * process rather than at the original defect.
+ */
+export function retestOutcomeFor(
+  item: { status: string; fixedAt: Date | null; retestedAt: Date | null; riskAcceptedAt: Date | null },
+  kind: 'assessment' | 'retest',
+): ReportFinding['retestOutcome'] {
+  if (kind !== 'retest') return undefined;
+  if (item.riskAcceptedAt) return 'riskAccepted';
+  if (!item.retestedAt) return 'notRetested';
+  if (item.status === 'fixed') return 'verifiedFixed';
+  // Fixed at some point before this retest, and open again now.
+  if (item.fixedAt && item.fixedAt < item.retestedAt) return 'regressed';
+  return 'stillOpen';
+}
+
 export async function buildReportData(
   database: Database,
   input: BuildReportInput,
@@ -185,6 +213,7 @@ export async function buildReportData(
     confirmedBy: item.confirmedBy ?? undefined,
     fixedAt: item.fixedAt ?? undefined,
     retestedAt: item.retestedAt ?? undefined,
+    retestOutcome: retestOutcomeFor(item, input.kind),
     evidence: evidenceByFinding.get(item.id) ?? [],
   }));
 
