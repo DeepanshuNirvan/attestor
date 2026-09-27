@@ -114,7 +114,7 @@ The bottom of the stack. Nothing depends on anything else.
 | `engagement/state-machine.ts` | 14 states, declared transitions, two gates |
 | `runner/container-runner.ts` | **The only module that imports dockerode.** All hardening lives here |
 | `runner/run-tool-for-engagement.ts` | The choke point. Scope, audit, launch, redact |
-| `runner/tool-images.ts` | 41 images with limits, modules and purpose |
+| `runner/tool-images.ts` | 32 images with limits, modules and purpose |
 | `runner/rate-limiter.ts` | Token bucket with jitter and adaptive back-off |
 | `audit/audit-log.ts` | The closed union of audit actions |
 | `panic-stop.ts` | Engagement-scoped and platform-wide stops |

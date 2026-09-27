@@ -1,3 +1,4 @@
+import { isIP } from 'node:net';
 import type { RawFinding } from '@attestor/findings';
 import {
   parseJsonLines,
@@ -163,7 +164,9 @@ export const dnsxAdapter: ScannerAdapter = {
     const hosts = new Set<string>();
     for (const target of targets) {
       const { host } = splitTarget(target);
-      if (host === '') continue;
+      // An IP address has no DNS records of its own to read and no mail domain to hold a DMARC
+      // policy; asking produced "192.168.0.10 publishes no DMARC policy", which is not a finding.
+      if (host === '' || isIP(host) !== 0) continue;
       hosts.add(host);
       hosts.add(`_dmarc.${host}`);
     }

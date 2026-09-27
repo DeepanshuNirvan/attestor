@@ -61,10 +61,10 @@ export type AiTransport = (request: AiTransportRequest) => Promise<AiTransportRe
 export interface AiAssistConfig {
   /** The deployment-wide switch. False means this class refuses everything. */
   enabled: boolean;
-  provider: 'anthropic' | 'openai' | 'none';
+  provider: 'anthropic' | 'openai' | 'gemini' | 'vllm' | 'none';
   modelDrafting: string;
   modelTriage: string;
-  /** Monthly ceiling in USD. Zero means no spending is permitted at all. */
+  /** Optional monthly ceiling in USD. Zero means no platform ceiling; the provider's limits apply. */
   monthlyBudgetUsd: number;
   /** Per million tokens, for the estimate written to the usage log. */
   inputCostPerMillionUsd?: number;
@@ -215,8 +215,9 @@ export class AiAssist {
       };
     }
 
-    const spent = await this.dependencies.spentThisMonthUsd(request.engagementId);
-    if (spent >= config.monthlyBudgetUsd) {
+    const spent =
+      config.monthlyBudgetUsd > 0 ? await this.dependencies.spentThisMonthUsd(request.engagementId) : 0;
+    if (config.monthlyBudgetUsd > 0 && spent >= config.monthlyBudgetUsd) {
       return {
         status: 'refused',
         rule: 'budgetExhausted',

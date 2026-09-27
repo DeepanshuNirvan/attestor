@@ -30,13 +30,20 @@ export default async function EngagementsPage() {
 
   return (
     <Shell>
-      <PageHeader title="Engagements" subtitle={`${data.engagements.length} on record`} />
+      <PageHeader
+        title="Engagements"
+        subtitle={`${data.engagements.length} on record`}
+        actions={
+          <Link className="button" href="/engagements/new">
+            New engagement
+          </Link>
+        }
+      />
 
       <div className="panel">
         {data.engagements.length === 0 ? (
           <p className="muted small">
-            Nothing yet. Seed the demo data with <code>pnpm --filter @attestor/api seed</code> to see
-            the whole flow.
+            Nothing yet. Add a client, then press <strong>New engagement</strong>.
           </p>
         ) : (
           <table>

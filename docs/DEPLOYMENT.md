@@ -185,7 +185,7 @@ docker compose -f infra/docker-compose.yml logs -f api
 node scripts/pin-tool-images.mjs --pull
 ```
 
-Pulls all 41 images and writes `infra/tool-images.lock.json`. **Until this has run, no tool will
+Pulls all 32 images and writes `infra/tool-images.lock.json`. **Until this has run, no tool will
 start** — the runner refuses any image without a pinned digest, because a report that names a tool
 version has to mean it. Expect 20–40 GB of pulls and a long first run.
 

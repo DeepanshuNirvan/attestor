@@ -357,8 +357,19 @@ export function registerEngagementRoutes(
         signerRole: z.string().min(2).max(150),
         signerEmail: z.string().email(),
         signedAt: z.coerce.date(),
-        documentObjectKey: z.string().min(1),
-        documentSha256: z.string().length(64),
+        /**
+         * The signed PDF itself. When it is sent, it is stored and hashed here, so the hash on the
+         * record is the hash of a document the platform actually holds. Until this existed the
+         * route took a key and a hash typed by hand, pointing at a file nothing had ever uploaded.
+         */
+        document: z
+          .object({
+            filename: z.string().min(1).max(200),
+            base64: z.string().min(1),
+          })
+          .optional(),
+        documentObjectKey: z.string().min(1).optional(),
+        documentSha256: z.string().length(64).optional(),
         assetList: z.array(z.string()).min(1),
         exclusionList: z.array(z.string()).default([]),
         sourceAddresses: z.array(z.string()).default([]),
@@ -379,9 +390,35 @@ export function registerEngagementRoutes(
       return reply.code(400).send({ error: 'the testing window ends before it begins' });
     }
 
+    const { document, ...fields } = parsed.data;
+    let documentObjectKey = fields.documentObjectKey;
+    let documentSha256 = fields.documentSha256;
+
+    if (document) {
+      const binary = Buffer.from(document.base64, 'base64');
+      // The first bytes of every PDF. A form that uploaded a screenshot or a Word file by mistake
+      // would otherwise leave the record pointing at something nobody signed.
+      if (binary.subarray(0, 5).toString('latin1') !== '%PDF-') {
+        return reply.code(400).send({ error: 'the signed authorisation must be a PDF' });
+      }
+      const stored = await context.reports.capture({
+        engagementId: id,
+        kind: 'file',
+        binary,
+        contentType: 'application/pdf',
+        filename: document.filename,
+      });
+      documentObjectKey = stored.objectKey;
+      documentSha256 = stored.sha256;
+    }
+
+    if (!documentObjectKey || !documentSha256) {
+      return reply.code(400).send({ error: 'attach the signed authorisation PDF' });
+    }
+
     const [created] = await context.database
       .insert(authorisationTable)
-      .values({ ...parsed.data, engagementId: id })
+      .values({ ...fields, documentObjectKey, documentSha256, engagementId: id })
       .returning();
 
     const scopeItems = await context.database
@@ -504,9 +541,14 @@ export function registerEngagementRoutes(
       advanceGateOverride: parsed.data.advanceGateOverrideReason
         ? { by: actorIdOf(request), reason: parsed.data.advanceGateOverrideReason }
         : (record.advanceGateOverride as { by: string; reason: string } | null),
-      credentialsVerified:
-        credentials.length === 0 ||
-        credentials.every((credential) => credential.lastVerifiedAt !== null || credential.revokedAt !== null),
+      // Refuses only a credential known to be wrong: one with a recorded failure the client has not
+      // since replaced or withdrawn. This used to demand a successful verification for every
+      // credential, which could never be met — checking a login means sending a request to the
+      // target, the scope guard permits that only once the engagement is running, and running comes
+      // after this gate. Every engagement holding test accounts was stuck here with no way forward.
+      credentialsVerified: credentials.every(
+        (credential) => credential.verificationError === null || credential.revokedAt !== null,
+      ),
       preFlightChecklistComplete: missingPreFlightItems(checklist).length === 0,
       reviewChecklistComplete:
         Object.values(reviewChecklist).length > 0 && Object.values(reviewChecklist).every(Boolean),
@@ -974,6 +1016,38 @@ export function registerEngagementRoutes(
 
     await queues.scan.resume();
     return reply.send({ ok: true });
+  });
+
+  /**
+   * Whether AI may draft report prose for this engagement.
+   *
+   * Per engagement rather than global, because what the client agreed to is per engagement. The
+   * flag existed and was checked on every draft, but nothing could set it, so drafting was refused
+   * on every engagement even with a model configured.
+   */
+  app.put('/engagements/:id/ai-assist', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = z.object({ enabled: z.boolean() }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+    const updated = await context.database
+      .update(engagementTable)
+      .set({ aiAssistEnabled: parsed.data.enabled, updatedAt: new Date() })
+      .where(eq(engagementTable.id, id))
+      .returning({ id: engagementTable.id });
+    if (updated.length === 0) return reply.code(404).send({ error: 'not found' });
+
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'engagement.updated',
+      subjectType: 'engagement',
+      subjectId: id,
+      metadata: { aiAssistEnabled: parsed.data.enabled },
+      ...requestContext(request),
+    });
+
+    return reply.send({ ok: true, aiAssistEnabled: parsed.data.enabled });
   });
 
   app.put('/engagements/:id/policy', { preHandler: guard }, async (request, reply) => {

@@ -213,6 +213,32 @@ function zapCweFromString(value: string | undefined): number | undefined {
  * itself, which meanwhile excluded nothing. The unit test asserted the plan contained `id: 20000`,
  * so it passed on the strength of the mistake being present.
  */
+/**
+ * Alerts that are advice to whoever runs ZAP rather than facts about the target. 10109, "Modern Web
+ * Application", says the client-side spider may crawl better; it arrived in a client report as a
+ * finding.
+ */
+const ZAP_OPERATOR_HINTS = new Set(['10109']);
+
+/**
+ * ZAP writes descriptions, solutions and references as small HTML fragments — paragraphs, the odd
+ * list or line break. The report and the console print text, so the tags came through literally as
+ * `<p>` in a client's remediation.
+ */
+export function zapText(html: string | undefined): string {
+  if (!html) return '';
+  return html
+    .replace(/<\/p>\s*<p>/gi, '\n\n')
+    .replace(/<br\s*\/?>|<\/li>\s*<li>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
 export const zapAdapter: ScannerAdapter = {
   id: 'zap',
   displayName: 'OWASP ZAP',
@@ -376,6 +402,7 @@ ${
       for (const alert of site.alerts ?? []) {
         const instances = alert.instances ?? [];
         const pluginId = alert.pluginid ?? '';
+        if (ZAP_OPERATOR_HINTS.has(pluginId)) continue;
 
         findings.push({
           source: 'tool',
@@ -384,7 +411,7 @@ ${
           toolFindingRef: pluginId,
           checkId: ZAP_PLUGIN_TO_CHECK[pluginId],
           title: alert.name ?? alert.alert ?? `ZAP alert ${pluginId}`,
-          description: [alert.desc, alert.otherinfo].filter(Boolean).join('\n\n'),
+          description: [zapText(alert.desc), zapText(alert.otherinfo)].filter(Boolean).join('\n\n'),
           severity: normaliseSeverity(ZAP_RISK[alert.riskcode ?? '0']),
           cvssVersion: context.cvssVersion,
           cweId: zapCweFromString(alert.cweid),
@@ -409,8 +436,8 @@ ${
                 'Compare the response against the evidence recorded below.',
               ]
             : [],
-          remediation: alert.solution ?? '',
-          references: (alert.reference ?? '')
+          remediation: zapText(alert.solution),
+          references: zapText(alert.reference)
             .split(/\s+/)
             .filter((url) => /^https?:\/\//.test(url))
             .map((url) => ({ title: 'ZAP reference', url })),

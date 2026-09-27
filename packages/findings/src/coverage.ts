@@ -173,7 +173,7 @@ export function buildCoverageMatrix(input: CoverageInput): CoverageEntry[] {
       state: 'notTested',
       reason:
         check.automation === 'manual'
-          ? 'Not reached within the agreed test window.'
+          ? 'A manual check. No tester recorded doing it in this engagement.'
           : 'No completed run covered this check.',
       scanRunIds: [],
       findingCount,

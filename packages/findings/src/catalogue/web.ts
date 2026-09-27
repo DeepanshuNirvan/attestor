@@ -720,7 +720,7 @@ export const webChecks: Check[] = [
     example:
       'A PDF export feature passing a filename to a shell, allowing arbitrary commands as the application user.',
     automation: 'assisted',
-    tools: ['commix', 'zap', 'nuclei'],
+    tools: ['zap', 'nuclei'],
     standards: {
       wstg: ['WSTG-INPV-12'],
       asvs: ['v5.0.0-1.2.3'],

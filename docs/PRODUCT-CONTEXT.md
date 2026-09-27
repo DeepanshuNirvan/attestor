@@ -237,8 +237,8 @@ Stated plainly so it is never promised. These are structural, not policy.
   edited together.
 - No destructive payloads, no data deletion, no state change beyond what the policy permits.
 - No social engineering, no phishing, no physical testing.
-- No autonomous agent against a client. Strix ships disabled and is **refused in code**, with a typed
-  refusal naming what would have to exist first.
+- No autonomous agent against a client. None ships, and the agentic route is **refused in code**,
+  with a typed refusal naming what would have to exist first.
 - No claim of any certification the firm does not hold. `pnpm check:claims` fails the build on a
   first-person claim of CERT-In empanelment, CREST accreditation, ISO certification of the firm, a
   guarantee of security, or a promise to certify a system as secure.
@@ -323,12 +323,13 @@ Operators must be told this in advance or they will file it as a restore failure
 
 ### Not verified
 
-- **A model has never been called.** The AI layer is fully implemented and tested against an injected
-  transport; there is no provider key and the default configuration refuses everything anyway.
+- **AI drafting works with vLLM, Gemini, OpenAI or Anthropic**, set in `infra/.env`, plus a
+  per-engagement switch in the console. The transport is verified against a self-hosted vLLM server;
+  the policy's `ai.aiAssistEnabled` and `ai.model` fields are not read and do nothing.
 - **Legal text is not lawyer-reviewed.** Every block carries `lawyerReviewedAt: null` and documents
   render with a visible draft banner. This is the one thing you cannot ship without.
-- **Eleven of forty-one tool images cannot be pulled** — the tags do not resolve. Those tools are
-  silently absent from every run because the runner refuses an unpinned image.
+- **The LLM module cannot run yet** — garak has no trustworthy image and promptfoo sends attack
+  generation to a third-party service. Both parked. 32 tool images, all pullable except those two.
 - **The whole of the OWASP Web Security Testing Guide is accounted for**: 106 of 109 covered, three
   recorded as deliberate decisions with reasons a client can read, and no unexplained gap. The
   catalogue-integrity test holds that at zero and fails the build if it rises.

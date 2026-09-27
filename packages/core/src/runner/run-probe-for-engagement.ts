@@ -126,6 +126,7 @@ export async function runProbeForEngagement<T>(
     const decision: ScopeDecision = await checkScope(dependencies.scopeContext, target, {
       now: dependencies.now,
       resolve: dependencies.resolve,
+      dryRun: dependencies.dryRun,
     });
 
     if (!decision.allowed) {

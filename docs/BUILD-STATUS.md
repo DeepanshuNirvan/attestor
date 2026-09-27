@@ -452,17 +452,17 @@ Ranked by what should happen next.
 2. **Nothing checks a credential before a run.** `lastVerifiedAt` and `verificationError` exist on
    the row and are never written, and the `credentialSet.verified` audit action can never fire. A
    mistyped password is discovered from an empty authenticated scan.
-3. **Eleven of forty-one tool images cannot be pulled.** `gau`, `whatweb`, `nikto`, `commix`,
-   `kiterunner`, `cloudsplaining`, `apktool`, `jadx`, `garak`, `promptfoo`, `strix`. The runner
-   refuses an unpinned image, so each is silently absent from every run while the website and the
-   user guide list it as available. Each needs a working image reference or removal from the
-   catalogue — leaving them listed overstates what the platform does.
+3. **The LLM tools cannot run yet.** `garak` has no trustworthy published image; `promptfoo`
+   routes attack generation through a third-party service. Both parked pending a decision. The
+   nine other unpullable tools had no adapter and could never have run; they were removed, and
+   every check that named them is produced by a tool that does run (catalogue integrity test).
 4. **Legal text is not lawyer-reviewed.** Every block carries `lawyerReviewedAt: null` and documents
    render with a visible draft banner until that changes. Still the one thing that cannot ship.
-5. **A model has never actually been called.** The AI layer is fully implemented and fully tested
-   against an injected transport, but no request has gone to a provider — there is no key here, and
-   the default configuration refuses everything anyway. The first real call should be made on a
-   scratch engagement with a low budget ceiling.
+5. **AI drafting: transport verified, full draft path not yet exercised end to end.** Providers are
+   `vllm` (any OpenAI-compatible server), `gemini`, `openai` and `anthropic`, chosen in `infra/.env`.
+   The transport has been called for real against a self-hosted vLLM server from inside the `api`
+   container. Drafting also needs the per-engagement **Allow AI drafting** switch, which until now
+   had no control and so refused every draft. The platform budget is optional and off by default.
 6. **Mobile, cloud, code and LLM modules have not been driven end to end** against a live target.
    Recon, web and network have.
 7. **Off-host log shipping and alerting.** The two real gaps in the ASVS self-assessment, in V16.

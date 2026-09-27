@@ -11,7 +11,7 @@ export const mobileChecks: Check[] = [
     example:
       'An analytics SDK two years out of date with a published remote code execution issue.',
     automation: 'automated',
-    tools: ['mobsf', 'apktool', 'jadx'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-CODE-3'], owaspTop10: ['A03:2025'], cwe: [1104, 1035] },
   },
   {
@@ -24,7 +24,7 @@ export const mobileChecks: Check[] = [
     example:
       'A cloud storage key in a strings resource, granting write access to the media bucket.',
     automation: 'automated',
-    tools: ['mobsf', 'trufflehog', 'jadx'],
+    tools: ['mobsf', 'trufflehog'],
     standards: { masvs: ['MASVS-STORAGE-1'], owaspTop10: ['A02:2025'], cwe: [798, 312] },
   },
   {
@@ -154,7 +154,7 @@ export const mobileChecks: Check[] = [
     example:
       'AES in ECB mode with a key derived from the device identifier, so identical data produces identical ciphertext.',
     automation: 'assisted',
-    tools: ['mobsf', 'jadx'],
+    tools: ['mobsf'],
     standards: { masvs: ['MASVS-CRYPTO-1', 'MASVS-CRYPTO-2'], owaspTop10: ['A04:2025'], cwe: [327, 321] },
   },
   {
@@ -284,7 +284,7 @@ export const mobileChecks: Check[] = [
     example:
       'A pricing algorithm fully readable in the decompiled code, including the internal discount thresholds.',
     automation: 'manual',
-    tools: ['jadx', 'apktool'],
+    tools: [],
     standards: { masvs: ['MASVS-RESILIENCE-3'], cwe: [656] },
   },
 ];

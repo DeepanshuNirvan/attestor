@@ -113,6 +113,7 @@ export async function runToolForEngagement(
       now: dependencies.now,
       resolve: dependencies.resolve,
       requiresCloudPolicyAcknowledgement: request.requiresCloudPolicyAcknowledgement,
+      dryRun: dependencies.dryRun,
     });
 
     if (!decision.allowed) {

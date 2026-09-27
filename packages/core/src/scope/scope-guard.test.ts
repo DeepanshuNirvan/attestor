@@ -142,6 +142,38 @@ describe('checkScope — engagement state', () => {
     }
   });
 
+  /**
+   * The pre-flight checklist asks for a dry run before the engagement may become ready to run, and
+   * the guard used to refuse one in exactly those states, so the item could only ever be ticked
+   * without having been done. A dry run sends nothing, so it is allowed once a valid authorisation
+   * exists — and only a dry run: a live run in the same states is still refused.
+   */
+  it('allows a dry run once authorised, and still refuses a live run there', async () => {
+    for (const state of ['authorised', 'advancePaid', 'readyToRun'] as const) {
+      const dry = await checkScope(context({ state }), 'app.client.example', {
+        now: NOW,
+        resolve: publicAddress,
+        dryRun: true,
+      });
+      expect(dry.allowed, `dry run in ${state}`).toBe(true);
+
+      const live = await checkScope(context({ state }), 'app.client.example', {
+        now: NOW,
+        resolve: publicAddress,
+      });
+      expect(!live.allowed && live.rule, `live run in ${state}`).toBe('engagementStateForbidsExecution');
+    }
+
+    for (const state of ['draft', 'scoped', 'released', 'closed'] as const) {
+      const dry = await checkScope(context({ state }), 'app.client.example', {
+        now: NOW,
+        resolve: publicAddress,
+        dryRun: true,
+      });
+      expect(!dry.allowed && dry.rule, `dry run in ${state}`).toBe('engagementStateForbidsExecution');
+    }
+  });
+
   it('allows the states where testing actually happens', async () => {
     for (const state of ['running', 'triage', 'manualTesting', 'retestPending'] as const) {
       const decision = await checkScope(context({ state }), 'app.client.example', {

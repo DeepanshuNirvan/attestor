@@ -28,7 +28,7 @@ export const cloudChecks: Check[] = [
     example:
       'A build role able to pass any role to a compute service, which is a complete path to administrator.',
     automation: 'automated',
-    tools: ['prowler', 'cloudsplaining'],
+    tools: ['prowler'],
     standards: { owaspTop10: ['A01:2025'], cwe: [269, 732] },
   },
   {
@@ -249,7 +249,7 @@ export const cloudChecks: Check[] = [
     example:
       'A vendor role trusting the vendor\'s whole account with no external identifier, so any of that vendor\'s customers could assume it.',
     automation: 'automated',
-    tools: ['prowler', 'cloudsplaining'],
+    tools: ['prowler'],
     standards: { owaspTop10: ['A01:2025'], cwe: [1032, 269] },
   },
   {

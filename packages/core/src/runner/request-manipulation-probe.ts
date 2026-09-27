@@ -71,9 +71,15 @@ export interface RequestManipulationResult {
   skipped?: string;
 }
 
-/** The methods an `Allow` or `Access-Control-Allow-Methods` header named, normalised. */
+/**
+ * The methods the `Allow` header named, normalised.
+ *
+ * `Access-Control-Allow-Methods` is not read. It says which methods a cross-origin caller may use,
+ * and common CORS middleware sends the same list on every path whether or not anything is routed
+ * there — reading it reported "PUT, PATCH, DELETE advertised" on every page of a static front end.
+ */
 export function advertisedMethods(headers: Record<string, string>): string[] {
-  const raw = headers['allow'] ?? headers['access-control-allow-methods'] ?? '';
+  const raw = headers['allow'] ?? '';
   return raw
     .split(',')
     .map((method) => method.trim().toUpperCase())

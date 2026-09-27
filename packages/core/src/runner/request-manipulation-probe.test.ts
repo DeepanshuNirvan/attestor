@@ -39,13 +39,15 @@ const URL_WITH_PARAM = 'https://app.example.com/search?q=shoes';
 const PLAIN_URL = 'https://app.example.com/account';
 
 describe('reading an Allow header', () => {
-  it('takes the methods from either header the server might use', () => {
+  it('takes the methods from the Allow header', () => {
     expect(advertisedMethods({ allow: 'GET, HEAD, PUT ' })).toEqual(['GET', 'HEAD', 'PUT']);
-    expect(advertisedMethods({ 'access-control-allow-methods': 'get,post' })).toEqual([
-      'GET',
-      'POST',
-    ]);
     expect(advertisedMethods({})).toEqual([]);
+  });
+
+  it('ignores the CORS header, which CORS middleware sends on every path', () => {
+    expect(
+      advertisedMethods({ 'access-control-allow-methods': 'GET,HEAD,PUT,PATCH,POST,DELETE' }),
+    ).toEqual([]);
   });
 });
 

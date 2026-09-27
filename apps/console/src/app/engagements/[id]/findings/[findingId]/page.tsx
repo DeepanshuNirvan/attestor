@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { PageHeader, Severity, Shell } from '@/components/shell';
+import { FindingWriteUp } from '@/components/finding-write-up';
+import { RetestVerdict } from '@/components/retest-verdict';
 import { RiskRating } from '@/components/risk-rating';
 import { tryGet } from '@/lib/api';
 
@@ -8,9 +10,9 @@ import { tryGet } from '@/lib/api';
  * A finding, as the tester sees it.
  *
  * The triage queue is built for volume — confirm or discard, keyboard first. This is the other half:
- * one finding, everything about it, and the place a person does the work no tool does. Right now
- * that is the OWASP risk rating, which is sixteen questions about this client rather than about the
- * class of flaw, and is the half of the scoring a client can actually argue with.
+ * one finding, everything about it, and the place a person does the work no tool does: the
+ * write-up the release checklist asks for, and the OWASP risk rating, which is sixteen questions
+ * about this client rather than about the class of flaw.
  *
  * Evidence is rendered into a `<pre>` and never handed to the browser as a document. An evidence
  * body is attacker-controlled by definition, and an XSS here would be one delivered by the security
@@ -35,7 +37,10 @@ interface FindingDetail {
     checkId: string | null;
     toolName: string | null;
     affectedAssets: { value: string; location?: string; parameter?: string; method?: string }[];
+    businessImpact: string;
+    reproductionSteps: string[];
     remediation: string;
+    retestedAt: string | null;
   };
   evidence: { id: string; kind: string; sha256: string; text?: string; unavailable?: boolean }[];
 }
@@ -58,9 +63,14 @@ export default async function ConsoleFindingPage({
         title={finding.title}
         subtitle={`${finding.reference ?? 'unreferenced'} · ${finding.status}`}
         actions={
-          <Link className="button button-quiet" href={`/engagements/${id}/triage`}>
-            Back to the queue
-          </Link>
+          <>
+            <Link className="button button-quiet" href={`/engagements/${id}/report`}>
+              Back to the report
+            </Link>{' '}
+            <Link className="button button-quiet" href={`/engagements/${id}/triage`}>
+              Back to the queue
+            </Link>
+          </>
         }
       />
 
@@ -89,10 +99,30 @@ export default async function ConsoleFindingPage({
             </li>
           ))}
         </ul>
-
-        <h3>Remediation</h3>
-        <p>{finding.remediation}</p>
       </div>
+
+      <div className="panel" style={{ marginBottom: '1.5rem' }}>
+        <h3>Write-up</h3>
+        <FindingWriteUp
+          engagementId={id}
+          findingId={finding.id}
+          businessImpact={finding.businessImpact}
+          reproductionSteps={finding.reproductionSteps}
+          remediation={finding.remediation}
+        />
+      </div>
+
+      {finding.status === 'candidate' ? null : (
+        <div className="panel" style={{ marginBottom: '1.5rem' }}>
+          <h3>Retest</h3>
+          <RetestVerdict
+            engagementId={id}
+            findingId={finding.id}
+            status={finding.status}
+            retestedAt={finding.retestedAt}
+          />
+        </div>
+      )}
 
       <div className="panel" style={{ marginBottom: '1.5rem' }}>
         <h3>OWASP risk rating</h3>

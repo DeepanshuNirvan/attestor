@@ -691,20 +691,21 @@ Everything maps to what a buyer's auditor asks about: OWASP Top 10 2025, API Top
 
 ### The tools
 
-41 images, all free or open source, every one pinned to an exact version.
+32 images, all free or open source, every one pinned to an exact version.
 
-Recon: subfinder, Amass, dnsx, httpx, naabu, tlsx, katana, gau, WhatWeb ·
-Web: ZAP, nuclei, Nikto, testssl.sh, ffuf, dalfox, Arjun, sqlmap *(read-only settings)* ·
-API: Schemathesis, kiterunner, mitmproxy · Code: Semgrep, gitleaks, TruffleHog, Trivy, Syft, Grype,
-Checkov · Cloud: Prowler, Cloudsplaining, kube-bench, Kubescape · Network: Nmap *(safe scripts only)*
-· Mobile: MobSF, apktool, jadx · LLM: garak, promptfoo, PyRIT, DeepTeam.
+Recon: subfinder, Amass, dnsx, httpx, naabu, tlsx, katana ·
+Web: ZAP, nuclei, testssl.sh, ffuf, dalfox, Arjun, sqlmap *(read-only settings)* ·
+API: Schemathesis, mitmproxy · Code: Semgrep, gitleaks, TruffleHog, Trivy, Syft, Grype,
+Checkov · Cloud: Prowler, kube-bench, Kubescape · Network: Nmap *(safe scripts only)*
+· Mobile: MobSF · LLM: garak, promptfoo, PyRIT, DeepTeam.
 
 Every one runs as a non-root user, with a read-only filesystem, all Linux capabilities dropped, its
 own network, memory and CPU limits, and a hard time limit. That hardening lives in one place, so a
 new tool cannot forget it.
 
-> **Eleven of the 41 cannot currently be downloaded** — their image references are wrong or the
-> images are gone. See §14.
+> **The LLM module does not run yet.** garak and promptfoo are listed but not yet runnable: garak has no trustworthy published
+> image and promptfoo generates its attacks through a third-party service. Both are parked
+> until that is decided, so the LLM module does not run today. See §14.
 
 ---
 
@@ -790,27 +791,36 @@ Drafts finding prose and report sections from evidence you already have.
 
 **Off by default, and it takes two switches to turn on:**
 
-1. Deployment level, in `infra/.env`:
+1. Deployment level, in `infra/.env`, then recreate the `api` container. Any one of:
 
    ```
+   # Self-hosted, OpenAI-compatible (vLLM and similar). No key unless the server needs one.
    AI_ENABLED=true
-   AI_PROVIDER=anthropic
-   AI_API_KEY=<your key>
-   AI_MONTHLY_BUDGET_USD=10
+   AI_PROVIDER=vllm
+   AI_BASE_URL=http://10.0.0.5:8000/v1
+   AI_MODEL_DRAFTING=<served model name>
+
+   # Gemini
+   AI_ENABLED=true
+   AI_PROVIDER=gemini
+   AI_API_KEY=<Google AI Studio key>
+   AI_MODEL_DRAFTING=<model name>
+
+   # OpenAI, or AI_PROVIDER=anthropic with an Anthropic key
+   AI_ENABLED=true
+   AI_PROVIDER=openai
+   AI_API_KEY=<key>
+   AI_MODEL_DRAFTING=<model name>
    ```
 
-2. Per engagement, in that engagement's policy:
+   Spending limits are set at the provider. `AI_MONTHLY_BUDGET_USD` is optional and `0` (the
+   default) means the platform sets no ceiling of its own.
 
-   ```yaml
-   ai:
-     aiAssistEnabled: true
-     model: claude-sonnet-5
-     tokenCeiling: 500000
-     spendCeilingUsd: 10
-   ```
+2. Per engagement, in the console: engagement page → **AI drafting** → **Allow AI drafting**. It
+   shows whether the deployment side is on as well.
 
-The engagement flag alone does nothing without the deployment flag. One client turning it on never
-turns it on for another.
+Both must be on. One client being switched on never switches on another. (The `ai:` block in a
+policy — `aiAssistEnabled`, `model` — is not read by anything; use the two switches above.)
 
 **What protects the client:**
 
@@ -823,11 +833,11 @@ turns it on for another.
 - Every request is logged with model, purpose, tokens, cost and a hash of the prompt.
 - Every output is a **draft**. The report cannot be released while an AI-drafted section is
   unapproved by a person.
-- Budget is per engagement per calendar month, defaulting to zero, so one noisy engagement cannot
-  spend another's.
+- An optional platform ceiling (`AI_MONTHLY_BUDGET_USD`) applies per engagement per calendar month
+  when set above zero; by default limits are left to the provider.
 
-**A model has never actually been called from this codebase.** Make the first call on a throwaway
-engagement with a $1 ceiling.
+The transport has been verified against a self-hosted vLLM server. Read the first drafts closely
+whichever model you use — smaller models invent more.
 
 **Agentic testing — an AI driving the tools itself — is shipped disabled and refused in code**, with
 a message naming what would have to exist first. Do not offer it.
@@ -950,13 +960,14 @@ Be honest with yourself about these. Nothing here is hidden.
 3. **Nothing checks a credential before the run.** If the client mistypes a password you find out
    from an empty authenticated scan, not from the console: the `Verified` state a credential can
    hold is never set by anything. Do the first authenticated run early enough to notice.
-4. **Eleven of 41 tool images cannot be downloaded** — `gau`, `whatweb`, `nikto`, `commix`,
-   `kiterunner`, `cloudsplaining`, `apktool`, `jadx`, `garak`, `promptfoo`, `strix`. The runner
-   refuses unpinned tools, so each is silently absent from every run while your website lists it.
-   Either fix the image reference or take it off the catalogue — listing them overstates what you do.
-   Note `garak` and `promptfoo` are two of the four LLM tools.
+4. **The LLM tools cannot run yet.** `garak` has no trustworthy published image and needs building
+   from a pinned Dockerfile; `promptfoo` generates and grades attacks through its own cloud, which
+   would send client data to a third party, so it waits on a decision about which model provider
+   to use. Nine other tools that had no adapter at all — gau, WhatWeb, Nikto, commix, kiterunner,
+   Cloudsplaining, apktool, jadx, Strix — were removed; every check they were listed on is produced
+   by a tool that does run.
 5. **No model has ever been called.** The AI layer is fully built and tested against a fake
-   transport. First real call on a throwaway engagement with a $1 ceiling.
+   transport, and the transport has now been called against a self-hosted vLLM server.
 6. **Mobile, cloud, code and LLM have never run end to end** against a live target.
 
 ### Worth doing

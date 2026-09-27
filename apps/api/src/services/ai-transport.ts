@@ -66,14 +66,29 @@ export function anthropicTransport(apiKey: string): AiTransport {
   };
 }
 
-export function openAiTransport(apiKey: string): AiTransport {
+/**
+ * The OpenAI chat-completions format, which OpenAI, Gemini and self-hosted servers such as vLLM all
+ * speak. They differ in where they live, whether they need a key, and what the output limit is
+ * called: OpenAI's current models refuse `max_tokens` and want `max_completion_tokens`, while Gemini
+ * and vLLM take `max_tokens`.
+ */
+export function openAiCompatibleTransport(options: {
+  baseUrl: string;
+  apiKey?: string;
+  tokenLimitParameter: 'max_tokens' | 'max_completion_tokens';
+}): AiTransport {
+  const url = `${options.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+
   return async (request: AiTransportRequest): Promise<AiTransportResponse> => {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
+      headers: {
+        'content-type': 'application/json',
+        ...(options.apiKey ? { authorization: `Bearer ${options.apiKey}` } : {}),
+      },
       body: JSON.stringify({
         model: request.model,
-        max_completion_tokens: request.maxTokens,
+        [options.tokenLimitParameter]: request.maxTokens,
         messages: [
           { role: 'system', content: request.system },
           { role: 'user', content: request.userContent },
@@ -84,17 +99,41 @@ export function openAiTransport(apiKey: string): AiTransport {
     if (!response.ok) throw new Error(`the model provider responded ${response.status}`);
 
     const body = (await response.json()) as OpenAiResponse;
+    const raw = body.choices?.[0]?.message?.content ?? '';
 
     return {
-      text: body.choices?.[0]?.message?.content ?? '',
+      // Reasoning models served with thinking switched on put it inline. It is working, not an
+      // answer, and it must not reach a client's report.
+      text: raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim(),
       inputTokens: body.usage?.prompt_tokens ?? 0,
       outputTokens: body.usage?.completion_tokens ?? 0,
     };
   };
 }
 
-export function transportFor(provider: string, apiKey: string | undefined): AiTransport {
+const DEFAULT_BASE_URL: Record<string, string> = {
+  openai: 'https://api.openai.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+};
+
+export function transportFor(
+  provider: string,
+  apiKey: string | undefined,
+  baseUrl?: string,
+): AiTransport {
   if (provider === 'anthropic' && apiKey) return anthropicTransport(apiKey);
-  if (provider === 'openai' && apiKey) return openAiTransport(apiKey);
+
+  if (provider === 'openai' || provider === 'gemini' || provider === 'vllm') {
+    const url = baseUrl ?? DEFAULT_BASE_URL[provider];
+    // A hosted provider without a key, or vLLM without an address, is a misconfiguration; config
+    // loading refuses both, and this refuses them again rather than sending an unauthenticated call.
+    if (url === undefined || (provider !== 'vllm' && !apiKey)) return noTransport();
+    return openAiCompatibleTransport({
+      baseUrl: url,
+      apiKey,
+      tokenLimitParameter: provider === 'openai' ? 'max_completion_tokens' : 'max_tokens',
+    });
+  }
+
   return noTransport();
 }

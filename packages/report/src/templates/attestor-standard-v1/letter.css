@@ -56,9 +56,52 @@ body {
 }
 
 .letter {
-  white-space: pre-wrap;
   font-size: 10pt;
   line-height: 1.55;
+}
+
+/* Single line breaks in the legal text are kept (the signature is two lines); spaces are not. */
+.letter p {
+  white-space: pre-line;
+  margin: 0 0 10pt;
+}
+
+.letter > p:first-child {
+  font-family: 'Public Sans', sans-serif;
+  font-size: 10.5pt;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 14pt;
+}
+
+/* "Label:  value" lines from the legal text, aligned. */
+.letter table.facts {
+  margin: 0 0 12pt;
+  font-family: inherit;
+  font-size: 10pt;
+}
+
+.facts th {
+  width: 10.5em;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 8.5pt;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-muted);
+  border: 0;
+  padding: 2pt 10pt 2pt 0;
+  vertical-align: top;
+}
+
+.facts td {
+  border: 0;
+  padding: 2pt 0;
+  vertical-align: top;
+}
+
+.destroyed {
+  margin: 4pt 0 18pt;
 }
 
 h1 {

@@ -55,15 +55,25 @@ const schema = z.object({
     .string()
     .default('false')
     .transform((value) => value === 'true'),
-  AI_PROVIDER: z.enum(['anthropic', 'openai', 'none']).default('none'),
+  /**
+   * `openai`, `gemini` and `vllm` all speak the OpenAI chat-completions format; they differ only in
+   * where they live and whether they need a key. `vllm` is any self-hosted OpenAI-compatible server
+   * and needs `AI_BASE_URL`.
+   */
+  AI_PROVIDER: z.enum(['anthropic', 'openai', 'gemini', 'vllm', 'none']).default('none'),
   AI_API_KEY: z.string().optional(),
+  /** Overrides the provider's default address, e.g. `http://10.0.0.5:8000/v1` for vLLM. */
+  // An empty `AI_BASE_URL=` line in .env means "not set", not "an invalid URL" — otherwise the
+  // example file's blank line stops the API starting.
+  AI_BASE_URL: z.preprocess((value) => (value === '' ? undefined : value), z.string().url().optional()),
   AI_MODEL_DRAFTING: z.string().default('claude-sonnet-5'),
   AI_MODEL_TRIAGE: z.string().default('claude-haiku-4-5-20251001'),
+  /** Optional platform ceiling. Zero, the default, leaves spending limits to the provider. */
   AI_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(0),
-  // Published list prices, used only for the estimate written to the usage log. They drift; the
-  // number in the log is an estimate and the provider's invoice is the truth.
-  AI_INPUT_COST_PER_MILLION_USD: z.coerce.number().nonnegative().default(3),
-  AI_OUTPUT_COST_PER_MILLION_USD: z.coerce.number().nonnegative().default(15),
+  // Used only for the estimate written to the usage log. Zero records no estimate, which is right for
+  // a self-hosted model; set them to the provider's list prices if you want the log to show cost.
+  AI_INPUT_COST_PER_MILLION_USD: z.coerce.number().nonnegative().default(0),
+  AI_OUTPUT_COST_PER_MILLION_USD: z.coerce.number().nonnegative().default(0),
 
   /** Fixed source address the client allowlists. Recorded on every authorisation. */
   EGRESS_IP: z.string().optional(),
@@ -114,7 +124,12 @@ let cached: AppConfig | null = null;
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   if (cached) return cached;
   const config = parseOrThrow(schema, source);
-  if (config.AI_ENABLED && !config.AI_API_KEY) {
+  // A self-hosted server usually needs no key but always needs an address; the hosted providers are
+  // the other way round.
+  if (config.AI_ENABLED && config.AI_PROVIDER === 'vllm' && !config.AI_BASE_URL) {
+    throw new Error('AI_PROVIDER is vllm but AI_BASE_URL is not set');
+  }
+  if (config.AI_ENABLED && config.AI_PROVIDER !== 'vllm' && !config.AI_API_KEY) {
     throw new Error('AI_ENABLED is true but AI_API_KEY is not set');
   }
   cached = config;

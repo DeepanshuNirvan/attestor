@@ -47,7 +47,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${baseUrl()}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      // Only with a body: the API refuses a JSON content type on an empty body, which broke every
+      // bodyless call (attestation letter, revoking an invitation, accepting terms, signing out).
+      ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(cookieHeader ? { cookie: cookieHeader } : {}),
       ...init.headers,
     },

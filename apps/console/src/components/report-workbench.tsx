@@ -389,7 +389,13 @@ export function ReportWorkbench({
                     <td className="small">{report.kind}</td>
                     <td className="mono small">{report.version}</td>
                     <td className="small muted">{report.releasedAt ? 'Yes' : 'No'}</td>
-                    <td>
+                    <td style={{ display: 'flex', gap: '0.5rem' }}>
+                      <a
+                        className="button button-quiet"
+                        href={`/engagements/${engagementId}/reports/${report.id}/download`}
+                      >
+                        Download PDF
+                      </a>
                       {report.releasedAt ? null : (
                         <button
                           type="button"

@@ -9,6 +9,7 @@ import {
   countBySeverity,
   owaspRiskRating,
 } from '@attestor/findings';
+import { evidenceExcerpt } from './evidence-excerpt.ts';
 import { fillPlaceholders, legalBlock, mandatoryBlocksFor } from './legal/blocks.ts';
 
 /**
@@ -110,8 +111,23 @@ export interface ReportData {
   coverage: CoverageEntry[];
   complianceFrameworks: (keyof typeof FRAMEWORK_LABELS)[];
 
+  /**
+   * What the testing did not reach, stated where a reader looks for it rather than left to be
+   * worked out from the matrix row by row. Optional so older data still renders.
+   */
+  testingActivity?: {
+    /** Modules the engagement selected. Checks outside them are summarised, not listed. */
+    modulesInScope: string[];
+    /** Runs that stopped early or were refused, with the reason recorded at the time. */
+    incompleteRuns: { tool: string; module: string; reason: string }[];
+    /** Web services recon found on in-scope hosts that no web or API run was pointed at. */
+    untestedServices: string[];
+  };
+
   appendices: {
     assetInventory: string[];
+    /** URLs reached on in-scope hosts: what the automated web and API checks had to work with. */
+    endpoints?: { method: string; url: string; status: number | null }[];
     portsAndServices: { host: string; port: number; service: string; version: string }[];
     outOfScopeNotes: string[];
     glossary: { term: string; definition: string }[];
@@ -238,6 +254,7 @@ function coverHtml(data: ReportData): string {
   </div>
 
   <div class="cover-title">
+    ${data.kind === 'retest' ? '<p class="cover-kind">Retest report</p>' : ''}
     <h1>${escapeHtml(data.engagementTitle)}</h1>
     <p class="cover-client">Prepared for <span class="client-name-source">${escapeHtml(data.clientLegalName)}</span></p>
     <dl class="cover-meta">
@@ -306,7 +323,8 @@ function riskOverviewHtml(data: ReportData, numbers: SectionNumbers): string {
 
   const byCategory = new Map<string, number>();
   for (const finding of data.findings) {
-    const key = finding.owaspCategory ?? finding.llmCategory ?? finding.apiCategory ?? 'Unmapped';
+    const key =
+      finding.owaspCategory ?? finding.llmCategory ?? finding.apiCategory ?? 'Not mapped to a category';
     byCategory.set(key, (byCategory.get(key) ?? 0) + 1);
   }
   const categoryRows = [...byCategory.entries()]
@@ -314,10 +332,12 @@ function riskOverviewHtml(data: ReportData, numbers: SectionNumbers): string {
     .map(([category, count]) => `<tr><td>${escapeHtml(category)}</td><td class="numeric">${count}</td></tr>`)
     .join('\n');
 
+  // Counted once per finding: a ZAP alert seen on three pages of one host lists that host three
+  // times, and counting each would put more findings against a host than the report contains.
   const byAsset = new Map<string, number>();
   for (const finding of data.findings) {
-    for (const asset of finding.affectedAssets) {
-      byAsset.set(asset.value, (byAsset.get(asset.value) ?? 0) + 1);
+    for (const value of new Set(finding.affectedAssets.map((asset) => asset.value))) {
+      byAsset.set(value, (byAsset.get(value) ?? 0) + 1);
     }
   }
   const assetRows = [...byAsset.entries()]
@@ -329,7 +349,7 @@ function riskOverviewHtml(data: ReportData, numbers: SectionNumbers): string {
   return `<section id="risk-overview">
   <h2>${heading(numbers, 'riskOverview')}</h2>
   <h3>Findings by severity</h3>
-  <table><tbody>${severityRows}</tbody></table>
+  <table class="severity-chart"><tbody>${severityRows}</tbody></table>
   <h3>Findings by category</h3>
   <table><thead><tr><th>Category</th><th class="numeric">Findings</th></tr></thead><tbody>${categoryRows}</tbody></table>
   <h3>Findings by asset</h3>
@@ -356,11 +376,20 @@ function scopeHtml(data: ReportData, numbers: SectionNumbers): string {
 </section>`;
 }
 
+/**
+ * The first twelve hex characters of an image digest, the length Docker itself prints. The full
+ * digest is pinned in the platform's lock file; in a table it pushed every other column to one word
+ * a line.
+ */
+function shortDigest(version: string): string {
+  return version.startsWith('sha256:') ? `sha256:${version.slice(7, 19)}` : version;
+}
+
 function methodologyHtml(data: ReportData, numbers: SectionNumbers): string {
   const toolRows = data.toolsUsed
     .map(
       (tool) =>
-        `<tr><td>${escapeHtml(tool.name)}</td><td>${escapeHtml(tool.version)}</td><td>${escapeHtml(tool.purpose)}</td></tr>`,
+        `<tr><td>${escapeHtml(tool.name)}</td><td class="mono small">${escapeHtml(shortDigest(tool.version))}</td><td>${escapeHtml(tool.purpose)}</td></tr>`,
     )
     .join('\n');
 
@@ -380,86 +409,202 @@ function methodologyHtml(data: ReportData, numbers: SectionNumbers): string {
 </section>`;
 }
 
+const MODULE_LABELS: Record<string, string> = {
+  recon: 'Reconnaissance',
+  web: 'Web application',
+  api: 'API',
+  mobile: 'Mobile',
+  cloud: 'Cloud',
+  code: 'Source code',
+  network: 'Network',
+  llm: 'LLM application',
+  agentic: 'AI agents',
+};
+
+const COVERAGE_STATE_LABEL = {
+  tested: 'Tested',
+  partiallyTested: 'Partially tested',
+  notTested: 'Not tested',
+  notApplicable: 'Not present',
+} as const;
+
+function countStates(entries: CoverageEntry[]): Record<CoverageEntry['state'], number> {
+  const counts = { tested: 0, partiallyTested: 0, notTested: 0, notApplicable: 0 };
+  for (const entry of entries) counts[entry.state] += 1;
+  return counts;
+}
+
+function inModule(entry: CoverageEntry, module: string): boolean {
+  return (entry.check.modules as string[]).includes(module);
+}
+
+export interface ModuleCoverage {
+  module: string;
+  label: string;
+  checks: number;
+  tested: number;
+  partiallyTested: number;
+  notTested: number;
+  notApplicable: number;
+}
+
+/**
+ * Coverage counted per module the engagement selected: the answer to "was all of it tested?". The
+ * report prints it and the console shows it before a report is generated, from this one function.
+ */
+export function moduleCoverage(data: Pick<ReportData, 'coverage' | 'testingActivity'>): ModuleCoverage[] {
+  const inScope = data.testingActivity?.modulesInScope ?? Object.keys(MODULE_LABELS);
+  return Object.keys(MODULE_LABELS)
+    .filter((module) => inScope.includes(module))
+    .map((module) => {
+      const entries = data.coverage.filter((entry) => inModule(entry, module));
+      return { module, label: MODULE_LABELS[module] ?? module, checks: entries.length, ...countStates(entries) };
+    })
+    .filter((row) => row.checks > 0);
+}
+
+/**
+ * The per-module table. Modules outside the engagement get one line, because listing every mobile
+ * check as "not tested" in a web assessment says nothing.
+ */
+function moduleSummaryHtml(data: ReportData): string {
+  const inScope = data.testingActivity?.modulesInScope ?? Object.keys(MODULE_LABELS);
+  const present = Object.keys(MODULE_LABELS).filter((module) =>
+    data.coverage.some((entry) => inModule(entry, module)),
+  );
+
+  const rows = moduleCoverage(data)
+    .map(
+      (row) =>
+        `<tr><td>${escapeHtml(row.label)}</td><td class="numeric">${row.checks}</td><td class="numeric">${row.tested}</td><td class="numeric">${row.partiallyTested}</td><td class="numeric">${row.notTested}</td><td class="numeric">${row.notApplicable}</td></tr>`,
+    )
+    .join('\n');
+
+  const outOfScope = present.filter((module) => !inScope.includes(module));
+  const outLine =
+    outOfScope.length === 0
+      ? ''
+      : `<p class="coverage-group">Not part of this engagement: ${escapeHtml(
+          outOfScope.map((module) => MODULE_LABELS[module] ?? module).join(', '),
+        )}. Their checks are not listed below.</p>`;
+
+  return `<table>
+    <thead><tr><th>Module</th><th class="numeric">Checks</th><th class="numeric">Tested</th><th class="numeric">Partly</th><th class="numeric">Not tested</th><th class="numeric">Not present</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  ${outLine}`;
+}
+
+/** Runs that did not finish and services nobody pointed a run at: the gaps a reader must not miss. */
+function testingGapsHtml(data: ReportData): string {
+  const activity = data.testingActivity;
+  if (!activity) return '';
+
+  const runs =
+    activity.incompleteRuns.length === 0
+      ? ''
+      : `<h3>Runs that did not complete</h3>
+  <p>Each of these started and stopped without covering its checks. Those checks are marked partially tested or not tested below.</p>
+  <table>
+    <thead><tr><th>Tool</th><th>Module</th><th>Why it stopped</th></tr></thead>
+    <tbody>${activity.incompleteRuns
+      .map(
+        (run) =>
+          `<tr><td>${escapeHtml(run.tool)}</td><td>${escapeHtml(MODULE_LABELS[run.module] ?? run.module)}</td><td>${escapeHtml(run.reason)}</td></tr>`,
+      )
+      .join('\n')}</tbody>
+  </table>`;
+
+  const services =
+    activity.untestedServices.length === 0
+      ? ''
+      : `<h3>Found but not tested</h3>
+  <p>These web services answered on in-scope hosts, but no web or API run was pointed at them. Nothing in this report covers them.</p>
+  ${list(activity.untestedServices)}`;
+
+  return `${runs}\n${services}`;
+}
+
 function coverageHtml(data: ReportData, numbers: SectionNumbers): string {
+  const inScope = data.testingActivity?.modulesInScope;
+  const relevant = inScope
+    ? data.coverage.filter((entry) => inScope.some((module) => inModule(entry, module)))
+    : data.coverage;
+
   const byCategory = new Map<string, CoverageEntry[]>();
-  for (const entry of data.coverage) {
+  for (const entry of relevant) {
     const list = byCategory.get(entry.check.category);
     if (list) list.push(entry);
     else byCategory.set(entry.check.category, [entry]);
   }
 
-  const stateLabel = {
-    tested: 'Tested',
-    partiallyTested: 'Partially tested',
-    notTested: 'Not tested',
-    notApplicable: 'Not present',
-  } as const;
-
-  // A check that was tested, found nothing and carries no reason has three empty cells in a
-  // four-column table, and there are usually about a hundred of them. They are named in a list
-  // instead of a row each: every check is still accounted for by name and state, in a couple of
-  // lines rather than a couple of pages. Anything with a finding, a reason, or a state other than
-  // tested keeps its row, because those are the rows a reader actually stops on.
-  const sections = [...byCategory.entries()]
-    .map(([, entries]) => {
+  // Three kinds of line, so the matrix stays complete without a row per check:
+  //   - tested and nothing found: named in one run-on line;
+  //   - not tested, partially tested or not present, with no finding: grouped by the reason, which
+  //     is one of a handful and used to be printed on each of a hundred rows;
+  //   - anything with a finding, or tested with a note: a table row, because those are the rows a
+  //     reader stops on.
+  const sections = [...byCategory.values()]
+    .map((entries) => {
       const clean = entries.filter(
-        (entry) =>
-          entry.state === 'tested' &&
-          entry.findingCount === 0 &&
-          (entry.reason ?? '') === '',
+        (entry) => entry.state === 'tested' && entry.findingCount === 0 && (entry.reason ?? '') === '',
       );
-      const detailed = entries.filter((entry) => !clean.includes(entry));
+      const grouped = entries.filter((entry) => entry.state !== 'tested' && entry.findingCount === 0);
+      const detailed = entries.filter((entry) => !clean.includes(entry) && !grouped.includes(entry));
 
-      const rows = detailed
-        .map(
-          (entry) => `<tr>
-        <td>${escapeHtml(entry.check.title)}</td>
-        <td><span class="coverage-state state-${entry.state}">${stateLabel[entry.state]}</span></td>
-        <td>${escapeHtml(entry.reason ?? '')}</td>
-        <td class="numeric">${entry.findingCount}</td>
-      </tr>`,
-        )
+      const cleanLine =
+        clean.length === 0
+          ? ''
+          : `<p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (${clean.length}): ${clean
+              .map((entry) => escapeHtml(entry.check.title))
+              .join('; ')}.</p>`;
+
+      const groups = new Map<string, CoverageEntry[]>();
+      for (const entry of grouped) {
+        const key = `${entry.state}|${entry.reason ?? ''}`;
+        const group = groups.get(key);
+        if (group) group.push(entry);
+        else groups.set(key, [entry]);
+      }
+      const groupLines = [...groups.values()]
+        .map((group) => {
+          const first = group[0]!;
+          const reason = first.reason ? ` — ${escapeHtml(first.reason)}` : '';
+          return `<p class="coverage-group"><span class="coverage-state state-${first.state}">${COVERAGE_STATE_LABEL[first.state]}</span> (${group.length})${reason} ${group
+            .map((entry) => escapeHtml(entry.check.title))
+            .join('; ')}.</p>`;
+        })
         .join('\n');
 
       const table =
         detailed.length === 0
           ? ''
           : `<table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody>${rows}</tbody>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
+      <tbody>${detailed
+        .map(
+          (entry) => `<tr>
+        <td>${escapeHtml(entry.check.title)}</td>
+        <td><span class="coverage-state state-${entry.state}">${COVERAGE_STATE_LABEL[entry.state]}</span></td>
+        <td>${escapeHtml(entry.reason ?? '')}</td>
+        <td class="numeric">${entry.findingCount}</td>
+      </tr>`,
+        )
+        .join('\n')}</tbody>
     </table>`;
 
-      const cleanLine =
-        clean.length === 0
-          ? ''
-          : `<p class="coverage-clean"><strong>Tested, nothing found (${clean.length}):</strong> ${clean
-              .map((entry) => escapeHtml(entry.check.title))
-              .join('; ')}.</p>`;
-
       return `<h3>${escapeHtml(CATEGORY_LABELS[entries[0]!.check.category])}</h3>
+    ${table}
     ${cleanLine}
-    ${table}`;
+    ${groupLines}`;
     })
     .join('\n');
 
-  const tested = data.coverage.filter((entry) => entry.state === 'tested').length;
-  const partial = data.coverage.filter((entry) => entry.state === 'partiallyTested').length;
-  const notPresent = data.coverage.filter((entry) => entry.state === 'notApplicable').length;
-  const notTested = data.coverage.length - tested - partial - notPresent;
-
   return `<section id="coverage">
   <h2>${heading(numbers, 'coverage')}</h2>
-  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not.</p>
-  <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
-  <table>
-    <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
-    <tbody>
-      <tr><td>Tested</td><td class="numeric">${tested}</td></tr>
-      <tr><td>Partially tested</td><td class="numeric">${partial}</td></tr>
-      <tr><td>Not present in this application</td><td class="numeric">${notPresent}</td></tr>
-      <tr><td>Not tested</td><td class="numeric">${notTested}</td></tr>
-    </tbody>
-  </table>
+  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not. <strong>Not present</strong> means the application has nothing for the check to test, such as no file upload, and is not a gap in the testing.</p>
+  ${moduleSummaryHtml(data)}
+  ${testingGapsHtml(data)}
   ${sections}
 </section>`;
 }
@@ -489,10 +634,14 @@ function evidenceHtml(evidence: ReportEvidence[]): string {
   if (evidence.length === 0) return '';
   return evidence
     .map((item) => {
-      const body = item.imageDataUri
-        ? `<img src="${escapeHtml(item.imageDataUri)}" alt="${escapeHtml(item.caption)}" />`
-        : `<pre>${escapeHtml(item.text ?? '')}</pre>`;
-      return `<figure class="evidence"><figcaption>${escapeHtml(item.caption)}</figcaption>${body}</figure>`;
+      if (item.imageDataUri) {
+        return `<figure class="evidence"><figcaption>${escapeHtml(item.caption)}</figcaption><img src="${escapeHtml(item.imageDataUri)}" alt="${escapeHtml(item.caption)}" /></figure>`;
+      }
+      const excerpt = evidenceExcerpt(item.text ?? '');
+      const note = excerpt.clipped
+        ? '<p class="evidence-note">Excerpt. The complete record is kept with the engagement evidence under the hash above.</p>'
+        : '';
+      return `<figure class="evidence"><figcaption>${escapeHtml(item.caption)}</figcaption><pre>${escapeHtml(excerpt.text)}</pre>${note}</figure>`;
     })
     .join('\n');
 }
@@ -536,6 +685,14 @@ ${rows}
   </table>`;
 }
 
+/**
+ * A labelled block, left out when there is nothing to say. An empty heading reads as a field someone
+ * forgot; the release checklist is what insists on the fields that must be filled.
+ */
+function textField(label: string, value: string): string {
+  return value.trim() === '' ? '' : `<h5>${escapeHtml(label)}</h5>\n  ${paragraphs([value])}`;
+}
+
 function findingHtml(finding: ReportFinding, index: number): string {
   const badges = [
     finding.cvssScore !== undefined ? `<span class="tag">${finding.cvssScore.toFixed(1)}</span>` : '',
@@ -568,10 +725,12 @@ function findingHtml(finding: ReportFinding, index: number): string {
     })
     .join('\n');
 
+  // The address is printed as well as linked: a report is read on paper as often as on screen, and
+  // two references both titled "Template reference" are otherwise indistinguishable.
   const references = finding.references
     .map(
       (reference) =>
-        `<li><a href="${escapeHtml(reference.url)}">${escapeHtml(reference.title)}</a></li>`,
+        `<li><a href="${escapeHtml(reference.url)}">${escapeHtml(reference.title)}</a> <span class="ref-url">${escapeHtml(reference.url)}</span></li>`,
     )
     .join('\n');
 
@@ -600,30 +759,16 @@ function findingHtml(finding: ReportFinding, index: number): string {
 
   <h5>Affected</h5>
   <ul>${assets}</ul>
-
-  <h5>Business impact</h5>
-  <p>${escapeHtml(finding.businessImpact)}</p>
-
-  <h5>Likelihood</h5>
-  <p>${escapeHtml(finding.likelihood)}</p>
-
-  <h5>Attacker prerequisites</h5>
-  <p>${escapeHtml(finding.attackerPrerequisites)}</p>
-
-  <h5>Technical description</h5>
-  <p>${escapeHtml(finding.description)}</p>
-
-  <h5>Reproduction</h5>
-  ${list(finding.reproductionSteps, true)}
+  ${textField('Business impact', finding.businessImpact)}
+  ${textField('Likelihood', finding.likelihood)}
+  ${textField('Attacker prerequisites', finding.attackerPrerequisites)}
+  ${textField('Technical description', finding.description)}
+  ${finding.reproductionSteps.length > 0 ? `<h5>Reproduction</h5>\n  ${list(finding.reproductionSteps, true)}` : ''}
 
   <h5>Evidence</h5>
   ${evidenceHtml(finding.evidence) || '<p class="none">No evidence attached.</p>'}
-
-  <h5>Remediation</h5>
-  <p>${escapeHtml(finding.remediation)}</p>
-
-  <h5>References</h5>
-  ${references ? `<ul>${references}</ul>` : '<p class="none">None.</p>'}
+  ${textField('Remediation', finding.remediation)}
+  ${references ? `<h5>References</h5>\n  <ul>${references}</ul>` : ''}
 
   ${owaspRiskHtml(finding.owaspRiskScores)}
 
@@ -752,10 +897,28 @@ function appendicesHtml(data: ReportData, numbers: SectionNumbers): string {
     .map((entry) => `<tr><td>${escapeHtml(entry.term)}</td><td>${escapeHtml(entry.definition)}</td></tr>`)
     .join('\n');
 
+  const endpoints = data.appendices.endpoints;
+  const endpointsBlock =
+    endpoints === undefined
+      ? ''
+      : `<h3>Endpoints reached</h3>
+  <p>The URLs the crawlers and probes reached on in-scope hosts. The automated web and API checks ran against these and against what their own crawlers found.</p>
+  ${
+    endpoints.length === 0
+      ? '<p class="none">No endpoints were recorded for this engagement.</p>'
+      : `<table><thead><tr><th>Method</th><th>URL</th><th class="numeric">Status</th></tr></thead><tbody>${endpoints
+          .map(
+            (endpoint) =>
+              `<tr><td class="mono small">${escapeHtml(endpoint.method)}</td><td class="mono small">${escapeHtml(endpoint.url)}</td><td class="numeric">${endpoint.status ?? ''}</td></tr>`,
+          )
+          .join('\n')}</tbody></table>`
+  }`;
+
   return `<section id="appendices">
   <h2>${heading(numbers, 'appendices')}</h2>
   <h3>Asset inventory</h3>
   ${list(data.appendices.assetInventory)}
+  ${endpointsBlock}
   <h3>Ports and services</h3>
   ${
     portRows
@@ -819,7 +982,7 @@ function retestBasisHtml(data: ReportData): string {
  * is a document that looks different to every reader, and one that fetches a font is a document
  * that phones home.
  */
-async function embeddedFontCss(templateId: string): Promise<string> {
+export async function embeddedFontCss(templateId: string): Promise<string> {
   const faces = [
     { family: 'Source Serif 4', file: 'source-serif-4-variable.woff2', weight: '200 900', variations: true },
     { family: 'Public Sans', file: 'public-sans-variable.woff2', weight: '100 900', variations: true },
@@ -851,6 +1014,26 @@ async function templateCss(templateId: string): Promise<string> {
   return readFile(path, 'utf8');
 }
 
+/**
+ * A value for a CSS `content:` string. `<` is escaped as well as quotes, because this sits inside a
+ * `<style>` element and a client name containing `</style>` would otherwise end it.
+ */
+function cssString(value: string): string {
+  return `"${value.replace(/[\\"<\n]/g, (character) => (character === '<' ? '\\3c ' : character === '\n' ? ' ' : `\\${character}`))}"`;
+}
+
+/**
+ * The running header and footer. The template asks for `string()` values set from the cover, which
+ * the PDF engine does not support, so the header and footer came out blank. The values are known
+ * here and are written in directly.
+ */
+function runningHeaderCss(data: ReportData): string {
+  return `@page {
+  @top-left { content: ${cssString(data.clientLegalName)}; }
+  @bottom-left { content: ${cssString(`${data.reportReference} v${data.reportVersion}`)}; }
+}`;
+}
+
 export async function renderReportHtml(data: ReportData): Promise<string> {
   const numbers = numberSections(data);
   const [fonts, css] = await Promise.all([
@@ -866,6 +1049,7 @@ export async function renderReportHtml(data: ReportData): Promise<string> {
 <style>
 ${fonts}
 ${css}
+${runningHeaderCss(data)}
 </style>
 </head>
 <body>

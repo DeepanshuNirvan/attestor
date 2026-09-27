@@ -345,28 +345,27 @@ page in the report and the one that separates this from a scan report.
 
 ## 7. The tools
 
-41 images, all free or open source, every one pinned by digest. Nothing paid, nothing cracked,
+32 images, all free or open source, every one pinned by digest. Nothing paid, nothing cracked,
 nothing whose licence forbids commercial use.
 
-**Recon** — subfinder, OWASP Amass, dnsx, httpx, naabu, tlsx, katana, gau, WhatWeb
+**Recon** — subfinder, OWASP Amass, dnsx, httpx, naabu, tlsx, katana
 
-**Web** — OWASP ZAP, nuclei, Nikto, testssl.sh, ffuf, dalfox, Arjun, sqlmap *(read-only settings
-only)*, commix *(guarded)*
+**Web** — OWASP ZAP, nuclei, testssl.sh, ffuf, dalfox, Arjun, sqlmap *(read-only settings only)*
 
-**API** — Schemathesis, kiterunner, mitmproxy, plus ZAP and nuclei
+**API** — Schemathesis, mitmproxy, plus ZAP and nuclei
 
 **Code and supply chain** — Semgrep, gitleaks, TruffleHog, Trivy, Syft, Grype, Checkov
 
-**Cloud** — Prowler, Cloudsplaining, kube-bench, Kubescape, Trivy, Checkov
+**Cloud** — Prowler, kube-bench, Kubescape, Trivy, Checkov
 
 **Network** — Nmap *(safe script categories only)*, naabu, tlsx, nuclei
 
-**Mobile** — MobSF, apktool, jadx
+**Mobile** — MobSF, which decodes and decompiles the package itself
 
-**LLM** — garak, promptfoo, PyRIT, DeepTeam
+**LLM** — garak, promptfoo, PyRIT, DeepTeam. garak and promptfoo are listed but not yet runnable: garak has no trustworthy published image and promptfoo generates its attacks through a third-party service. Both are parked until that is decided, so the LLM module does not run today.
 
-**Agentic** — Strix, **shipped disabled**, and refused in code with a reason rather than merely left
-unset.
+**Agentic** — none. No autonomous agent ships, and the agentic route is refused in code with a
+reason rather than merely left unset.
 
 Every one runs as UID 65532, with a read-only root filesystem, all capabilities dropped,
 `no-new-privileges`, a per-run network, memory and PID and CPU limits, and a wall-clock kill. That
@@ -395,7 +394,7 @@ single run**. Later layers override earlier ones.
 | `forbiddenActions` | URL patterns and form actions never to touch |
 | `exclusions` | Paths, parameters, hosts, file types |
 | `llm` | Target config, probe packs, attempt counts, budget cap, teardown |
-| `ai` | `aiAssistEnabled`, `agenticEnabled`, model, token ceiling |
+| `ai` | `agenticEnabled` (stays off). AI drafting is switched per engagement in the console, and the model is set in `infra/.env` |
 | `evidence` | What to capture, masking rules, retention days |
 | `report` | Template, branding, CVSS version, which compliance mappings, which sections, tone |
 | `notifications` | Who is told what, and how quickly for a critical |
@@ -522,7 +521,7 @@ Stated plainly so you never promise it.
 - No destructive payloads, no data deletion, no state changes beyond what the policy permits.
 - No social engineering or phishing.
 - No physical testing.
-- No autonomous agent running against a client — Strix is shipped disabled and refused in code.
+- No autonomous agent running against a client — none ships, and the route is refused in code.
 - No claim of any certification the firm does not hold.
 - No guarantee that a system is secure. No such report exists honestly.
 - No paid, trial-key or cracked tooling.

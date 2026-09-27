@@ -65,6 +65,10 @@ export function AcceptInvitation({ token }: { token: string }) {
         <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
           {secretFrom(otpauthUrl)}
         </pre>
+        <p className="small muted">
+          Enter the key only, not the setup URL. It has only letters and the digits 2 to 7: every O
+          is the letter O and every I is the letter I, never a zero or a one.
+        </p>
 
         <p className="small">Full setup URL</p>
         <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{otpauthUrl}</pre>

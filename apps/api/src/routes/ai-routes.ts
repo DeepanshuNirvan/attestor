@@ -66,7 +66,11 @@ export function registerAiRoutes(app: FastifyInstance, context: ConsoleContext):
       inputCostPerMillionUsd: context.config.AI_INPUT_COST_PER_MILLION_USD,
       outputCostPerMillionUsd: context.config.AI_OUTPUT_COST_PER_MILLION_USD,
     },
-    transport: transportFor(context.config.AI_PROVIDER, context.config.AI_API_KEY),
+    transport: transportFor(
+      context.config.AI_PROVIDER,
+      context.config.AI_API_KEY,
+      context.config.AI_BASE_URL,
+    ),
 
     engagementEnabled: async (engagementId) => {
       const rows = await context.database

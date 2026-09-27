@@ -1,7 +1,12 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { isValidCvssVector, isValidRiskScore, scoreCvss } from '@attestor/findings';
+import {
+  derivedVectorForSeverity,
+  isValidCvssVector,
+  isValidRiskScore,
+  scoreCvss,
+} from '@attestor/findings';
 import { SEVERITIES } from '@attestor/shared';
 import type { ConsoleContext } from '../context.ts';
 import {
@@ -15,6 +20,7 @@ import {
   markFalsePositive,
   overrideSeverity,
 } from '../services/findings-service.ts';
+import { loadRunContext } from '../services/run-service.ts';
 import { actorIdOf, requestContext, requireSession } from './session-guard.ts';
 
 /**
@@ -173,6 +179,48 @@ export function registerFindingRoutes(app: FastifyInstance, context: ConsoleCont
     return reply.send({ ok: true });
   });
 
+  /**
+   * The tester's retest verdict. Nothing recorded one before, so a retest report said "Not retested"
+   * against every finding and the attestation letter could never count a fix as re-verified.
+   *
+   * "Still open" clears `fixedAt`: a fix the client claimed and the retest disproved is still open,
+   * not a regression of a fix that once held.
+   */
+  app.post('/findings/:findingId/retest', { preHandler: guard }, async (request, reply) => {
+    const { findingId } = request.params as { findingId: string };
+    const parsed = z.object({ outcome: z.enum(['fixed', 'stillOpen']) }).safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
+
+    const rows = await context.database
+      .select({ fixedAt: findingTable.fixedAt })
+      .from(findingTable)
+      .where(eq(findingTable.id, findingId))
+      .limit(1);
+    if (!rows[0]) return reply.code(404).send({ error: 'not found' });
+
+    const now = new Date();
+    await context.database
+      .update(findingTable)
+      .set(
+        parsed.data.outcome === 'fixed'
+          ? { status: 'fixed', fixedAt: rows[0].fixedAt ?? now, retestedAt: now, updatedAt: now }
+          : { status: 'open', fixedAt: null, retestedAt: now, updatedAt: now },
+      )
+      .where(eq(findingTable.id, findingId));
+
+    await context.auditLog.record({
+      actorId: actorIdOf(request),
+      actorKind: 'staff',
+      action: 'finding.statusChanged',
+      subjectType: 'finding',
+      subjectId: findingId,
+      metadata: { retest: parsed.data.outcome },
+      ...requestContext(request),
+    });
+
+    return reply.send({ ok: true });
+  });
+
   app.post('/findings/:findingId/severity', { preHandler: guard }, async (request, reply) => {
     const { findingId } = request.params as { findingId: string };
     const parsed = z
@@ -268,7 +316,8 @@ export function registerFindingRoutes(app: FastifyInstance, context: ConsoleCont
         title: z.string().min(5).max(300),
         description: z.string().min(20).max(20_000),
         severity: z.enum(SEVERITIES),
-        cvssVector: z.string().max(200),
+        /** Blank means "derive it from the severity", in the CVSS version the engagement uses. */
+        cvssVector: z.string().max(200).default(''),
         checkId: z.string().max(100).optional(),
         cweId: z.number().int().positive().optional(),
         owaspCategory: z.string().max(20).optional(),
@@ -297,10 +346,15 @@ export function registerFindingRoutes(app: FastifyInstance, context: ConsoleCont
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues });
 
-    if (!isValidCvssVector(parsed.data.cvssVector)) {
+    let vector = parsed.data.cvssVector.trim();
+    if (vector === '') {
+      const { policy } = await loadRunContext(context.database, id, false);
+      vector = derivedVectorForSeverity(parsed.data.severity, policy.report.cvssVersion);
+    }
+    if (!isValidCvssVector(vector)) {
       return reply.code(400).send({ error: 'that CVSS vector does not parse' });
     }
-    const scored = scoreCvss(parsed.data.cvssVector);
+    const scored = scoreCvss(vector);
 
     const [created] = await context.database
       .insert(findingTable)

@@ -933,7 +933,7 @@ export function registerPortalRoutes(app: FastifyInstance, context: PortalContex
 
     return reply
       .header('Content-Type', 'application/pdf')
-      .header('Content-Disposition', `attachment; filename="report-${record.version}.pdf"`)
+      .header('Content-Disposition', `attachment; filename="${record.kind}-v${record.version}.pdf"`)
       .send(pdf);
   });
 

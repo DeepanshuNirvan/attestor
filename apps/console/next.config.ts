@@ -16,6 +16,9 @@ const config: NextConfig = {
   env: { ATTESTOR_SURFACE: surface },
   // No images are loaded from anywhere but this origin, and no fonts from a CDN.
   images: { remotePatterns: [] },
+  // A signed authorisation PDF is uploaded through a server action, and the default limit of 1 MB
+  // refuses an ordinary scanned form. The API caps the request at 25 MB behind this.
+  experimental: { serverActions: { bodySizeLimit: '20mb' } },
   // The Content-Security-Policy is NOT here. It carries a per-request nonce and is issued by
   // src/proxy.ts; a second static policy at this layer would intersect with it and strip the nonce,
   // which breaks every script on the page. Only headers that are the same on every response belong

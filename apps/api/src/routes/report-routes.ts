@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   LEGAL_BLOCKS,
+  moduleCoverage,
   renderAttestationLetterHtml,
   renderDeletionConfirmationHtml,
   renderPdf,
@@ -19,7 +20,11 @@ import {
   reportDownload,
   reportSection as reportSectionTable,
 } from '../db/schema.ts';
-import { buildReportData, nextReportVersion } from '../services/report-service.ts';
+import {
+  buildReportData,
+  latestAssessmentVersion,
+  nextReportVersion,
+} from '../services/report-service.ts';
 import { actorIdOf, requestContext, requireSession } from './session-guard.ts';
 
 /**
@@ -152,7 +157,13 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
       (block) => block.mandatory && block.lawyerReviewedAt === null,
     ).map((block) => block.id);
 
-    return reply.send({ ...outcome, unreviewedLegal });
+    // What was and was not tested, shown on the report page before anything is generated.
+    return reply.send({
+      ...outcome,
+      unreviewedLegal,
+      coverage: moduleCoverage(data),
+      testingActivity: data.testingActivity,
+    });
   });
 
   app.put('/engagements/:id/report/checklist', { preHandler: guard }, async (request, reply) => {
@@ -313,10 +324,20 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
   app.post('/engagements/:id/attestation-letter', { preHandler: guard }, async (request, reply) => {
     const { id } = request.params as { id: string };
 
+    // The letter vouches for a report, and names it by version. It used to print its own sequence
+    // number there, so letter 1.0 cited "report version 1.0" whatever the report was actually on.
+    const attestedVersion = await latestAssessmentVersion(context.database, id);
+    if (attestedVersion === null) {
+      return reply
+        .code(409)
+        .send({ error: 'generate the assessment report first; the letter refers to it by version' });
+    }
+    const letterVersion = await nextReportVersion(context.database, id, 'attestation');
+
     const data = await buildReportData(context.database, {
       engagementId: id,
       kind: 'assessment',
-      reportVersion: await nextReportVersion(context.database, id, 'attestation'),
+      reportVersion: attestedVersion,
       branding: brandingFor(),
       evidenceStore: context.evidence,
       testerName: 'Attestor Security',
@@ -357,7 +378,7 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
       .values({
         engagementId: id,
         kind: 'attestation',
-        version: data.reportVersion,
+        version: letterVersion,
         templateId: data.templateId,
         pdfKey: stored.objectKey,
         legalTemplateVersions: { 'attestation-letter': '1.0.0-draft' },
@@ -474,7 +495,7 @@ export function registerReportRoutes(app: FastifyInstance, context: ConsoleConte
 
     return reply
       .header('Content-Type', 'application/pdf')
-      .header('Content-Disposition', `attachment; filename="${record.version}.pdf"`)
+      .header('Content-Disposition', `attachment; filename="${record.kind}-v${record.version}.pdf"`)
       .send(source);
   });
 

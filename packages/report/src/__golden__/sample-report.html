@@ -246,6 +246,16 @@ th.numeric {
   padding-right: 0;
 }
 
+/* A number followed by text needs a gap, or "135" and "msrpc" print as "135msrpc". */
+td.numeric:not(:last-child),
+th.numeric:not(:last-child) {
+  padding-right: 12pt;
+}
+
+.small {
+  font-size: 8pt;
+}
+
 tr {
   break-inside: avoid;
 }
@@ -288,6 +298,16 @@ tr {
   font-family: 'Source Serif 4', Georgia, serif;
   font-size: 30pt;
   max-width: 15em;
+}
+
+.cover-kind {
+  font-family: 'Public Sans', sans-serif;
+  font-size: 9pt;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 6pt;
 }
 
 .cover-client {
@@ -350,9 +370,24 @@ tr {
 
 /* Sections */
 
+/*
+ * Sections follow on from each other. Starting every one on a new page left the contents, the
+ * document control and the scope each alone on a mostly empty page. The parts a reader turns to
+ * directly still start fresh.
+ */
 section {
-  break-before: page;
+  break-before: auto;
+  margin-top: 22pt;
   padding-top: 2pt;
+}
+
+#executive-summary,
+#coverage,
+#findings,
+#appendices,
+#limitations {
+  break-before: page;
+  margin-top: 0;
 }
 
 section.continues {
@@ -417,14 +452,20 @@ section.continues {
 
 /* Findings */
 
+/*
+ * Findings follow one another rather than each taking a page: a short informational finding used to
+ * leave three quarters of a page blank. The header is never left alone at the foot of a page.
+ */
 .finding {
-  break-before: page;
+  break-before: auto;
   break-inside: auto;
+  margin-top: 20pt;
 }
 
 .finding-header {
   border-top: 1.5pt solid var(--ink);
   padding-top: 6pt;
+  break-inside: avoid;
   break-after: avoid;
 }
 
@@ -471,6 +512,35 @@ section.continues {
   text-transform: uppercase;
   color: var(--ink-faint);
   margin-bottom: 2pt;
+  break-after: avoid;
+}
+
+.evidence pre {
+  margin-bottom: 2pt;
+}
+
+.evidence-note {
+  font-family: 'Public Sans', sans-serif;
+  font-size: 7.5pt;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.ref-url {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 7.5pt;
+  color: var(--ink-faint);
+  word-break: break-all;
+}
+
+/* The severity chart: fixed columns for the label and the count, the rest for the bar. */
+.severity-chart td:first-child {
+  width: 8.5em;
+}
+
+.severity-chart td.numeric {
+  width: 3em;
 }
 
 .evidence img {
@@ -577,16 +647,20 @@ section.continues {
 }
 
 /*
- * Checks that were tested and found nothing. Named in a run-on line rather than a row each: the
- * coverage matrix stays complete without spending a page per category on empty cells.
+ * Checks named in a run-on line rather than a row each — tested with nothing found, or grouped under
+ * one shared reason. The matrix stays complete without a page of repeated cells per category.
  */
-.coverage-clean {
+.coverage-group {
   font-size: 8.5pt;
   line-height: 1.45;
   color: #33383f;
-  margin: 2pt 0 8pt;
+  margin: 2pt 0 6pt;
 }
 
+@page {
+  @top-left { content: "Sample Retail Private Limited"; }
+  @bottom-left { content: "ATT-2026-000 v1.0"; }
+}
 </style>
 </head>
 <body>
@@ -597,6 +671,7 @@ section.continues {
   </div>
 
   <div class="cover-title">
+    
     <h1>Web application and API security assessment</h1>
     <p class="cover-client">Prepared for <span class="client-name-source">Sample Retail Private Limited</span></p>
     <dl class="cover-meta">
@@ -666,7 +741,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <section id="risk-overview">
   <h2>2. Risk overview</h2>
   <h3>Findings by severity</h3>
-  <table><tbody><tr>
+  <table class="severity-chart"><tbody><tr>
       <td><span class="severity severity-critical">Critical</span></td>
       <td class="numeric">2</td>
       <td><span class="bar severity-critical" style="width:20%"></span></td>
@@ -699,7 +774,7 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 <tr><td>A02:2025</td><td class="numeric">1</td></tr>
 <tr><td>A03:2025</td><td class="numeric">1</td></tr></tbody></table>
   <h3>Findings by asset</h3>
-  <table><thead><tr><th>Asset</th><th class="numeric">Findings</th></tr></thead><tbody><tr><td>juice.attestor-lab.internal</td><td class="numeric">15</td></tr></tbody></table>
+  <table><thead><tr><th>Asset</th><th class="numeric">Findings</th></tr></thead><tbody><tr><td>juice.attestor-lab.internal</td><td class="numeric">10</td></tr></tbody></table>
   <p class="callout">Fix things in the order given in section 9, which is not severity order. Some low-severity findings are steps in the chain shown in section 7 and are cheap to close.</p>
 </section>
 <section id="scope">
@@ -742,13 +817,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
   <h3>Tools used</h3>
   <table>
     <thead><tr><th>Tool</th><th>Version</th><th>Used for</th></tr></thead>
-    <tbody><tr><td>OWASP ZAP</td><td>2.16.1</td><td>Authenticated crawling and active scanning</td></tr>
-<tr><td>nuclei</td><td>3.4.7</td><td>Templated checks for known issues and exposures</td></tr>
-<tr><td>sqlmap</td><td>1.9.4</td><td>Injection confirmation, read-only settings</td></tr>
-<tr><td>ffuf</td><td>2.1.0</td><td>Content discovery within the agreed rate limit</td></tr>
-<tr><td>Playwright</td><td>1.56.0</td><td>Authenticated browsing and evidence capture</td></tr>
-<tr><td>trivy</td><td>0.68.0</td><td>Dependency and container analysis</td></tr>
-<tr><td>testssl.sh</td><td>3.2</td><td>TLS configuration review</td></tr></tbody>
+    <tbody><tr><td>OWASP ZAP</td><td class="mono small">2.16.1</td><td>Authenticated crawling and active scanning</td></tr>
+<tr><td>nuclei</td><td class="mono small">3.4.7</td><td>Templated checks for known issues and exposures</td></tr>
+<tr><td>sqlmap</td><td class="mono small">1.9.4</td><td>Injection confirmation, read-only settings</td></tr>
+<tr><td>ffuf</td><td class="mono small">2.1.0</td><td>Content discovery within the agreed rate limit</td></tr>
+<tr><td>Playwright</td><td class="mono small">1.56.0</td><td>Authenticated browsing and evidence capture</td></tr>
+<tr><td>trivy</td><td class="mono small">0.68.0</td><td>Dependency and container analysis</td></tr>
+<tr><td>testssl.sh</td><td class="mono small">3.2</td><td>TLS configuration review</td></tr></tbody>
   </table>
   <h3>Severity model</h3>
   <p>Severities come from CVSS 4.0. Each finding prints its vector string, so you can recompute the score yourself. Where a tester changed a computed severity because the business context changes the impact, the finding says why.</p>
@@ -757,108 +832,31 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 </section>
 <section id="coverage">
   <h2>5. Coverage matrix</h2>
-  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not.</p>
-  <p><strong>Not present</strong> means the check has no subject in this application — there was no GraphQL endpoint, no file upload, no payment flow — and is counted separately from a gap in the testing, because they are different facts about your system.</p>
+  <p>This matrix is built from what actually ran. A check is marked tested only where a completed run or a recorded manual test covered it. Everything else carries the reason it does not. <strong>Not present</strong> means the application has nothing for the check to test, such as no file upload, and is not a gap in the testing.</p>
   <table>
-    <thead><tr><th>State</th><th class="numeric">Checks</th></tr></thead>
-    <tbody>
-      <tr><td>Tested</td><td class="numeric">109</td></tr>
-      <tr><td>Partially tested</td><td class="numeric">0</td></tr>
-      <tr><td>Not present in this application</td><td class="numeric">0</td></tr>
-      <tr><td>Not tested</td><td class="numeric">126</td></tr>
-    </tbody>
+    <thead><tr><th>Module</th><th class="numeric">Checks</th><th class="numeric">Tested</th><th class="numeric">Partly</th><th class="numeric">Not tested</th><th class="numeric">Not present</th></tr></thead>
+    <tbody><tr><td>Reconnaissance</td><td class="numeric">19</td><td class="numeric">17</td><td class="numeric">0</td><td class="numeric">2</td><td class="numeric">0</td></tr>
+<tr><td>Web application</td><td class="numeric">108</td><td class="numeric">80</td><td class="numeric">0</td><td class="numeric">28</td><td class="numeric">0</td></tr>
+<tr><td>API</td><td class="numeric">62</td><td class="numeric">51</td><td class="numeric">0</td><td class="numeric">11</td><td class="numeric">0</td></tr></tbody>
   </table>
+  <p class="coverage-group">Not part of this engagement: Mobile, Cloud, Source code, Network, LLM application. Their checks are not listed below.</p>
+  
+
   <h3>Information gathering</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (11):</strong> Application entry point and execution path mapping; Webserver metafile review; Subdomain and hostname enumeration; DNS record review; Subdomain takeover; HTTP service discovery and fingerprinting; Content and path discovery; JavaScript endpoint and secret extraction; Virtual host discovery; Technology and version inventory; Attack surface change detection.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Search engine and public source discovery</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Application architecture mapping</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Information disclosure from network services</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (11): Application entry point and execution path mapping; Webserver metafile review; Subdomain and hostname enumeration; DNS record review; Subdomain takeover; HTTP service discovery and fingerprinting; Content and path discovery; JavaScript endpoint and secret extraction; Virtual host discovery; Technology and version inventory; Attack surface change detection.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (2) — A manual check. No tester recorded doing it in this engagement. Search engine and public source discovery; Application architecture mapping.</p>
 <h3>Network and infrastructure</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (1):</strong> Port and service enumeration.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>HTTP request smuggling and desynchronisation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>No proxy or CDN sits in front of the staging environment, so the class does not apply here.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Host discovery within the authorised range</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Service and version identification</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Known vulnerability correlation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Segmentation and reachability review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Exposed management and remote access interfaces</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (1): Port and service enumeration.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (1) — No proxy or CDN sits in front of the staging environment, so the class does not apply here. HTTP request smuggling and desynchronisation.</p>
 <h3>Cryptography</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (5):</strong> TLS configuration and certificate review; Sensitive data exposure in transit; Weak cryptographic storage; Padding oracle and ciphertext manipulation; Use of predictable randomness.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Cryptographic implementation review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Cryptographic implementation review in source</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Transport encryption on network services</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (5): TLS configuration and certificate review; Sensitive data exposure in transit; Weak cryptographic storage; Padding oracle and ciphertext manipulation; Use of predictable randomness.</p>
+    
 <h3>Configuration and deployment</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (10):</strong> SPF, DKIM and DMARC review; Exposed version control and build artefacts; CORS policy review; HTTP method handling; File extension and backup file handling; Administrative interface exposure; Caching of authenticated responses; Host header handling; Application platform configuration; API CORS and pre-flight consistency.</p>
     <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
         <td>HTTP security header configuration</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
@@ -870,261 +868,25 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Path confusion and route resolution</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>File and directory permissions on the host</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (10): SPF, DKIM and DMARC review; Exposed version control and build artefacts; CORS policy review; HTTP method handling; File extension and backup file handling; Administrative interface exposure; Caching of authenticated responses; Host header handling; Application platform configuration; API CORS and pre-flight consistency.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (2) — A manual check. No tester recorded doing it in this engagement. Path confusion and route resolution; File and directory permissions on the host.</p>
 <h3>Cloud</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (1):</strong> Exposed cloud storage discovery.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Account, subscription and project inventory</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>IAM privilege and escalation path analysis</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Root and break-glass account controls</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Multi-factor enforcement across identities</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Access key age and rotation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Public storage exposure</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Snapshot, image and backup exposure</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Managed database exposure and configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Network exposure and segmentation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Encryption at rest and key management</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Audit logging coverage and integrity</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Monitoring and alerting on security events</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Secrets management</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Serverless function configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Container registry and image controls</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud and code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Kubernetes cluster benchmark</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Kubernetes RBAC review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Workload identity and metadata protection</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Cross-account and external trust relationships</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Backup coverage and recovery configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Edge, load balancer and TLS configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Cost exposure from public resources</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Benchmark and framework mapping</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (1): Exposed cloud storage discovery.</p>
+    
 <h3>Supply chain and code</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (2):</strong> Credentials exposed in public sources; Third-party script inclusion and subresource integrity.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Model and plugin supply chain</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Static analysis with curated rule packs</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Secret scanning across repository history</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Dependency vulnerability analysis</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Software bill of materials</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Dependency provenance and typosquatting</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Container image review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Infrastructure-as-code misconfiguration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code and cloud module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>CI/CD pipeline configuration review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Dependency licence review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (2): Credentials exposed in public sources; Third-party script inclusion and subresource integrity.</p>
+    
 <h3>Session management</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (6):</strong> Cookie attribute review; Session token generation and entropy; Session fixation; Cross-site request forgery; Logout and session-riding side effects; Session identifiers and sensitive values in URLs.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Session timeout and termination</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Concurrent session handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Session variable overloading</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Session hijacking exposure</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (6): Cookie attribute review; Session token generation and entropy; Session fixation; Cross-site request forgery; Logout and session-riding side effects; Session identifiers and sensitive values in URLs.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (4) — A manual check. No tester recorded doing it in this engagement. Session timeout and termination; Concurrent session handling; Session variable overloading; Session hijacking exposure.</p>
 <h3>Authentication</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (6):</strong> Default and weak credentials on exposed components; Registration process review; Credentials transmitted over an encrypted channel; Authentication bypass; API authentication mechanisms; Token lifecycle and revocation.</p>
     <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
         <td>Username and account enumeration</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
@@ -1132,101 +894,18 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">1</td>
       </tr>
 <tr>
-        <td>Password policy and credential strength</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Brute force and credential stuffing protection</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Multi-factor authentication implementation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Password reset and recovery flow</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Remember-me and persistent login</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>OAuth and OpenID Connect flow review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>SSO and federated identity handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>JWT and self-contained token handling</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Re-authentication for sensitive operations</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Username policy and account identifier handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Authentication on alternative channels</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Mobile authentication and session handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Local authentication and biometric gating</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Default credentials on network services</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The network module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (6): Default and weak credentials on exposed components; Registration process review; Credentials transmitted over an encrypted channel; Authentication bypass; API authentication mechanisms; Token lifecycle and revocation.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (10) — A manual check. No tester recorded doing it in this engagement. Password policy and credential strength; Brute force and credential stuffing protection; Multi-factor authentication implementation; Password reset and recovery flow; Remember-me and persistent login; OAuth and OpenID Connect flow review; SSO and federated identity handling; Re-authentication for sensitive operations; Username policy and account identifier handling; Authentication on alternative channels.</p>
 <h3>Access control</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (11):</strong> Vertical access control across roles; Tenant isolation in multi-tenant applications; Forced browsing to unlinked functionality; Privilege escalation through request parameters; Server-side request forgery; Uploaded file access control; Broken object level authorisation; Broken function level authorisation; Object property level authorisation; GraphQL field and node authorisation; Authentication and authorisation of the model endpoint.</p>
     <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
-        <td>Account provisioning and de-provisioning</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
         <td>Horizontal access control between users</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
@@ -1237,24 +916,13 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>Role definitions and the permission model</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Authorisation logic review in source</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (11): Vertical access control across roles; Tenant isolation in multi-tenant applications; Forced browsing to unlinked functionality; Privilege escalation through request parameters; Server-side request forgery; Uploaded file access control; Broken object level authorisation; Broken function level authorisation; Object property level authorisation; GraphQL field and node authorisation; Authentication and authorisation of the model endpoint.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (2) — A manual check. No tester recorded doing it in this engagement. Account provisioning and de-provisioning; Role definitions and the permission model.</p>
 <h3>Input validation</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (18):</strong> NoSQL and ORM injection; OS command injection; Reflected cross-site scripting; Server-side template injection; XML external entity processing; Insecure deserialisation; File upload handling; Open redirection; HTTP header and response splitting; LDAP and directory injection; Mass assignment and object property binding; CSV and spreadsheet formula injection; HTTP parameter pollution; Server-side include injection; XPath injection; Format string injection; Schema-driven injection and type confusion; Content type and parser handling.</p>
     <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
         <td>SQL injection</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
@@ -1266,59 +934,17 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td><span class="coverage-state state-tested">Tested</span></td>
         <td></td>
         <td class="numeric">1</td>
-      </tr>
-<tr>
-        <td>IMAP and SMTP injection through mail features</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Incubated and delayed-execution vulnerabilities</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Input handling from untrusted sources</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Input validation and output encoding review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
       </tr></tbody>
     </table>
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (18): NoSQL and ORM injection; OS command injection; Reflected cross-site scripting; Server-side template injection; XML external entity processing; Insecure deserialisation; File upload handling; Open redirection; HTTP header and response splitting; LDAP and directory injection; Mass assignment and object property binding; CSV and spreadsheet formula injection; HTTP parameter pollution; Server-side include injection; XPath injection; Format string injection; Schema-driven injection and type confusion; Content type and parser handling.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (2) — A manual check. No tester recorded doing it in this engagement. IMAP and SMTP injection through mail features; Incubated and delayed-execution vulnerabilities.</p>
 <h3>Client-side</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> DOM-based cross-site scripting; Prototype pollution; Clickjacking and UI redress; WebSocket security; Source maps and build artefacts in production; Reverse tabnabbing on outbound links; HTML injection; Client-side JavaScript execution from controllable input; Client-side resource manipulation.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Cross-origin messaging</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Client-side storage of sensitive data</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>CSS injection</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (9): DOM-based cross-site scripting; Prototype pollution; Clickjacking and UI redress; WebSocket security; Source maps and build artefacts in production; Reverse tabnabbing on outbound links; HTML injection; Client-side JavaScript execution from controllable input; Client-side resource manipulation.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (3) — A manual check. No tester recorded doing it in this engagement. Cross-origin messaging; Client-side storage of sensitive data; CSS injection.</p>
 <h3>Business logic</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> Workflow and process bypass; Coupon and promotion abuse; Race conditions on limited resources; Function and transaction limits; Integrity checks on submitted data; Automated abuse of sensitive business flows; Chaining of low-severity findings; Process timing and ordering; Payment flow integrity.</p>
     <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
+      <thead><tr><th>Check</th><th>State</th><th>Note</th><th class="numeric">Findings</th></tr></thead>
       <tbody><tr>
         <td>Price, quantity and discount manipulation</td>
         <td><span class="coverage-state state-tested">Tested</span></td>
@@ -1326,338 +952,24 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
         <td class="numeric">1</td>
       </tr></tbody>
     </table>
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (9): Workflow and process bypass; Coupon and promotion abuse; Race conditions on limited resources; Function and transaction limits; Integrity checks on submitted data; Automated abuse of sensitive business flows; Chaining of low-severity findings; Process timing and ordering; Payment flow integrity.</p>
+    
 <h3>Error handling</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (2):</strong> Error handling and information disclosure; API error verbosity.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Behaviour under failure of a dependency</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Security event logging and alerting</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Logging and error handling review in source</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The code module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (2): Error handling and information disclosure; API error verbosity.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (2) — A manual check. No tester recorded doing it in this engagement. Behaviour under failure of a dependency; Security event logging and alerting.</p>
 <h3>API</h3>
-    <p class="coverage-clean"><strong>Tested, nothing found (9):</strong> API specification import and coverage; Endpoint inventory, versioning and deprecated routes; Excessive data exposure in responses; Unrestricted resource consumption; API rate limiting and quota enforcement; GraphQL introspection and schema exposure; GraphQL query depth, aliasing and batching abuse; Webhook delivery and receipt security; Idempotency and request replay.</p>
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Unsafe consumption of third-party APIs</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>gRPC and binary protocol handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Mobile backend parity with the web API</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-tested">Tested, nothing found</span> (9): API specification import and coverage; Endpoint inventory, versioning and deprecated routes; Excessive data exposure in responses; Unrestricted resource consumption; API rate limiting and quota enforcement; GraphQL introspection and schema exposure; GraphQL query depth, aliasing and batching abuse; Webhook delivery and receipt security; Idempotency and request replay.</p>
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (3) — A manual check. No tester recorded doing it in this engagement. Unsafe consumption of third-party APIs; gRPC and binary protocol handling; Mobile backend parity with the web API.</p>
 <h3>Mobile</h3>
     
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Binary composition and third-party components</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Hardcoded secrets in the application package</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Insecure local data storage</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Sensitive data in logs and crash reports</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Transport security configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Certificate pinning presence and resilience</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Exported components and IPC surface</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Deep link and universal link handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>WebView configuration</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Runtime behaviour under instrumentation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Tamper, root and emulator detection</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Screenshot, clipboard and keyboard leakage</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Permission and capability review</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Store data-safety declaration consistency</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Update enforcement and minimum platform version</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Backend traffic capture and analysis</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Push notification content and handling</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Code protection assessment</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The mobile module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (1) — A manual check. No tester recorded doing it in this engagement. Backend traffic capture and analysis.</p>
 <h3>LLM and AI</h3>
     
-    <table>
-      <thead><tr><th>Check</th><th>State</th><th>Reason where not fully tested</th><th class="numeric">Findings</th></tr></thead>
-      <tbody><tr>
-        <td>Direct prompt injection</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Indirect prompt injection through ingested content</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Multi-turn jailbreak escalation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Single-turn jailbreak matrix</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>System prompt and configuration extraction</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Sensitive information disclosure</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Cross-tenant retrieval leakage</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Retrieval corpus poisoning</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Retrieval manipulation and citation fabrication</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Model output rendered as HTML</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>Not reached within the agreed test window.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Model output reaching a query, a shell or a file path</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Excessive agency in tool invocation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Chained tool abuse and privilege composition</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Agent goal hijacking</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Persistent memory poisoning</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Inter-agent trust abuse</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Guardrail and content filter bypass</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Multilingual and obfuscated payloads</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Training and fine-tuning data extraction</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Unbounded consumption and cost abuse</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Resource limit observation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Embedding and vector store weaknesses</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Misinformation in a business-critical path</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Bias and harmful output where relevant to the client risk</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Conversation and context isolation</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Transcript logging and retention</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Refusal consistency across repeated attempts</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr>
-<tr>
-        <td>Injected artefact teardown and verification</td>
-        <td><span class="coverage-state state-notTested">Not tested</span></td>
-        <td>The llm module was not in scope for this engagement.</td>
-        <td class="numeric">0</td>
-      </tr></tbody>
-    </table>
+    
+    <p class="coverage-group"><span class="coverage-state state-notTested">Not tested</span> (1) — A manual check. No tester recorded doing it in this engagement. Model output rendered as HTML.</p>
 </section>
 <section id="attack-narrative">
   <h2>6. Attack narrative</h2>
@@ -1707,19 +1019,14 @@ Distribute on a need-to-know basis only. Do not forward, publish or store this d
 
   <h5>Affected</h5>
   <ul><li><code>POST juice.attestor-lab.internal/rest/user/login (email)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>An unauthenticated attacker becomes the administrator in a single request. From that account every customer record, order and payment reference in the application is readable, and product and pricing data is writable. There is no rate limit and no logging that would distinguish this from an ordinary failed login, so the first indication of compromise would be the consequences.</p>
-
   <h5>Likelihood</h5>
   <p>High. The payload is in every introductory tutorial for this class of issue, the endpoint is public, and no authentication or prior knowledge is required.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>None. Network access to the login page is sufficient.</p>
-
   <h5>Technical description</h5>
   <p>The email field on the login form is concatenated into a SQL statement without parameterisation. A payload that terminates the string literal and comments out the remainder of the statement authenticates the request as the first row of the users table, which is the administrator. No password is required. The same parameter also supports UNION-based extraction of arbitrary tables, which was confirmed on the schema only and not used to read customer data.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Open the login page at https://juice.attestor-lab.internal/#/login.</li>
@@ -1741,13 +1048,11 @@ HTTP 200
 Content-Type: application/json
 
 {&quot;authentication&quot;:{&quot;token&quot;:&quot;[REDACTED]&quot;,&quot;bid&quot;:1,&quot;umail&quot;:&quot;a*****@j*********.***&quot;}}</pre></figure>
-
   <h5>Remediation</h5>
   <p>Replace the concatenated statement in the login handler with a parameterised query, binding the email address as a parameter rather than interpolating it. In the Sequelize models used by this application that means replacing the raw `sequelize.query` call with a `findOne` using a `where` clause, or passing `replacements` with named bind parameters. Parameterisation is the fix; input filtering is not, because the same data has to be accepted as a legitimate email address. Rotate the administrator credential afterwards, and review the authentication logs for the period the issue was live.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: SQL Injection Prevention</a></li>
-<li><a href="https://cwe.mitre.org/data/definitions/89.html">CWE-89: SQL Injection</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: SQL Injection Prevention</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html</span></li>
+<li><a href="https://cwe.mitre.org/data/definitions/89.html">CWE-89: SQL Injection</a> <span class="ref-url">https://cwe.mitre.org/data/definitions/89.html</span></li></ul>
 
   <h5>OWASP risk rating</h5>
   <p>Likelihood 7.00 (high), impact 5.50 (medium), giving an overall rating of <strong>High</strong>. Scored against the OWASP Risk Rating Methodology; each factor below is a published option of that method.</p>
@@ -1795,19 +1100,14 @@ Content-Type: application/json
 
   <h5>Affected</h5>
   <ul><li><code>juice.attestor-lab.internal/rest/* (Authorization)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Authentication is effectively optional. Every control that depends on identity — order history, address book, payment methods, the administration area — can be reached by constructing a token. Because the forged token is structurally valid, nothing in the application logs distinguishes it from a legitimate session.</p>
-
   <h5>Likelihood</h5>
   <p>High. Publicly documented technique, no prerequisites, no rate limiting involved.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>None beyond network access.</p>
-
   <h5>Technical description</h5>
   <p>The application issues RS256-signed JSON Web Tokens but the verification path accepts a token whose header declares `alg: none` and which carries no signature. A token can therefore be minted for any account, including the administrator, without possession of any key.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Capture a legitimate token from a normal login and decode it.</li>
@@ -1821,13 +1121,11 @@ Content-Type: application/json
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-003
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Pin the accepted algorithm explicitly at verification time rather than reading it from the token header — pass `algorithms: [&quot;RS256&quot;]` to the verifier — and reject any token whose signature segment is empty. Verify the issuer and audience claims at the same point. Rotate the signing key, because tokens already issued cannot be distinguished from forged ones, and invalidate existing sessions.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html">OWASP Cheat Sheet: JSON Web Token for Java</a></li>
-<li><a href="https://cwe.mitre.org/data/definitions/347.html">CWE-347: Improper Verification of Cryptographic Signature</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html">OWASP Cheat Sheet: JSON Web Token for Java</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html</span></li>
+<li><a href="https://cwe.mitre.org/data/definitions/347.html">CWE-347: Improper Verification of Cryptographic Signature</a> <span class="ref-url">https://cwe.mitre.org/data/definitions/347.html</span></li></ul>
 
   
 
@@ -1854,19 +1152,14 @@ evidence captured: 1 object</pre></figure>
   <h5>Affected</h5>
   <ul><li><code>GET juice.attestor-lab.internal/rest/basket/{id}</code></li>
 <li><code>GET juice.attestor-lab.internal/api/BasketItems/{id}</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Any registered customer can read every other customer&#39;s basket by counting upwards. The basket reveals purchase intent and the coupon codes in use, and the same authorisation gap on the item endpoint allows items to be added to another customer&#39;s basket. For a retailer this is both a privacy exposure and a route to manipulating another customer&#39;s order.</p>
-
   <h5>Likelihood</h5>
   <p>High. Registration is open, identifiers are sequential, and the request can be made with a browser and no tooling.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>A registered account, which anyone can create.</p>
-
   <h5>Technical description</h5>
   <p>The basket endpoint authorises on the presence of a valid session rather than on ownership of the basket being requested. Changing the numeric identifier in the path returns another customer&#39;s basket, including the products, quantities and the coupon applied. Identifiers are sequential, so the whole set is enumerable.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Register two accounts, A and B, and add a product to each basket.</li>
@@ -1884,13 +1177,11 @@ Authorization: [REDACTED]
 HTTP 200
 
 {&quot;data&quot;:{&quot;id&quot;:2,&quot;UserId&quot;:2,&quot;Products&quot;:[{&quot;name&quot;:&quot;Melon Bike&quot;,&quot;price&quot;:2999,&quot;quantity&quot;:1}],&quot;coupon&quot;:&quot;WELCOME10&quot;}}</pre></figure>
-
   <h5>Remediation</h5>
   <p>Authorise on ownership, not on session validity: the basket handler must load the basket and compare its owning user against the identity in the session before returning it, rejecting the request with 404 rather than 403 so the identifier space is not confirmed. Apply the same check to the BasketItems handlers, which have the same gap. Adding a non-sequential identifier is worth doing but is not the fix on its own.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Insecure Direct Object Reference Prevention</a></li>
-<li><a href="https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/">OWASP API Security Top 10: API1:2023 Broken Object Level Authorization</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Insecure Direct Object Reference Prevention</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html</span></li>
+<li><a href="https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/">OWASP API Security Top 10: API1:2023 Broken Object Level Authorization</a> <span class="ref-url">https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/</span></li></ul>
 
   
 
@@ -1915,19 +1206,14 @@ HTTP 200
 
   <h5>Affected</h5>
   <ul><li><code>PUT juice.attestor-lab.internal/rest/products/{id}/reviews (message)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>One review reaches every customer who opens that product. Because the session token is readable from browser storage rather than being held in an HttpOnly cookie, the payload can take over the accounts of everyone who views the page, staff included.</p>
-
   <h5>Likelihood</h5>
   <p>High. Any registered customer can post a review, and no moderation step exists.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>A registered account.</p>
-
   <h5>Technical description</h5>
   <p>The review body is stored without encoding and rendered into the product page as markup. A review containing an image tag with an error handler executes for every visitor to that product, including staff using the administration view of the same content.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Sign in as any customer.</li>
@@ -1940,12 +1226,10 @@ HTTP 200
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-004
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Encode the review body for the HTML context at render time rather than filtering it at submission, and render it as text unless rich content is a product requirement. If it is, run the submitted markup through an allowlist sanitiser on the server and serve a Content-Security-Policy that does not permit inline event handlers. Moving the session token out of browser storage into a Secure, HttpOnly, SameSite cookie removes the account-takeover consequence even where an injection is later missed.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Cross Site Scripting Prevention</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Cross Site Scripting Prevention</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html</span></li></ul>
 
   
 
@@ -1970,19 +1254,14 @@ evidence captured: 1 object</pre></figure>
 
   <h5>Affected</h5>
   <ul><li><code>GET juice.attestor-lab.internal/ftp (file)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Application configuration, environment files and the SQLite database file are all readable without authentication. The configuration contains the token signing material, which turns this single issue into a complete authentication bypass without needing the separate token weakness above.</p>
-
   <h5>Likelihood</h5>
   <p>High. Unauthenticated, and the endpoint is linked from the application itself.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>None.</p>
-
   <h5>Technical description</h5>
   <p>The file download endpoint resolves the requested name relative to a directory without normalising it first. Traversal sequences, including their URL-encoded and double-encoded forms, escape the directory and return any file readable by the application process.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Request GET /ftp/quarantine/%2e%2e%2f%2e%2e%2fpackage.json.</li>
@@ -1999,12 +1278,10 @@ HTTP 200
 Content-Type: application/json
 
 {&quot;name&quot;:&quot;sample-retail-storefront&quot;,&quot;version&quot;:&quot;14.2.0&quot;,&quot;dependencies&quot;:{ … }}</pre></figure>
-
   <h5>Remediation</h5>
   <p>Resolve the requested path against the intended base directory and reject it unless the resolved absolute path is still inside that directory — a prefix comparison after `path.resolve`, not a string check on the input. Decode once, and reject rather than repeatedly decoding. Serve downloads by an identifier that maps to a file server-side instead of accepting a filename from the client at all, which removes the class rather than this instance of it.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html">OWASP Cheat Sheet: File Upload and Path Traversal</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html">OWASP Cheat Sheet: File Upload and Path Traversal</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html</span></li></ul>
 
   
 
@@ -2028,19 +1305,14 @@ Content-Type: application/json
 
   <h5>Affected</h5>
   <ul><li><code>POST juice.attestor-lab.internal/rest/basket/{id}/checkout (totalPrice)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Goods can be ordered for any amount the customer chooses, including zero. The loss is direct and per-order, and because the order record itself carries the manipulated total, reconciliation against the payment provider is the only place it would be noticed.</p>
-
   <h5>Likelihood</h5>
   <p>High for anyone who opens the browser network tab. This class of issue is routinely found by customers, not only by attackers.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>A registered account and an item in the basket.</p>
-
   <h5>Technical description</h5>
   <p>The checkout request carries the basket total as a field and the server records it without recomputing it from the basket contents. Submitting a modified total produces an order for that amount, and the coupon field is applied after the total is fixed rather than before, so a discount can be applied twice.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Add a product priced above 1,000 to the basket.</li>
@@ -2060,12 +1332,10 @@ Content-Type: application/json
 HTTP 200
 
 {&quot;orderConfirmation&quot;:{&quot;orderId&quot;:&quot;a1b2c3&quot;,&quot;totalPrice&quot;:1,&quot;paymentId&quot;:&quot;[REDACTED]&quot;}}</pre></figure>
-
   <h5>Remediation</h5>
   <p>Recompute the total on the server from the basket contents, the current catalogue prices, the applicable tax and the delivery option, and ignore any total supplied by the client. Apply coupons as part of that computation, once, and record the computed total against the payment intent so the payment provider and the order cannot disagree. Add a reconciliation check that rejects an order whose recorded total differs from the authorised payment amount.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation">OWASP WSTG: Testing for Business Logic Data Validation</a></li></ul>
+  <ul><li><a href="https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation">OWASP WSTG: Testing for Business Logic Data Validation</a> <span class="ref-url">https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation</span></li></ul>
 
   
 
@@ -2094,19 +1364,14 @@ HTTP 200
 <li><code>juice.attestor-lab.internal/rest/user/whoami</code></li>
 <li><code>juice.attestor-lab.internal/api/Products</code></li>
 <li><code>juice.attestor-lab.internal/assets/*</code></li></ul>
-
   <h5>Business impact</h5>
   <p>No single header is an exploit on its own. Together their absence removes the layer that would have limited the impact of the stored cross-site scripting above: a policy without inline script would have prevented that payload from running at all.</p>
-
   <h5>Likelihood</h5>
   <p>Not directly exploitable; it increases the impact of other findings.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>Another finding to amplify.</p>
-
   <h5>Technical description</h5>
   <p>No Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options, Referrer-Policy or Permissions-Policy header is set on any response. This is one configuration change rather than one issue per endpoint, and it is recorded here once with every affected path listed.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Request any page and inspect the response headers.</li>
@@ -2117,12 +1382,10 @@ HTTP 200
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-007
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Set the headers at the edge so every response carries them: `Content-Security-Policy` with `default-src &#39;self&#39;` and no `unsafe-inline`, `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` and a `Permissions-Policy` that disables the interfaces the application does not use. Deploy the policy in report-only mode first, collect violations for a week, then enforce.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html">OWASP Cheat Sheet: HTTP Security Response Headers</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html">OWASP Cheat Sheet: HTTP Security Response Headers</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html</span></li></ul>
 
   
 
@@ -2145,19 +1408,14 @@ evidence captured: 1 object</pre></figure>
 
   <h5>Affected</h5>
   <ul><li><code>juice.attestor-lab.internalpackage-lock.json</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Two of the three are denial-of-service issues in parsing code, which matters less here than the third, a prototype pollution issue in a utility used by the request body parser and reachable from unauthenticated input.</p>
-
   <h5>Likelihood</h5>
   <p>Medium. Requires a specific request shape but no authentication.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>Ability to send a request body to the application.</p>
-
   <h5>Technical description</h5>
   <p>The dependency tree carries three components with published vulnerabilities that are reachable from code on the request path, as distinct from the twenty-one further matches that are present only in the build tooling and are recorded in the appendix rather than reported here.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Generate a bill of materials for the deployed image.</li>
@@ -2169,12 +1427,10 @@ evidence captured: 1 object</pre></figure>
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-009
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Upgrade the three reachable components to the fixed versions listed in the appendix; the upgrade is a patch-level change in each case with no interface change. Add dependency scanning to the pipeline so this is caught at build time, and pin the lockfile so what is scanned is what deploys.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://owasp.org/Top10/">OWASP Top 10 2025: A03 Software Supply Chain Failures</a></li></ul>
+  <ul><li><a href="https://owasp.org/Top10/">OWASP Top 10 2025: A03 Software Supply Chain Failures</a> <span class="ref-url">https://owasp.org/Top10/</span></li></ul>
 
   
 
@@ -2200,19 +1456,14 @@ evidence captured: 1 object</pre></figure>
 
   <h5>Affected</h5>
   <ul><li><code>POST juice.attestor-lab.internal/rest/user/login</code></li></ul>
-
   <h5>Business impact</h5>
   <p>Credential stuffing against this application is unimpeded, and combined with the enumeration finding above the attacker knows which addresses are worth trying. For a retailer holding saved payment methods, a successful stuffing run is a fraud problem rather than only a privacy one.</p>
-
   <h5>Likelihood</h5>
   <p>High. Credential stuffing is automated and continuous across the internet.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>A credential list, which is freely available.</p>
-
   <h5>Technical description</h5>
   <p>The login endpoint accepted 400 attempts against a disposable test account without throttling, lockout or any change in response. Testing was stopped at 400 by our own ceiling rather than by the application. No account lockout was triggered and no alert was generated.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Create a disposable test account.</li>
@@ -2225,12 +1476,10 @@ evidence captured: 1 object</pre></figure>
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-010
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Apply rate limiting scoped to both the account and the source address, with an exponential backoff on repeated failure, and prefer a verification challenge over a hard lockout so an attacker cannot lock out real customers. Check submitted passwords against a breached-password list at registration and at change, which addresses the underlying reason stuffing works. Log and alert on failure rates per account rather than only in aggregate.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Credential Stuffing Prevention</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html">OWASP Cheat Sheet: Credential Stuffing Prevention</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/Credential_Stuffing_Prevention_Cheat_Sheet.html</span></li></ul>
 
   
 
@@ -2255,19 +1504,14 @@ evidence captured: 1 object</pre></figure>
 
   <h5>Affected</h5>
   <ul><li><code>POST juice.attestor-lab.internal/rest/user/reset-password (email)</code></li></ul>
-
   <h5>Business impact</h5>
   <p>On its own this is minor. In combination with the absent rate limiting on the login endpoint it turns a generic credential-stuffing list into a targeted one, which is the difference between a low success rate and a high one.</p>
-
   <h5>Likelihood</h5>
   <p>High as an aid to another attack; not damaging alone.</p>
-
   <h5>Attacker prerequisites</h5>
   <p>A list of candidate email addresses.</p>
-
   <h5>Technical description</h5>
   <p>The password reset endpoint returns a different message and a measurably different response time for a registered address than for an unregistered one, which allows a list of addresses to be sorted into customers and non-customers.</p>
-
   <h5>Reproduction</h5>
   <ol>
 <li>Submit a reset request for a known registered address and record the response body and timing.</li>
@@ -2279,12 +1523,10 @@ evidence captured: 1 object</pre></figure>
   <figure class="evidence"><figcaption>Tool output, redacted</figcaption><pre>$ attestor run --check ATT-2026-000-008
 reproduced 1/1 attempts
 evidence captured: 1 object</pre></figure>
-
   <h5>Remediation</h5>
   <p>Return the same response body, status and approximate timing in both cases — accept the request, say that an email has been sent if the address is registered, and do the work asynchronously so the timing does not vary. Apply the same treatment to registration and to the email-change flow, which have the same tell.</p>
-
   <h5>References</h5>
-  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html">OWASP Cheat Sheet: Forgot Password</a></li></ul>
+  <ul><li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html">OWASP Cheat Sheet: Forgot Password</a> <span class="ref-url">https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html</span></li></ul>
 
   
 
@@ -2495,6 +1737,7 @@ evidence captured: 1 object</pre></figure>
 <li>juice.attestor-lab.internal/api/* — legacy REST surface, still reachable</li>
 <li>juice.attestor-lab.internal/#/administration — administration interface</li>
 </ul>
+  
   <h3>Ports and services</h3>
   <table><thead><tr><th>Host</th><th class="numeric">Port</th><th>Service</th><th>Version</th></tr></thead><tbody><tr><td>juice.attestor-lab.internal</td><td class="numeric">443</td><td>https</td><td>nginx 1.27</td></tr>
 <tr><td>juice.attestor-lab.internal</td><td class="numeric">80</td><td>http</td><td>nginx 1.27, redirects to 443</td></tr></tbody></table>

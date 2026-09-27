@@ -45,6 +45,7 @@ interface HttpxResult {
   path?: string;
   /** Present when `-include-response` was used. */
   body?: string;
+  content_type?: string;
 }
 
 /**
@@ -118,12 +119,16 @@ function metafileFinding(
   host: string,
   path: string,
   context: ParseContext,
-): RawFinding {
+): RawFinding | null {
   const body = result.body ?? '';
   const named = [...body.matchAll(/^\s*(?:Disallow|Allow|Sitemap)\s*:\s*(\S+)/gim)]
     .map((match) => match[1])
     .filter((value): value is string => value !== undefined && value !== '/')
     .slice(0, 25);
+
+  // A file that names no path gives nothing away. "robots.txt allows everything" and a published
+  // security.txt are not findings, and reporting them put rows in a client's report that said so.
+  if (named.length === 0) return null;
 
   const isRobots = path.endsWith('robots.txt');
   const description = isRobots
@@ -227,7 +232,11 @@ export const httpxAdapter: ScannerAdapter = {
         // A metafile probe. Only a 2xx is a file; the 404s are the ordinary answer for a host that
         // publishes none of them, and they must produce nothing at all.
         if (status < 200 || status >= 300) continue;
-        findings.push(metafileFinding(result, host, path, context));
+        // A single-page app answers every unknown path with its own index page and a 200. That page
+        // is not a robots.txt or a sitemap, and reporting it as one was a false positive.
+        if ((result.content_type ?? '').includes('html')) continue;
+        const finding = metafileFinding(result, host, path, context);
+        if (finding) findings.push(finding);
         continue;
       }
 

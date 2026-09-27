@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { countBySeverity, type Finding } from '@attestor/findings';
 import { fillPlaceholders, legalBlock } from './legal/blocks.ts';
-import { escapeHtml, type ReportBranding } from './render.ts';
+import { embeddedFontCss, escapeHtml, type ReportBranding } from './render.ts';
 
 /**
  * The one-page documents: the attestation letter, the evidence deletion confirmation and the
@@ -47,12 +47,51 @@ function remediationStatement(findings: Finding[], statusDate: string): string {
     return 'All critical and high severity findings have been remediated and independently re-verified.';
   }
   const outstanding = serious.length - remediated.length;
-  return `${remediated.length} of ${serious.length} critical and high severity findings have been remediated and independently re-verified as at ${statusDate}. ${outstanding} remain open.`;
+  return `${remediated.length} of ${serious.length} critical and high severity findings have been remediated and independently re-verified as at ${statusDate}. ${outstanding} ${outstanding === 1 ? 'remains' : 'remain'} open.`;
 }
 
+/**
+ * The letter stylesheet with the report's fonts embedded. Without them the letters printed in
+ * whatever serif the PDF engine had, and did not look like they came from the same firm.
+ */
 async function letterCss(): Promise<string> {
   const path = fileURLToPath(new URL('./templates/attestor-standard-v1/letter.css', import.meta.url));
-  return readFile(path, 'utf8');
+  const [fonts, css] = await Promise.all([embeddedFontCss('attestor-standard-v1'), readFile(path, 'utf8')]);
+  return `${fonts}\n${css}`;
+}
+
+const DRAFT_BANNER =
+  '<p class="draft-banner">This wording is in draft and has not yet been reviewed by a qualified lawyer.</p>';
+
+/** A block in which every line is "Label:  value", as a two-column table. Null for anything else. */
+function factsTable(block: string): string | null {
+  const rows = block.split('\n').map((line) => {
+    const at = line.indexOf(':  ');
+    return at > 0 ? { label: line.slice(0, at), value: line.slice(at + 1).trim() } : null;
+  });
+  if (rows.some((row) => row === null)) return null;
+  return `<table class="facts"><tbody>${rows
+    .map((row) => `<tr><th scope="row">${escapeHtml(row!.label)}</th><td>${escapeHtml(row!.value)}</td></tr>`)
+    .join('')}</tbody></table>`;
+}
+
+/**
+ * The letter text, laid out. The legal blocks line their facts up with spaces, which only aligns in a
+ * monospace font; in the letter's typeface the values wandered across the page. Those blocks print
+ * as a table and the rest as paragraphs. The wording is untouched. `beforeSignature` goes in ahead
+ * of the last block, which in every letter is the signature.
+ */
+function letterBodyHtml(text: string, beforeSignature = ''): string {
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter((block) => block !== '');
+  return blocks
+    .map((block, index) => {
+      const html = factsTable(block) ?? `<p>${escapeHtml(block)}</p>`;
+      return index === blocks.length - 1 ? `${beforeSignature}${html}` : html;
+    })
+    .join('\n');
 }
 
 export async function renderAttestationLetterHtml(input: AttestationInput): Promise<string> {
@@ -100,12 +139,13 @@ export async function renderAttestationLetterHtml(input: AttestationInput): Prom
   <p class="address">${escapeHtml(input.registeredAddress)} · ${escapeHtml(input.branding.contactEmail)}</p>
 </header>
 <p class="date">${escapeHtml(input.reportDate)}</p>
-<div class="letter">${escapeHtml(filled.text)}</div>
+<div class="letter">${letterBodyHtml(filled.text)}</div>
 ${
   filled.missing.length > 0
     ? `<p class="draft-banner">Unfilled: ${escapeHtml(filled.missing.join(', '))}</p>`
     : ''
 }
+${block.lawyerReviewedAt === null ? DRAFT_BANNER : ''}
 </body>
 </html>
 `;
@@ -159,14 +199,18 @@ export async function renderDeletionConfirmationHtml(
   <p class="wordmark">${escapeHtml(input.branding.wordmark)}</p>
   <p class="address">${escapeHtml(input.branding.contactEmail)}</p>
 </header>
-<div class="letter">${escapeHtml(filled.text)}</div>
-<table class="destroyed">
+<div class="letter">${letterBodyHtml(
+    filled.text,
+    // The counts are what is being confirmed, so they come before the signature, not after it.
+    `<table class="destroyed">
   <thead><tr><th>Destroyed</th><th class="numeric">Count</th></tr></thead>
   <tbody>
     <tr><td>Evidence objects</td><td class="numeric">${input.destroyed.evidenceObjects}</td></tr>
     <tr><td>Credential sets, cryptographically shredded</td><td class="numeric">${input.destroyed.credentialSets}</td></tr>
   </tbody>
-</table>
+</table>`,
+  )}</div>
+${block.lawyerReviewedAt === null ? DRAFT_BANNER : ''}
 </body>
 </html>
 `;

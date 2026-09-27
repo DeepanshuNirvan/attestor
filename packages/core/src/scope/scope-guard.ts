@@ -119,7 +119,17 @@ export interface ScopeCheckOptions {
    * testing policy to have been acknowledged.
    */
   requiresCloudPolicyAcknowledgement?: boolean;
+  /**
+   * A dry run sends nothing. It may therefore be judged from the moment a valid authorisation exists,
+   * which is when the pre-flight checklist asks for one — before the engagement is ready to run.
+   * Every other check still applies, so a dry run still proves the targets are signed for, in scope
+   * and inside the window.
+   */
+  dryRun?: boolean;
 }
+
+/** States after a valid authorisation, before execution, where only a dry run is permitted. */
+const DRY_RUN_STATES = new Set<EngagementState>(['authorised', 'advancePaid', 'readyToRun']);
 
 function refuse(rule: RefusalRule, detail: string, hostname: string | null = null): ScopeRefused {
   return { allowed: false, rule, detail, hostname };
@@ -327,7 +337,10 @@ export async function checkScope(
     );
   }
 
-  if (!EXECUTABLE_STATES.has(context.state)) {
+  const stateAllows =
+    EXECUTABLE_STATES.has(context.state) ||
+    (options.dryRun === true && DRY_RUN_STATES.has(context.state));
+  if (!stateAllows) {
     return refuse(
       'engagementStateForbidsExecution',
       `Engagement is in state "${context.state}". Execution is only permitted in: ${[...EXECUTABLE_STATES].join(', ')}.`,

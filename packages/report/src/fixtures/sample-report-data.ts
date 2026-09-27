@@ -288,6 +288,12 @@ export function buildSampleReportData(): ReportData {
     coverage,
     complianceFrameworks: ['iso27001', 'soc2', 'pciDss', 'dpdp'],
 
+    testingActivity: {
+      modulesInScope: ['recon', 'web', 'api'],
+      incompleteRuns: [],
+      untestedServices: [],
+    },
+
     appendices: {
       assetInventory: [
         'juice.attestor-lab.internal — customer web application, staging',

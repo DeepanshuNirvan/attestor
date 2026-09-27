@@ -64,7 +64,9 @@ const FORWARD_RULES: TransitionRule[] = [
     from: 'advancePaid',
     to: 'readyToRun',
     requires: (context) => {
-      if (!context.credentialsVerified) return 'credentials have not been verified';
+      if (!context.credentialsVerified) {
+        return 'a submitted test account failed to sign in; ask the client for a replacement, or stop using it';
+      }
       if (!context.preFlightChecklistComplete) return 'the pre-flight checklist is not complete';
       return null;
     },

@@ -84,7 +84,7 @@ export const reconChecks: Check[] = [
     example:
       'An internal admin panel published on a non-standard port with no authentication, discovered because it answered on 8443.',
     automation: 'automated',
-    tools: ['httpx', 'whatweb'],
+    tools: ['httpx'],
     standards: { wstg: ['WSTG-INFO-02', 'WSTG-INFO-08'], cwe: [200] },
   },
   {
@@ -167,7 +167,7 @@ export const reconChecks: Check[] = [
     example:
       'A bucket holding customer-uploaded identity documents with public read enabled for a support tool that was retired.',
     automation: 'automated',
-    tools: ['nuclei', 'cloudsplaining'],
+    tools: ['nuclei'],
     // WSTG-CONF-11 is the cloud storage test. This is it.
     standards: {
       wstg: ['WSTG-CONF-11'],
@@ -198,7 +198,7 @@ export const reconChecks: Check[] = [
     example:
       'A reverse proxy two majors behind, with a published authentication bypass affecting the deployed version.',
     automation: 'automated',
-    tools: ['whatweb', 'httpx', 'nuclei'],
+    tools: ['httpx', 'nuclei'],
     standards: {
       wstg: ['WSTG-INFO-08', 'WSTG-INFO-09'],
       owaspTop10: ['A03:2025'],

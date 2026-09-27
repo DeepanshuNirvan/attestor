@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { buildCoverageMatrix, type Finding } from '@attestor/findings';
 import { resolvePolicy } from '@attestor/policy';
-import { TOOL_IMAGES } from '@attestor/core';
+import { TOOL_IMAGES, inProcessToolById } from '@attestor/core';
 import type { ReportData, ReportEvidence, ReportFinding } from '@attestor/report';
 import type { Database } from '../db/client.ts';
 import {
@@ -48,6 +48,65 @@ function sectionText(sections: Map<string, string>, key: string, fallback: strin
   return stored.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
 }
 
+/**
+ * A list section: one item per line. The console asks for these one per line, and splitting them on
+ * blank lines like prose printed a whole roadmap as a single bullet.
+ */
+function sectionLines(sections: Map<string, string>, key: string, fallback: string[] = []): string[] {
+  const stored = sections.get(key);
+  if (!stored || stored.trim() === '') return fallback;
+  return stored.split('\n').map((line) => line.trim()).filter(Boolean);
+}
+
+/**
+ * A tool's printable name and purpose. Container tools are in the image list; the probes that run
+ * inside the worker are listed separately, and without them the report printed their internal ids.
+ */
+function describeTool(toolName: string): { name: string; purpose: string; builtIn: boolean } {
+  const image = TOOL_IMAGES.find((candidate) => candidate.id === toolName);
+  if (image) return { name: image.displayName, purpose: image.purpose, builtIn: false };
+  const probe = inProcessToolById(toolName);
+  if (probe) return { name: probe.displayName, purpose: probe.purpose, builtIn: true };
+  return { name: toolName, purpose: 'Not recorded.', builtIn: false };
+}
+
+/** `host:port` for a URL, with the scheme's default port filled in. */
+function originKey(value: string): string | null {
+  try {
+    const url = new URL(value);
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return `${url.hostname}:${port}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Web services the port scan found on in-scope hosts that no web or API run was pointed at.
+ *
+ * Web runs test the URLs in the scope, nothing else. A front end at :5174 calling its API at :8080
+ * gets the front end tested and the API not at all, and without this the report said nothing about
+ * it. Only services identified as HTTP are listed; an unidentified port is already in the ports
+ * table and guessing what it is would be a claim.
+ */
+export function untestedWebServices(
+  ports: { host: string; port: number | null; metadata: unknown }[],
+  scopeUrls: string[],
+): string[] {
+  const tested = new Set(scopeUrls.map(originKey).filter((key): key is string => key !== null));
+  const services: string[] = [];
+  for (const asset of ports) {
+    if (asset.port === null) continue;
+    const metadata = (asset.metadata ?? {}) as Record<string, unknown>;
+    const service = typeof metadata.service === 'string' ? metadata.service : '';
+    if (service !== 'http' && service !== 'https') continue;
+    if (tested.has(`${asset.host}:${asset.port}`)) continue;
+    const product = typeof metadata.product === 'string' && metadata.product !== '' ? ` (${metadata.product})` : '';
+    services.push(`${service}://${asset.host}:${asset.port}${product}`);
+  }
+  return [...new Set(services)].sort();
+}
+
 export interface BuildReportInput {
   engagementId: string;
   kind: 'assessment' | 'retest';
@@ -86,6 +145,22 @@ export function retestOutcomeFor(
   // Fixed at some point before this retest, and open again now.
   if (item.fixedAt && item.fixedAt < item.retestedAt) return 'regressed';
   return 'stillOpen';
+}
+
+/**
+ * The assessment report a letter or a retest refers to: the latest released one, or the latest
+ * generated when none has been released yet. Null when there is none at all.
+ */
+export async function latestAssessmentVersion(
+  database: Database,
+  engagementId: string,
+): Promise<string | null> {
+  const rows = await database
+    .select({ version: reportTable.version, releasedAt: reportTable.releasedAt })
+    .from(reportTable)
+    .where(and(eq(reportTable.engagementId, engagementId), eq(reportTable.kind, 'assessment')))
+    .orderBy(desc(reportTable.createdAt));
+  return (rows.find((row) => row.releasedAt !== null) ?? rows[0])?.version ?? null;
 }
 
 export async function buildReportData(
@@ -257,15 +332,58 @@ export async function buildReportData(
   ]
     .sort()
     .map((toolName) => {
-      const tool = TOOL_IMAGES.find((image) => image.id === toolName);
+      const tool = describeTool(toolName);
       return {
-        name: tool?.displayName ?? toolName,
-        version: digests[toolName] ?? 'digest not recorded',
-        purpose: tool?.purpose ?? 'Not recorded.',
+        name: tool.name,
+        version: digests[toolName] ?? (tool.builtIn ? 'Built in' : 'digest not recorded'),
+        purpose: tool.purpose,
       };
     });
 
   const narrativeStored = sectionMap.get('attackNarrative');
+
+  // A retest report cites the date of the retest and the report it re-verifies. Neither was set, so
+  // the basis paragraph printed its placeholders and the checklist refused every retest report.
+  const latestRetest = findings
+    .map((item) => item.retestedAt)
+    .filter((value): value is Date => value !== null)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+  const retestFields =
+    input.kind === 'retest'
+      ? {
+          retestDate: formatDate(latestRetest ?? now),
+          originalReportVersion: (await latestAssessmentVersion(database, input.engagementId)) ?? '',
+        }
+      : {};
+
+  // Why each run that did not finish stopped, once per tool, module and reason. Dry runs are
+  // previews and scope refusals are recorded the same way, so both are read from the same rows.
+  const incompleteRuns = [
+    ...new Map(
+      runs
+        .filter((run) => !run.dryRun && ['aborted', 'failed', 'refused'].includes(run.status))
+        .map((run) => {
+          const tool = describeTool(run.toolName).name;
+          const reason = run.abortReason ?? `The run ${run.status === 'failed' ? 'failed' : 'was refused'} without a recorded reason.`;
+          return [`${tool}|${run.module}|${reason}`, { tool, module: run.module, reason }] as const;
+        }),
+    ).values(),
+  ].sort((a, b) => a.tool.localeCompare(b.tool) || a.module.localeCompare(b.module));
+
+  const scopeUrls = scopeItems.filter((item) => item.included && item.kind === 'url').map((item) => item.value);
+
+  const endpoints = [
+    ...new Map(
+      assets
+        .filter((asset) => asset.kind === 'endpoint' || asset.kind === 'url')
+        .map((asset) => {
+          const metadata = asset.metadata as Record<string, unknown>;
+          const status = typeof metadata.status === 'number' ? metadata.status : null;
+          const method = typeof metadata.method === 'string' ? metadata.method : 'GET';
+          return [`${method} ${asset.value}`, { method, url: asset.value, status }] as const;
+        }),
+    ).values(),
+  ].sort((a, b) => a.url.localeCompare(b.url) || a.method.localeCompare(b.method));
 
   return {
     kind: input.kind,
@@ -281,6 +399,7 @@ export async function buildReportData(
     testStartDate: formatDate(record.startsAt),
     testEndDate: formatDate(record.endsAt),
     statusDate: formatDate(now),
+    ...retestFields,
 
     testType: record.testType as ReportData['testType'],
     cvssVersion: policy.report.cvssVersion,
@@ -302,9 +421,9 @@ export async function buildReportData(
       'Denial-of-service, load and volumetric testing of any kind, which this platform cannot perform.',
       'Social engineering of personnel and physical intrusion.',
     ],
-    environments: sectionText(sectionMap, 'environments', ['Not recorded.']),
-    rolesTested: sectionText(sectionMap, 'rolesTested', ['Not recorded.']),
-    constraints: sectionText(sectionMap, 'constraints', []),
+    environments: sectionLines(sectionMap, 'environments', ['Not recorded.']),
+    rolesTested: sectionLines(sectionMap, 'rolesTested', ['Not recorded.']),
+    constraints: sectionLines(sectionMap, 'constraints', []),
     toolsUsed,
 
     documentControl: {
@@ -317,12 +436,12 @@ export async function buildReportData(
     },
 
     executiveSummary: sectionText(sectionMap, 'executiveSummary'),
-    headlineActions: sectionText(sectionMap, 'headlineActions'),
-    positiveObservations: sectionText(sectionMap, 'positiveObservations'),
+    headlineActions: sectionLines(sectionMap, 'headlineActions'),
+    positiveObservations: sectionLines(sectionMap, 'positiveObservations'),
     roadmap: [
-      { horizon: 'First 30 days', items: sectionText(sectionMap, 'roadmap30') },
-      { horizon: 'Days 30 to 60', items: sectionText(sectionMap, 'roadmap60') },
-      { horizon: 'Days 60 to 90', items: sectionText(sectionMap, 'roadmap90') },
+      { horizon: 'First 30 days', items: sectionLines(sectionMap, 'roadmap30') },
+      { horizon: 'Days 30 to 60', items: sectionLines(sectionMap, 'roadmap60') },
+      { horizon: 'Days 60 to 90', items: sectionLines(sectionMap, 'roadmap90') },
     ].filter((horizon) => horizon.items.length > 0),
 
     attackNarrative: narrativeStored
@@ -344,6 +463,15 @@ export async function buildReportData(
     coverage,
     complianceFrameworks: policy.report.complianceFrameworks,
 
+    testingActivity: {
+      modulesInScope: policy.modules,
+      incompleteRuns,
+      untestedServices: untestedWebServices(
+        assets.filter((asset) => asset.kind === 'port'),
+        scopeUrls,
+      ),
+    },
+
     appendices: {
       // What the engagement found, falling back to what was scoped when reconnaissance produced
       // nothing — an inventory that silently equals the scope list tells the reader nothing.
@@ -362,7 +490,8 @@ export async function buildReportData(
             version: String(metadata.version ?? ''),
           };
         }),
-      outOfScopeNotes: sectionText(sectionMap, 'outOfScopeNotes', [
+      endpoints,
+      outOfScopeNotes: sectionLines(sectionMap, 'outOfScopeNotes', [
         'No denial-of-service, load or volumetric testing was performed. The platform used for this assessment contains no such capability.',
       ]),
       glossary: [

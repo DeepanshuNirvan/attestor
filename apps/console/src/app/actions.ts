@@ -315,6 +315,16 @@ export async function savePolicy(
   }
 }
 
+export async function setAiAssist(engagementId: string, enabled: boolean): Promise<ActionResult> {
+  try {
+    await api.put(`/engagements/${engagementId}/ai-assist`, { enabled });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+  revalidatePath(`/engagements/${engagementId}`);
+  return { ok: true };
+}
+
 /* Triage --------------------------------------------------------------------------------------- */
 
 export async function confirmFindings(
@@ -354,6 +364,7 @@ export async function markFalsePositive(
     return { ok: false, error: message(error) };
   }
   revalidatePath(`/engagements/${engagementId}/triage`);
+  revalidatePath(`/engagements/${engagementId}/report`);
   return { ok: true };
 }
 
@@ -380,6 +391,111 @@ export async function saveRiskRating(
     return { ok: false, error: message(error) };
   }
   revalidatePath(`/engagements/${engagementId}/findings/${findingId}`);
+  return { ok: true };
+}
+
+/**
+ * A finding a person found by hand. It is created as a candidate and goes through triage like any
+ * tool's, with its evidence attached, because the release checklist refuses a finding without any.
+ */
+export async function recordManualFinding(
+  engagementId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  let target: URL;
+  try {
+    target = new URL(formText(form, 'url').trim());
+  } catch {
+    return {
+      ok: false,
+      error: 'the affected URL has to be a full address, such as http://192.168.29.249:8080/api/v1/users/2',
+    };
+  }
+
+  const evidence = formText(form, 'evidence').trim();
+  const screenshot = form.get('screenshot');
+  const hasScreenshot = screenshot instanceof File && screenshot.size > 0;
+  if (evidence === '' && !hasScreenshot) {
+    return { ok: false, error: 'attach evidence: paste the request and response, or add a screenshot' };
+  }
+
+  let findingId: string;
+  try {
+    const result = await api.post<{ finding: { id: string } }>(`/engagements/${engagementId}/findings`, {
+      title: formText(form, 'title').trim(),
+      severity: formText(form, 'severity', 'medium'),
+      cvssVector: formText(form, 'cvssVector').trim(),
+      affectedAssets: [
+        {
+          value: target.host,
+          location: `${target.pathname}${target.search}`,
+          method: formText(form, 'method', 'GET'),
+        },
+      ],
+      description: formText(form, 'description').trim(),
+      businessImpact: formText(form, 'businessImpact').trim(),
+      reproductionSteps: lines(form, 'reproductionSteps'),
+      remediation: formText(form, 'remediation').trim(),
+    });
+    findingId = result.finding.id;
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+
+  try {
+    if (evidence !== '') {
+      await api.post(`/findings/${findingId}/evidence`, { kind: 'request', text: evidence });
+    }
+    if (hasScreenshot) {
+      await api.post(`/findings/${findingId}/evidence`, {
+        kind: 'screenshot',
+        base64: Buffer.from(await screenshot.arrayBuffer()).toString('base64'),
+        contentType: screenshot.type || 'image/png',
+        filename: screenshot.name,
+      });
+    }
+  } catch (error) {
+    return { ok: false, error: `the finding was saved, but its evidence was not: ${message(error)}` };
+  }
+
+  revalidatePath(`/engagements/${engagementId}/triage`);
+  redirect(`/engagements/${engagementId}/triage`);
+}
+
+/** The tester's retest verdict on one finding. */
+export async function recordRetest(
+  engagementId: string,
+  findingId: string,
+  outcome: 'fixed' | 'stillOpen',
+): Promise<ActionResult> {
+  try {
+    await api.post(`/findings/${findingId}/retest`, { outcome });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+  revalidatePath(`/engagements/${engagementId}/findings/${findingId}`);
+  return { ok: true };
+}
+
+/** The per-finding text the release checklist asks for. Tools rarely write it; a person does. */
+export async function saveFindingWriteUp(
+  engagementId: string,
+  findingId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  try {
+    await api.put(`/findings/${findingId}`, {
+      businessImpact: formText(form, 'businessImpact').trim(),
+      reproductionSteps: lines(form, 'reproductionSteps'),
+      remediation: formText(form, 'remediation').trim(),
+    });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+  revalidatePath(`/engagements/${engagementId}/findings/${findingId}`);
+  revalidatePath(`/engagements/${engagementId}/report`);
   return { ok: true };
 }
 
@@ -569,6 +685,85 @@ export async function createClient(
   }
 
   redirect(`/clients/${created.client.id}`);
+}
+
+export async function createEngagement(
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const clientId = formText(form, 'clientId');
+  const title = formText(form, 'title');
+  if (clientId === '' || title === '') return { ok: false, error: 'choose a client and give it a title' };
+
+  let created: { engagement: { id: string } };
+  try {
+    created = await api.post<{ engagement: { id: string } }>('/engagements', {
+      clientId,
+      title,
+      type: formText(form, 'type', 'webApplication'),
+      testType: formText(form, 'testType', 'greyBox'),
+      // A date input gives a calendar day. The window runs from the start of the first day to the
+      // end of the last, in UTC, so a one-day engagement is not a zero-length one.
+      startsAt: formText(form, 'startsAt') ? `${formText(form, 'startsAt')}T00:00:00Z` : undefined,
+      endsAt: formText(form, 'endsAt') ? `${formText(form, 'endsAt')}T23:59:59Z` : undefined,
+      timezone: formText(form, 'timezone', 'Asia/Kolkata'),
+      currency: formText(form, 'currency', 'INR'),
+      quotedAmount: Number(formText(form, 'quotedAmount', '0')) || 0,
+      profileId: formText(form, 'profileId') || undefined,
+    });
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
+
+  redirect(`/engagements/${created.engagement.id}`);
+}
+
+/** One entry per line, blanks dropped. */
+function lines(form: FormData, name: string): string[] {
+  return formText(form, name)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export async function recordAuthorisation(
+  engagementId: string,
+  unusedPrevious: ActionResult,
+  form: FormData,
+): Promise<ActionResult> {
+  const file = form.get('document');
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'attach the signed authorisation PDF' };
+  }
+
+  try {
+    const result = await api.post<{ diff?: unknown }>(`/engagements/${engagementId}/authorisation`, {
+      signedBy: formText(form, 'signedBy'),
+      signerRole: formText(form, 'signerRole'),
+      signerEmail: formText(form, 'signerEmail'),
+      signedAt: formText(form, 'signedAt'),
+      document: {
+        filename: file.name,
+        base64: Buffer.from(await file.arrayBuffer()).toString('base64'),
+      },
+      assetList: lines(form, 'assetList'),
+      exclusionList: lines(form, 'exclusionList'),
+      sourceAddresses: lines(form, 'sourceAddresses'),
+      emergencyContact: {
+        name: formText(form, 'emergencyName'),
+        role: formText(form, 'emergencyRole'),
+        phone: formText(form, 'emergencyPhone'),
+        email: formText(form, 'emergencyEmail'),
+      },
+      criticalNotificationHours: Number(formText(form, 'criticalNotificationHours', '24')) || 24,
+      validFrom: `${formText(form, 'validFrom')}T00:00:00Z`,
+      validUntil: `${formText(form, 'validUntil')}T23:59:59Z`,
+    });
+    revalidatePath(`/engagements/${engagementId}`);
+    return { ok: true, detail: result };
+  } catch (error) {
+    return { ok: false, error: message(error) };
+  }
 }
 
 export async function recordDpa(clientId: string): Promise<ActionResult> {

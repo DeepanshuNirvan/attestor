@@ -9,6 +9,9 @@ import { PaymentControl } from '@/components/payment-control';
 import { CredentialRequest, type CredentialKindOption } from '@/components/credential-request';
 import { revokeCredential } from '@/app/actions';
 import { ScopeEditor } from '@/components/scope-editor';
+import { AuthorisationForm } from '@/components/authorisation-form';
+import { PolicyEditor } from '@/components/policy-editor';
+import { AiAssistToggle } from '@/components/ai-assist-toggle';
 import { tryGet } from '@/lib/api';
 
 interface EngagementDetail {
@@ -31,6 +34,7 @@ interface EngagementDetail {
     thirdPartyInfrastructureAcknowledgedAt: string | null;
     cloudTestingPolicyAcknowledgedAt: string | null;
     policyYaml: string;
+    aiAssistEnabled: boolean;
   };
   scopeItems: { id: string; kind: string; value: string; included: boolean; notes: string }[];
   authorisations: {
@@ -93,6 +97,7 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
   if (data === null) redirect('/login');
   const preFlight = await tryGet<PreFlightResponse>(`/engagements/${id}/pre-flight-checklist`);
   const credentialKinds = await tryGet<{ kinds: CredentialKindOption[] }>('/credential-kinds');
+  const settings = await tryGet<{ configuration: { aiEnabled: boolean; aiProvider: string } }>('/settings');
   if (!data.engagement) notFound();
 
   const { engagement, panicStop } = data;
@@ -116,6 +121,9 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
         subtitle={`${engagement.reference} · ${engagement.state} · ${engagement.testType}`}
         actions={
           <>
+            <Link className="button button-quiet" href={`/engagements/${id}/findings/new`}>
+              Record a finding
+            </Link>{' '}
             <Link className="button button-quiet" href={`/engagements/${id}/triage`}>
               Triage {candidates > 0 ? `(${candidates})` : ''}
             </Link>{' '}
@@ -223,12 +231,14 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
 
         <section className="panel">
           <h2>Authorisation</h2>
-          {data.authorisations.length === 0 ? (
-            <p className="muted small">
-              None uploaded. Testing cannot start without one, and the scope guard will refuse every
-              target until it exists.
-            </p>
-          ) : (
+          {!authorisationValid ? (
+            <AuthorisationForm
+              engagementId={id}
+              includedScope={data.scopeItems.filter((item) => item.included).map((item) => item.value)}
+              excludedScope={data.scopeItems.filter((item) => !item.included).map((item) => item.value)}
+            />
+          ) : null}
+          {data.authorisations.length === 0 ? null : (
             <table>
               <thead>
                 <tr>
@@ -355,6 +365,21 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
           ) : (
             <CredentialRequest engagementId={id} kinds={credentialKinds.kinds} />
           )}
+        </section>
+
+        <section className="panel">
+          <h2>Policy</h2>
+          <PolicyEditor engagementId={id} yaml={engagement.policyYaml} />
+        </section>
+
+        <section className="panel">
+          <h2>AI drafting</h2>
+          <AiAssistToggle
+            engagementId={id}
+            enabled={engagement.aiAssistEnabled}
+            deploymentEnabled={settings?.configuration.aiEnabled ?? null}
+            deploymentProvider={settings?.configuration.aiProvider ?? null}
+          />
         </section>
 
         <section className="panel">

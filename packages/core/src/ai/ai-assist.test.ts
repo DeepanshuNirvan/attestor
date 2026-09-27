@@ -139,13 +139,18 @@ describe('the budget', () => {
     expect(deps.sent).toHaveLength(0);
   });
 
-  it('refuses everything when the ceiling is zero, which is the default', async () => {
-    const deps = dependencies({ config: { ...dependencies().config, monthlyBudgetUsd: 0 } });
+  // Zero means the platform sets no ceiling and the provider's own limits apply. It used to mean
+  // "refuse everything", which made a working self-hosted model unusable until someone found the
+  // setting.
+  it('sets no ceiling when the budget is zero, which is the default', async () => {
+    const deps = dependencies({
+      config: { ...dependencies().config, monthlyBudgetUsd: 0 },
+      spentThisMonthUsd: () => Promise.resolve(1_000),
+    });
     const outcome = await new AiAssist(deps).draft(request);
 
-    expect(outcome.status).toBe('refused');
-    if (outcome.status !== 'refused') return;
-    expect(outcome.rule).toBe('budgetExhausted');
+    expect(outcome.status === 'refused' ? outcome.rule : 'not refused').not.toBe('budgetExhausted');
+    expect(deps.sent).toHaveLength(1);
   });
 
   it('estimates the cost from the token counts the provider reported', async () => {
